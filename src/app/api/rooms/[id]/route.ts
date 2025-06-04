@@ -1,8 +1,9 @@
 // File: src/app/api/rooms/[id]/route.ts
+export const runtime = "nodejs"; // ✅ Use Node.js runtime for RLS context
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
+import { withTenantContext } from "@/lib/tenant";
 
 // Allowed roles for modifying rooms
 const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
@@ -39,14 +40,16 @@ export async function PUT(
   }
 
   try {
-    const updated = await prisma.room.updateMany({
-      where: { id: params.id, organizationId: orgId },
-      data: {
-        name,
-        type,
-        capacity,
-        imageUrl: typeof imageUrl === "string" ? imageUrl : undefined
-      }
+    const updated = await withTenantContext(orgId, async (tx) => {
+      return await tx.room.updateMany({
+        where: { id: params.id },
+        data: {
+          name,
+          type,
+          capacity,
+          imageUrl: typeof imageUrl === "string" ? imageUrl : undefined
+        }
+      });
     });
     if (updated.count === 0) {
       return new NextResponse("Room not found", { status: 404 });
@@ -80,8 +83,8 @@ export async function DELETE(
   }
 
   try {
-    const deleted = await prisma.room.deleteMany({
-      where: { id: params.id, organizationId: orgId }
+    const deleted = await withTenantContext(orgId, async (tx) => {
+      return await tx.room.deleteMany({ where: { id: params.id } });
     });
     if (deleted.count === 0) {
       return new NextResponse("Room not found", { status: 404 });

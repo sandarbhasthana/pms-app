@@ -120,3 +120,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* only highlight the cells that represent full‐day “columns” (they all have a data‐date) */
+.fc .cell-hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  cursor: pointer;
+}
+

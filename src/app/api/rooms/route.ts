@@ -1,8 +1,9 @@
 // File: src/app/api/rooms/route.ts
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
+import { withTenantContext } from "@/lib/tenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,9 +20,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch rooms scoped to this organization
-    const rooms = await prisma.room.findMany({
-      where: { organizationId: orgId },
-      orderBy: { name: "asc" }
+    const rooms = await withTenantContext(orgId, async (tx) => {
+      return await tx.room.findMany({
+        orderBy: { name: "asc" }
+      });
     });
 
     return NextResponse.json(rooms);
@@ -63,17 +65,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Create new room
-    const newRoom = await prisma.room.create({
-      data: {
-        name,
-        type,
-        capacity,
-        imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
-        organizationId: orgId
-      }
+    const room = await withTenantContext(orgId, async (tx) => {
+      return await tx.room.create({
+        data: {
+          organizationId: orgId, // Still required for insert policy to pass
+          name,
+          type,
+          capacity,
+          imageUrl
+        }
+      });
     });
-
-    return NextResponse.json(newRoom, { status: 201 });
+    return NextResponse.json(room, { status: 201 });
   } catch (error) {
     console.error("POST /api/rooms error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
