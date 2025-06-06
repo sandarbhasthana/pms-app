@@ -1,38 +1,14 @@
-"use client";
-
+//import dynamic from 'next/dynamic';
 import React from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
+import SchedulerWithResources from "@/components/Scheduler";
 
-const CalendarWithHover = () => {
-  const handleCellHover = (info: { el: HTMLElement }) => {
-    const cell = info.el;
-    cell.addEventListener("mouseenter", () => {
-      cell.style.backgroundColor = "#f00"; // Light blue hover effect
-    });
-    cell.addEventListener("mouseleave", () => {
-      cell.style.backgroundColor = "#fff"; // Reset background color
-    });
-  };
-
+export default function SchedulerPage() {
   return (
-    <FullCalendar
-      //   plugins={[resourceTimelinePlugin]}
-    //   initialView="resourceTimelineCustom"
-      plugins={[dayGridPlugin]}
-      initialView="dayGridMonth"
-      //   views={{
-      //     resourceTimelineCustom: {
-      //       type: "resourceTimeline",
-      //       duration: { days: 14 }
-      //     }
-      //   }}
-      //slotDuration={{ hours: 12 }}
-      // Render date label only at 00:00
-      //slotLabelInterval={{ days: 1 }}
-      dayCellDidMount={handleCellHover} // Hook to customize day cells
-    />
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <h1 className="text-2xl font-semibold mb-4">
+        Room Timeline (Date & Resource View)
+      </h1>
+      <SchedulerWithResources />
+    </div>
   );
-};
-
-export default CalendarWithHover;
+}
