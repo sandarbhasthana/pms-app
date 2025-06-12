@@ -1,30 +1,30 @@
 // File: src/app/api/onboarding/memberships/route.ts
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
+
+import { getServerSession } from "next-auth";
+import { authOptions }      from "@/app/api/auth/[...nextauth]/route";
+import prisma               from "@/lib/prisma";
+import { NextResponse }     from "next/server";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch all UserOrg memberships for this user
+  // Pull all org memberships for the logged-in user:
   const memberships = await prisma.userOrg.findMany({
-    where: { user: { email: session.user.email } },
-    include: {
-      organization: {
-        select: { id: true, name: true }
-      }
-    }
+    where: { 
+      user: { 
+        email: session.user.email || "" 
+      } 
+    },
+    include: { organization: true },
   });
 
-  // Map to the shape expected by the onboarding page
-  const formatted = memberships.map((m) => ({
-    organizationId: m.organization.id,
-    organizationName: m.organization.name
+  const data = memberships.map((m) => ({
+    organizationId:   m.organizationId,
+    organizationName: m.organization.name,
   }));
 
-  return NextResponse.json({ memberships: formatted });
+  return NextResponse.json({ memberships: data });
 }

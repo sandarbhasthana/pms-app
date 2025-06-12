@@ -1,26 +1,24 @@
 // File: src/app/api/reservations/route.ts
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { withTenantContext } from "@/lib/tenant";
 
 export async function GET(req: NextRequest) {
+  // 1️⃣ Only use the cookie
+  const orgId = req.cookies.get("orgId")?.value;
+  if (!orgId) {
+    return NextResponse.json(
+      { error: "Organization context missing" },
+      { status: 400 }
+    );
+  }
+
   try {
-    // Determine organization context from header, cookie, or query
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const url = new URL(req.url);
-    const orgIdQuery = url.searchParams.get("orgId");
-    const orgId = orgIdHeader || orgIdCookie || orgIdQuery;
-
-    console.log("📡 GET /api/reservations → orgId:", orgId);
-
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
-    }
-
-    // Fetch reservations for this organization
-    const reservations = await withTenantContext(orgId, async (tx) => {
-      return await tx.reservation.findMany({
+    // 2️⃣ Fetch only this org's reservations
+    const reservations = await withTenantContext(orgId, (tx) =>
+      tx.reservation.findMany({
+        where: { organizationId: orgId },
         select: {
           id: true,
           guestName: true,
@@ -29,11 +27,12 @@ export async function GET(req: NextRequest) {
           checkOut: true,
           adults: true,
           children: true,
-          notes: true
+          status: true,
+          notes: true,
         },
-        orderBy: { checkIn: "asc" }
-      });
-    });
+        orderBy: { checkIn: "asc" },
+      })
+    );
 
     return NextResponse.json({ count: reservations.length, reservations });
   } catch (error) {
@@ -46,30 +45,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // 1️⃣ Only use the cookie
+  const orgId = req.cookies.get("orgId")?.value;
+  if (!orgId) {
+    return NextResponse.json(
+      { error: "Organization context missing" },
+      { status: 400 }
+    );
+  }
+
   try {
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const url = new URL(req.url);
-    const orgIdQuery = url.searchParams.get("orgId");
-    const orgId = orgIdHeader || orgIdCookie || orgIdQuery;
-    const body = await req.json();
+    const {
+      roomId,
+      guestName,
+      checkIn,
+      checkOut,
+      adults,
+      children,
+      notes,
+    } = await req.json();
 
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    if (!roomId || !guestName || !checkIn || !checkOut || adults == null) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    const { roomId, guestName, checkIn, checkOut, adults, children } = body;
-
-    if (!roomId || !guestName || !checkIn || !checkOut || !adults) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-    }
-
-    // Optional: get current orgId from session
-    // const session = await getServerSession(authOptions);
-    // const orgId = session?.user?.orgId;
-
-    const reservation = await withTenantContext(orgId, async (tx) => {
-      return await tx.reservation.create({
+    // 2️⃣ Create under the selected org
+    const reservation = await withTenantContext(orgId, (tx) =>
+      tx.reservation.create({
         data: {
           organizationId: orgId,
           roomId,
@@ -78,14 +83,15 @@ export async function POST(req: NextRequest) {
           checkOut: new Date(checkOut),
           adults,
           children,
-          source: "WEBSITE"
-        }
-      });
-    });
+          notes,
+          source: "WEBSITE",
+        },
+      })
+    );
 
-    return NextResponse.json(reservation, { status: 200 });
+    return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
-    console.error("Error in POST /api/reservations:", error);
+    console.error("POST /api/reservations error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
