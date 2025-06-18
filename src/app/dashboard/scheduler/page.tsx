@@ -48,6 +48,7 @@ interface Reservation {
   ratePlan?: string;
   notes?: string;
   roomNumber?: string;
+  paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID";
 }
 
 interface Room {

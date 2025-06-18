@@ -3,9 +3,9 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { withTenantContext } from "@/lib/tenant";
+import { calculatePaymentStatus } from "@/lib/payments/utils";
 
 export async function GET(req: NextRequest) {
-  // 1️⃣ Only use the cookie
   const orgId = req.cookies.get("orgId")?.value;
   if (!orgId) {
     return NextResponse.json(
@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 2️⃣ Fetch only this org's reservations
     const reservations = await withTenantContext(orgId, (tx) =>
       tx.reservation.findMany({
         where: { organizationId: orgId },
@@ -28,13 +27,24 @@ export async function GET(req: NextRequest) {
           adults: true,
           children: true,
           status: true,
-          notes: true,
+          notes: true
         },
-        orderBy: { checkIn: "asc" },
+        orderBy: { checkIn: "asc" }
       })
     );
 
-    return NextResponse.json({ count: reservations.length, reservations });
+    // Add paymentStatus to each reservation
+    const enriched = await Promise.all(
+      reservations.map(async (r) => {
+        const paymentStatus = await calculatePaymentStatus(r.id);
+        return { ...r, paymentStatus };
+      })
+    );
+
+    return NextResponse.json({
+      count: enriched.length,
+      reservations: enriched
+    });
   } catch (error) {
     console.error("GET /api/reservations error:", error);
     return NextResponse.json(
@@ -45,7 +55,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // 1️⃣ Only use the cookie
   const orgId = req.cookies.get("orgId")?.value;
   if (!orgId) {
     return NextResponse.json(
@@ -63,6 +72,11 @@ export async function POST(req: NextRequest) {
       adults,
       children,
       notes,
+      phone,
+      email,
+      idType,
+      idNumber,
+      issuingCountry
     } = await req.json();
 
     if (!roomId || !guestName || !checkIn || !checkOut || adults == null) {
@@ -72,7 +86,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2️⃣ Create under the selected org
     const reservation = await withTenantContext(orgId, (tx) =>
       tx.reservation.create({
         data: {
@@ -84,8 +97,13 @@ export async function POST(req: NextRequest) {
           adults,
           children,
           notes,
-          source: "WEBSITE",
-        },
+          phone,
+          email,
+          idType,
+          idNumber,
+          issuingCountry,
+          source: "WEBSITE"
+        }
       })
     );
 

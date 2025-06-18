@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
 import Providers from "./providers";
+import ThemeProviderWrapper from "./theme-provider-wrapper";
 
 export const metadata: Metadata = {
   title: "PMS App",
@@ -18,12 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cn("bg-background text-foreground")}>
-        <Providers>
-          {/* App header */}
-          <Header />
-          {children}
-        </Providers>
+        <ThemeProviderWrapper>
+          <Providers>
+            {/* App header */}
+            <Header />
+            {children}
+          </Providers>
+        </ThemeProviderWrapper>
       </body>
     </html>
   );
 }
+

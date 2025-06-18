@@ -1,7 +1,8 @@
-//api/reservations/[id]/route.ts
+// File: src/app/api/reservations/[id]/route.ts
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { withTenantContext } from "@/lib/tenant";
+import { calculatePaymentStatus } from "@/lib/payments/utils";
 
 export async function PATCH(
   req: NextRequest,
@@ -14,8 +15,19 @@ export async function PATCH(
     return new NextResponse("Missing organization context", { status: 400 });
   }
 
-  const { guestName, checkIn, checkOut, adults, children, notes } =
-    await req.json();
+  const {
+    guestName,
+    checkIn,
+    checkOut,
+    adults,
+    children,
+    notes,
+    phone,
+    email,
+    idType,
+    idNumber,
+    issuingCountry
+  } = await req.json();
 
   try {
     const updated = await withTenantContext(orgId, async (tx) => {
@@ -27,7 +39,13 @@ export async function PATCH(
           checkOut: checkOut ? new Date(checkOut) : undefined,
           adults: adults !== undefined ? adults : undefined,
           children: children !== undefined ? children : undefined,
-          notes: notes !== undefined ? notes : undefined
+          notes: notes !== undefined ? notes : undefined,
+          phone: phone !== undefined ? phone : undefined,
+          email: email !== undefined ? email : undefined,
+          idType: idType !== undefined ? idType : undefined,
+          idNumber: idNumber !== undefined ? idNumber : undefined,
+          issuingCountry:
+            issuingCountry !== undefined ? issuingCountry : undefined
         }
       });
     });
@@ -98,7 +116,11 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(reservation);
+    // Add payment status to the reservation
+    const paymentStatus = await calculatePaymentStatus(reservation.id);
+    const enrichedReservation = { ...reservation, paymentStatus };
+
+    return NextResponse.json(enrichedReservation);
   } catch (error) {
     console.error("GET /api/reservations/[id] error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
