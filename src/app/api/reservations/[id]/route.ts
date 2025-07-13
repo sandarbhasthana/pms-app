@@ -65,20 +65,63 @@ export async function DELETE(
     req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
 
   if (!orgId) {
-    return new NextResponse("Missing organization context", { status: 400 });
+    return NextResponse.json(
+      { error: "Missing organization context" },
+      { status: 400 }
+    );
   }
 
   try {
     const deleted = await withTenantContext(orgId, async (tx) => {
+      // First check if reservation exists
+      const existing = await tx.reservation.findFirst({
+        where: {
+          id: params.id,
+          organizationId: orgId
+        },
+        include: {
+          Payment: true // Include payments to check if any exist
+        }
+      });
+
+      if (!existing) {
+        return { count: 0 };
+      }
+
+      // Delete payments first (if any exist)
+      if (existing.Payment && existing.Payment.length > 0) {
+        await tx.payment.deleteMany({
+          where: { reservationId: params.id }
+        });
+      }
+
+      // Then delete the reservation
       return await tx.reservation.deleteMany({
-        where: { id: params.id }
+        where: {
+          id: params.id,
+          organizationId: orgId
+        }
       });
     });
 
-    return NextResponse.json({ deleted });
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { error: "Reservation not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      deleted: deleted.count,
+      message: "Reservation deleted successfully"
+    });
   } catch (error) {
     console.error("Delete error:", error);
-    return new NextResponse("Failed to delete reservation", { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete reservation" },
+      { status: 500 }
+    );
   }
 }
 
@@ -116,8 +159,8 @@ export async function GET(
       );
     }
 
-    // Add payment status to the reservation
-    const paymentStatus = await calculatePaymentStatus(reservation.id);
+    // Add payment status to the reservation with tenant context
+    const paymentStatus = await calculatePaymentStatus(reservation.id, orgId);
     const enrichedReservation = { ...reservation, paymentStatus };
 
     return NextResponse.json(enrichedReservation);

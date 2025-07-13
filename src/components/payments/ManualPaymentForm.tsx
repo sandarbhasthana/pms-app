@@ -3,9 +3,11 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 export default function ManualPaymentForm({
-  reservationId
+  reservationId,
+  onPaymentAdded
 }: {
   reservationId: string;
+  onPaymentAdded?: () => void;
 }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("manual");
@@ -38,6 +40,11 @@ export default function ManualPaymentForm({
     setAmount("");
     setMethod("manual");
     setNotes("");
+
+    // Refresh the calendar to show updated payment status
+    if (onPaymentAdded) {
+      onPaymentAdded();
+    }
   };
 
   return (

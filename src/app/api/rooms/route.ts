@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse and validate request body
-    const { name, type, capacity, imageUrl } = await req.json();
+    const { name, type, capacity, imageUrl, description, doorlockId } =
+      await req.json();
     if (
       typeof name !== "string" ||
       typeof type !== "string" ||
@@ -72,7 +73,9 @@ export async function POST(req: NextRequest) {
           name,
           type,
           capacity,
-          imageUrl
+          imageUrl,
+          description,
+          doorlockId
         }
       });
     });

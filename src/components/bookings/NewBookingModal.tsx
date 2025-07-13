@@ -106,6 +106,7 @@ const NewBookingModal: React.FC<NewBookingModalProps> = ({
             New Booking
           </Dialog.Title>
           <form
+            id="bookingForm"
             onSubmit={handleCreate}
             className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm"
           >
@@ -277,8 +278,19 @@ const NewBookingModal: React.FC<NewBookingModalProps> = ({
               Cancel
             </button>
             <button
-              type="submit"
-              form="bookingForm"
+              type="button"
+              onClick={() => {
+                const form = document.getElementById(
+                  "bookingForm"
+                ) as HTMLFormElement;
+                if (form) {
+                  const fakeEvent = {
+                    currentTarget: form,
+                    preventDefault: () => {}
+                  } as React.FormEvent<HTMLFormElement>;
+                  handleCreate(fakeEvent);
+                }
+              }}
               className="px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
             >
               Submit

@@ -30,11 +30,14 @@ export async function PUT(
   }
 
   // Parse and validate body
-  const { name, type, capacity, imageUrl } = await req.json();
+  const { name, type, capacity, imageUrl, description, doorlockId } =
+    await req.json();
   if (
     (name && typeof name !== "string") ||
     (type && typeof type !== "string") ||
-    (capacity && typeof capacity !== "number")
+    (capacity && typeof capacity !== "number") ||
+    (description && typeof description !== "string") ||
+    (doorlockId && typeof doorlockId !== "string")
   ) {
     return new NextResponse("Invalid payload", { status: 422 });
   }
@@ -47,7 +50,10 @@ export async function PUT(
           name,
           type,
           capacity,
-          imageUrl: typeof imageUrl === "string" ? imageUrl : undefined
+          imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
+          description:
+            typeof description === "string" ? description : undefined,
+          doorlockId: typeof doorlockId === "string" ? doorlockId : undefined
         }
       });
     });

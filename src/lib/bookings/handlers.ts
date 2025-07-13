@@ -83,13 +83,43 @@ export async function handleDeleteBooking(
   reload: () => Promise<void>
 ) {
   try {
+    // Get orgId from cookies for API calls
+    const orgId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("orgId="))
+      ?.split("=")[1];
+
     const res = await fetch(`/api/reservations/${id}`, {
-      method: "DELETE"
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        // Include organization context
+        ...(orgId && { "x-organization-id": orgId })
+      }
     });
-    if (!res.ok) throw new Error((await res.json()).error || "Error");
+
+    if (!res.ok) {
+      // Try to parse JSON error, fallback to text if not JSON
+      let errorMessage = "Failed to delete reservation";
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // If JSON parsing fails, try to get text
+        try {
+          errorMessage = (await res.text()) || errorMessage;
+        } catch {
+          // If both fail, use default message
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
     toast.success("Deleted!");
     await reload();
   } catch (err) {
+    console.error("Delete booking error:", err);
     toast.error(err instanceof Error ? err.message : "Unknown error");
   }
 }

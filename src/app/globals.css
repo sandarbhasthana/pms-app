@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-phone-input-2/lib/style.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -401,4 +402,337 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .dark .react-datepicker__day--keyboard-selected {
   background-color: rgba(139, 92, 246, 0.3);
+}
+
+/* .text-muted-foreground{
+  color: #9333ea !important;
+} */
+
+/* Enhanced Select Dropdown Styling */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.dark select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+option {
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 2px 0;
+  background-color: #fff;
+  color: #0a0a0a;
+  border: 1px solid var(--border);
+}
+
+.dark option {
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 2px 0;
+  background-color: #0a0a0a;
+  color: #fff;
+  border: 1px solid var(--border);
+}
+
+option:hover {
+  background-color: #fff;
+  color: #0a0a0a;
+}
+
+.dark option:hover {
+  background-color: #0a0a0a;
+  color: #fff;
+}
+
+option:checked {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Custom Select Component Enhancements */
+[data-slot="select-content"] {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  background-color: #fff !important;
+  color: #0a0a0a !important;
+}
+
+.dark [data-slot="select-content"] {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  background-color: #0a0a0a !important;
+  color: #fff !important;
+}
+
+/* Scrollbar styling for custom Select dropdown - target the scrollable div */
+[data-slot="select-content"] > div::-webkit-scrollbar {
+  width: 7px !important;
+}
+
+[data-slot="select-content"] > div::-webkit-scrollbar-track {
+  background-color: #f1f1f1 !important;
+  border-radius: 3px !important;
+}
+
+[data-slot="select-content"] > div::-webkit-scrollbar-thumb {
+  background-color: #7b43ff !important;
+  border-radius: 3px !important;
+}
+
+[data-slot="select-content"] > div::-webkit-scrollbar-thumb:hover {
+  background-color: #7b43ffb8 !important;
+}
+
+/* Dark mode scrollbar for select */
+.dark [data-slot="select-content"] > div::-webkit-scrollbar-track {
+  background-color: #2a2a2a !important;
+}
+
+.dark [data-slot="select-content"] > div::-webkit-scrollbar-thumb {
+  background-color: #a985ff !important;
+}
+
+.dark [data-slot="select-content"] > div::-webkit-scrollbar-thumb:hover {
+  background-color: #7b43ffb8 !important;
+}
+
+/* Alternative approach - more specific selector */
+.max-h-60.overflow-auto::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.max-h-60.overflow-auto::-webkit-scrollbar-track {
+  background-color: #f1f1f1 !important;
+  border-radius: 3px !important;
+}
+
+.max-h-60.overflow-auto::-webkit-scrollbar-thumb {
+  background-color: #7b43ff !important;
+  border-radius: 3px !important;
+}
+
+.max-h-60.overflow-auto::-webkit-scrollbar-thumb:hover {
+  background-color: #7b43ffb8 !important;
+}
+
+/* Dark mode for alternative approach */
+.dark .max-h-60.overflow-auto::-webkit-scrollbar-track {
+  background-color: #2a2a2a !important;
+}
+
+.dark .max-h-60.overflow-auto::-webkit-scrollbar-thumb {
+  background-color: #a985ff !important;
+}
+
+.dark .max-h-60.overflow-auto::-webkit-scrollbar-thumb:hover {
+  background-color: #7b43ffb8 !important;
+}
+
+[data-slot="select-item"] {
+  border-radius: 6px;
+  margin: 2px 4px;
+  transition: all 0.15s ease-in-out;
+}
+
+[data-slot="select-item"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* More specific selector to override component styles */
+label,
+[data-slot="label"],
+.label {
+  margin-bottom: 1rem !important;
+  display: block;
+}
+
+/* Phone Input */
+
+.react-tel-input .flag-dropdown {
+  border-top: 1px solid #e5e5e5 !important;
+  border-left: 1px solid #e5e5e5 !important;
+  border-bottom: 1px solid #e5e5e5 !important;
+  border-right: none !important;
+  border-top-left-radius: 6px !important;
+  border-bottom-left-radius: 6px !important;
+  background-color: #fff !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* Light mode hover */
+.react-tel-input .flag-dropdown:hover {
+  background-color: #f5f5f5 !important;
+}
+
+/* Dark mode flag dropdown */
+.dark .react-tel-input .flag-dropdown {
+  border-top: 1px solid #27272a !important;
+  border-left: 1px solid #27272a !important;
+  border-bottom: 1px solid #27272a !important;
+  background-color: #0a0a0a !important;
+}
+
+/* Dark mode hover - targets both container and inner elements */
+.dark .react-tel-input .flag-dropdown:hover,
+.dark .react-tel-input .flag-dropdown:hover * {
+  background-color: #262626 !important;
+}
+
+.flag-dropdown,
+.country-list,
+.search,
+.country {
+  background: #fff !important;
+  color: #0a0a0a !important;
+}
+
+.dark .flag-dropdown,
+.dark .country-list,
+.dark .search,
+.dark .country {
+  background: #0a0a0a !important;
+  color: #fff !important;
+}
+
+input.search-box {
+  margin-left: 0 !important;
+  width: 95% !important;
+}
+
+.country:hover {
+  background-color: grey !important;
+  color: #0a0a0a;
+}
+
+.dark .country:hover {
+  background-color: #2a323f !important;
+  color: #fff;
+}
+
+.country ~ .highlight {
+  background-color: #d7c6ff !important;
+}
+
+/* Scrollbar styling for country list dropdown */
+.react-tel-input .country-list::-webkit-scrollbar {
+  width: 7px !important;
+}
+
+.react-tel-input .country-list::-webkit-scrollbar-track {
+  background-color: #f1f1f1 !important;
+  border-radius: 3px !important;
+}
+
+.dark .react-tel-input .country-list::-webkit-scrollbar-thumb {
+  background-color: #a985ff !important;
+  border-radius: 3px !important;
+}
+
+.dark .react-tel-input .country-list::-webkit-scrollbar-thumb:hover {
+  background-color: #7b43ffb8 !important;
+}
+
+.dark .react-tel-input .country-list::-webkit-scrollbar-track {
+  background-color: #2a2a2a !important;
+}
+
+.react-tel-input > input {
+  width: 100% !important;
+  height: 35px !important;
+  border-radius: 6px;
+  background-color: #fff !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e5e5 !important;
+}
+
+.dark .react-tel-input > input {
+  background-color: #0a0a0a !important;
+  color: #fff !important;
+  border: 1px solid #27272a !important;
+}
+
+/* TIPTAP STYLING */
+.tiptap {
+  min-height: 180px;
+  padding: 0.2rem;
+  outline: none;
+  font-size: medium;
+}
+
+.tiptap p {
+  margin: 0;
+}
+
+.button-tiptap:hover {
+  cursor: pointer;
+  background-color: rgb(197, 197, 197);
+}
+
+.dark .button-tiptap:hover {
+  cursor: pointer;
+  background-color: #6b7280;
+}
+
+.ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+}
+
+.dark .ProseMirror th,
+.dark .ProseMirror td {
+  border-color: #444;
+}
+
+/* Global purple focus styling to match ShadCN components */
+input[type="text"]:focus-visible,
+input[type="email"]:focus-visible,
+input[type="password"]:focus-visible,
+input[type="number"]:focus-visible,
+input[type="tel"]:focus-visible,
+input[type="url"]:focus-visible,
+input[type="search"]:focus-visible,
+input[type="date"]:focus-visible,
+input[type="time"]:focus-visible,
+input[type="datetime-local"]:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+  border-color: #c084fc !important; /* purple-400 border */
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2) !important; /* purple ring effect */
+}
+
+/* Dark mode version - same styling */
+.dark input[type="text"]:focus-visible,
+.dark input[type="email"]:focus-visible,
+.dark input[type="password"]:focus-visible,
+.dark input[type="number"]:focus-visible,
+.dark input[type="tel"]:focus-visible,
+.dark input[type="url"]:focus-visible,
+.dark input[type="search"]:focus-visible,
+.dark input[type="date"]:focus-visible,
+.dark input[type="time"]:focus-visible,
+.dark input[type="datetime-local"]:focus-visible,
+.dark textarea:focus-visible,
+.dark select:focus-visible {
+  outline: none !important;
+  border-color: #c084fc !important; /* purple-400 border */
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2) !important; /* purple ring effect */
 }

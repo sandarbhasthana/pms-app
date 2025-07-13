@@ -86,9 +86,33 @@ async function main() {
     });
   }
 
-  console.log(
-    "🌱 Database seeded with users, roles, rooms, channels, reservations, and favorites"
-  );
+  const org = await prisma.organization.findFirst();
+  if (!org) throw new Error("No organization found");
+
+  const allRooms = await prisma.room.findMany({
+    where: { organizationId: org.id }
+  });
+
+  for (const room of allRooms) {
+    const hasPricing = await prisma.roomPricing.findFirst({
+      where: { roomId: room.id }
+    });
+
+    if (!hasPricing) {
+      await prisma.roomPricing.create({
+        data: {
+          roomId: room.id,
+          basePrice: room.type.toLowerCase().includes("suite") ? 4000 : 2500,
+          currency: "INR",
+          mode: "MANUAL"
+        }
+      });
+      console.log(`➕ Added pricing for ${room.name}`);
+    }
+    console.log(
+      "🌱 Database seeded with users, roles, rooms, channels, reservations, and favorites"
+    );
+  }
 }
 
 async function runSeed() {

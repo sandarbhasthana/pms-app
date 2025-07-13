@@ -1,12 +1,10 @@
-// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 /// Tenant entity representing a property/organization
@@ -14,12 +12,12 @@ model Organization {
   id           String        @id @default(cuid())
   name         String
   domain       String?       @unique
-  users        UserOrg[] // memberships
-  rooms        Room[]
-  channels     Channel[] // OTA/channel integrations
-  reservations Reservation[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  channels     Channel[]
+  reservations Reservation[]
+  rooms        Room[]
+  users        UserOrg[]
 
   @@index([domain])
 }
@@ -30,85 +28,95 @@ model User {
   email        String        @unique
   name         String?
   image        String?
-  memberships  UserOrg[]
-  reservations Reservation[] // web-booked by logged-in users
-  favorites    Favorite[] // rooms this user has favorited
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  favorites    Favorite[]
+  reservations Reservation[]
+  memberships  UserOrg[]
 }
 
 /// Join table: user membership in a tenant with a role
 model UserOrg {
   id             String       @id @default(cuid())
-  user           User         @relation(fields: [userId], references: [id])
   userId         String
-  organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
   role           UserRole
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 
   @@unique([userId, organizationId])
   @@index([userId])
   @@index([organizationId])
 }
 
-enum UserRole {
-  SUPER_ADMIN // global system administrator
-  ORG_ADMIN // organization-level administrator
-  PROPERTY_MGR // property manager
-  FRONT_DESK // front desk staff
-  HOUSEKEEPING // housekeeping staff
-  MAINTENANCE // maintenance staff
-  ACCOUNTANT // finance/accounting role
-  OWNER // property or company owner
-  IT_SUPPORT // technical support/admin
-}
-
-/// Room entity scoped to a tenant
 model Room {
   id             String        @id @default(cuid())
-  organization   Organization  @relation(fields: [organizationId], references: [id])
   organizationId String
   name           String
-  type           String // e.g., Deluxe, Suite
+  type           String
   capacity       Int
-  imageUrl       String? // optional photo or floorplan URL
-  reservations   Reservation[]
-  favorites      Favorite[] // users who favorited this room
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  imageUrl       String?
+  pricingId      String?
+  sizeSqFt       Int?
+  description    String?       // Individual room description
+  doorlockId     String?       // Door lock integration ID
+  favorites      Favorite[]
+  reservations   Reservation[]
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  galleryImages  RoomImage[]
+  pricing        RoomPricing?  @relation("RoomPricingLink")
+  amenities      Amenity[]     @relation("RoomAmenities")
 
   @@index([organizationId])
 }
 
-// Reservation or booking entity
+model Amenity {
+  id    String @id @default(cuid())
+  name  String @unique
+  rooms Room[] @relation("RoomAmenities")
+}
+
+/// Gallery images for a room
+model RoomImage {
+  id      String  @id @default(cuid())
+  roomId  String
+  url     String
+  caption String?
+  sort    Int?
+  room    Room    @relation(fields: [roomId], references: [id])
+}
+
+/// Reservation or booking entity
 model Reservation {
   id             String            @id @default(cuid())
-  organization   Organization      @relation(fields: [organizationId], references: [id])
   organizationId String
-  room           Room              @relation(fields: [roomId], references: [id])
   roomId         String
-  user           User?             @relation(fields: [userId], references: [id])
-  userId         String? // only for WEBSITE source when logged-in
-  guestName      String? // for walk-ins or phone bookings
-  phone          String? // guest contact phone
-  email          String? // guest contact email
-  idType         String? // passport, driver's license, national ID
-  idNumber       String? // ID document number
-  issuingCountry String? // country that issued the ID
+  userId         String?
+  guestName      String?
   checkIn        DateTime
   checkOut       DateTime
-  adults         Int               @default(1)
-  children       Int               @default(0)
   source         ReservationSource
-  channel        Channel?          @relation(fields: [channelId], references: [id])
-  channelId      String? // for OTA/channel bookings
+  channelId      String?
   status         ReservationStatus @default(PENDING)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
-  notes          String? // internal notes for front desk use
+  adults         Int               @default(1)
+  children       Int               @default(0)
+  notes          String?
+  email          String?
+  idNumber       String?
+  idType         String?
+  issuingCountry String?
+  phone          String?
   Payment        Payment[]
+  channel        Channel?          @relation(fields: [channelId], references: [id])
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  room           Room              @relation(fields: [roomId], references: [id])
+  user           User?             @relation(fields: [userId], references: [id])
 
   @@index([organizationId])
   @@index([roomId])
@@ -116,11 +124,104 @@ model Reservation {
   @@index([channelId])
 }
 
+/// Property settings scoped to a tenant
+model PropertySettings {
+  id               String   @id @default(cuid())
+  orgId            String   @unique
+  propertyType     String
+  propertyName     String
+  propertyPhone    String
+  propertyEmail    String
+  propertyWebsite  String?
+  firstName        String
+  lastName         String
+  country          String
+  street           String
+  suite            String?
+  city             String
+  state            String
+  zip              String
+  latitude         Float
+  longitude        Float
+  photos           Json?
+  printHeader      String?
+  printHeaderImage String?
+  description      Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+/// OTA or channel integration for external bookings
+model Channel {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  type           ChannelType
+  credentials    Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  reservations   Reservation[]
+
+  @@index([organizationId])
+}
+
+/// Favorite rooms per user
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, roomId])
+  @@index([roomId])
+}
+
+/// Payments for a reservation
+model Payment {
+  id            String      @id @default(cuid())
+  reservationId String
+  type          String
+  method        String
+  status        String
+  amount        Float
+  currency      String      @default("INR")
+  gatewayTxId   String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+}
+
+model RoomPricing {
+  id        String   @id @default(cuid())
+  basePrice Float
+  currency  String   @default("INR")
+  mode      String   @default("MANUAL")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  roomId    String   @unique
+  room      Room     @relation("RoomPricingLink", fields: [roomId], references: [id])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  PROPERTY_MGR
+  FRONT_DESK
+  HOUSEKEEPING
+  MAINTENANCE
+  ACCOUNTANT
+  OWNER
+  IT_SUPPORT
+}
+
 enum ReservationSource {
-  WEBSITE // via organization website (requires login)
-  PHONE // booked over the phone
-  WALK_IN // in-person check-in
-  CHANNEL // via OTA/channel manager
+  WEBSITE
+  PHONE
+  WALK_IN
+  CHANNEL
 }
 
 enum ReservationStatus {
@@ -132,53 +233,10 @@ enum ReservationStatus {
   NO_SHOW
 }
 
-/// OTA or channel integration for external bookings
-model Channel {
-  id             String        @id @default(cuid())
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  organizationId String
-  name           String // e.g., Booking.com, Expedia
-  type           ChannelType
-  credentials    Json? // API keys, tokens, config
-  reservations   Reservation[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  @@index([organizationId])
-}
-
 enum ChannelType {
   BOOKING_COM
   EXPEDIA
   AIRBNB
   VRBO
   OTHER
-}
-
-/// Favorite rooms per user
-model Favorite {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  room      Room     @relation(fields: [roomId], references: [id])
-  roomId    String
-  createdAt DateTime @default(now())
-
-  @@unique([userId, roomId])
-  @@index([roomId])
-}
-
-/// Payments for a reservation
-model Payment {
-  id            String      @id @default(cuid())
-  reservation   Reservation @relation(fields: [reservationId], references: [id])
-  reservationId String
-  type          String // charge, refund, hold
-  method        String // stripe, razorpay, cash, upi, etc.
-  status        String // succeeded, refunded, authorized, failed
-  amount        Float
-  currency      String      @default("INR")
-  gatewayTxId   String? // optional external transaction id
-  notes         String?
-  createdAt     DateTime    @default(now())
 }

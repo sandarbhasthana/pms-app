@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    // Add paymentStatus to each reservation
+    // Add paymentStatus to each reservation with tenant context
     const enriched = await Promise.all(
       reservations.map(async (r) => {
-        const paymentStatus = await calculatePaymentStatus(r.id);
+        const paymentStatus = await calculatePaymentStatus(r.id, orgId);
         return { ...r, paymentStatus };
       })
     );

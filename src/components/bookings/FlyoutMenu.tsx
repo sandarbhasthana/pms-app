@@ -49,6 +49,7 @@ interface FlyoutMenuProps {
   handleDelete: (id: string) => void;
   handleNoteSave: (id: string, note: string) => void;
   setFlyoutNote: (note: string) => void;
+  onPaymentAdded?: () => void;
 }
 
 const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
@@ -60,7 +61,8 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
   handleCheckOut,
   handleDelete,
   handleNoteSave,
-  setFlyoutNote
+  setFlyoutNote,
+  onPaymentAdded
 }) => {
   //const { data: session } = useSession();
 
@@ -161,7 +163,10 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
       )}
       {process.env.NEXT_PUBLIC_MANUAL_PAYMENT_MODE === "true" && (
         <div className="border-t border-gray-200 px-4 py-3">
-          <ManualPaymentForm reservationId={flyout.reservation.id} />
+          <ManualPaymentForm
+            reservationId={flyout.reservation.id}
+            onPaymentAdded={onPaymentAdded}
+          />
         </div>
       )}
     </div>

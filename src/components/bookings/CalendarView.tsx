@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 interface CalendarResource {
   id: string;
   title: string;
+  children?: CalendarResource[];
 }
 
 interface CalendarViewProps {
@@ -72,6 +73,101 @@ export default function CalendarView({
       weekends
       slotDuration={{ hours: 12 }}
       slotLabelInterval={{ days: 1 }}
+      // Add custom styling for parent resources
+      resourceGroupLabelClassNames="font-bold text-purple-800 bg-purple-50 dark:bg-purple-900 dark:text-white py-2"
+      // Add custom content for parent resource rows
+      resourceGroupLabelContent={(info) => (
+        <div className="flex items-center justify-between px-2">
+          <div>
+            <span>{info.groupValue}</span>
+            <span className="ml-2 text-xs text-purple-600 dark:text-purple-300">
+              ({info.resource?.getChildren()?.length || 0} rooms)
+            </span>
+          </div>
+          <div className="text-xs">
+            <button className="bg-purple-100 dark:bg-purple-800 px-2 py-1 rounded-md mr-2">
+              Add Room
+            </button>
+            <button className="bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded-md">
+              Stats
+            </button>
+          </div>
+        </div>
+      )}
+      // Style the resource area to add visual separation between groups
+      resourceAreaWidth="300px"
+      resourcesInitiallyExpanded={true}
+      // Add background events for parent resources to show resource-specific information
+      resourceLaneContent={(info) => {
+        // Only add content to parent resources
+        if (!info.resource.getParent()) {
+          return (
+            <div className="h-full w-full absolute top-0 left-0 pointer-events-none">
+              <div className="h-full w-full bg-purple-50/30 dark:bg-purple-900/20"></div>
+            </div>
+          );
+        }
+        return null;
+      }}
+      // Add custom styling for resource lanes (rows)
+      resourceLaneClassNames={(info) => {
+        const classes = [];
+
+        // Add a class for parent resources
+        if (!info.resource.getParent()) {
+          classes.push("parent-resource-row");
+        }
+
+        // Add a class for the selected resource
+        if (info.resource.id === selectedResource) {
+          classes.push("bg-blue-50 dark:bg-blue-900/30");
+        }
+
+        // Add a bottom border to create separation between resource groups
+        if (
+          info.resource.getChildren().length > 0 &&
+          !info.resource.getParent()
+        ) {
+          classes.push("border-b-2 border-purple-200 dark:border-purple-800");
+        }
+
+        return classes;
+      }}
+      // Add custom day-specific content for parent resources
+      dayCellContent={(info) => {
+        // Get the resource for this cell
+        const resource = info.resource;
+
+        // Only add content to parent resources
+        if (resource && !resource.getParent()) {
+          // Example: Show occupancy rate for this resource group on this day
+          // You would calculate these values based on your actual data
+          const occupancyRate = Math.floor(Math.random() * 100); // Example value
+          const availableRooms =
+            resource.getChildren().length -
+            Math.floor(Math.random() * resource.getChildren().length); // Example value
+
+          return (
+            <div className="text-xs text-center mt-1 pointer-events-none">
+              <div
+                className={`font-semibold ${
+                  occupancyRate > 80
+                    ? "text-red-600"
+                    : occupancyRate > 50
+                    ? "text-orange-600"
+                    : "text-green-600"
+                }`}
+              >
+                {occupancyRate}% Occupied
+              </div>
+              <div className="text-gray-600 dark:text-gray-300">
+                {availableRooms} Available
+              </div>
+            </div>
+          );
+        }
+        return null;
+      }}
       slotLabelContent={(args) => {
         if (args.date.getHours() !== 0) return null;
         const iso = args.date.toISOString().slice(0, 10);
@@ -128,7 +224,7 @@ export default function CalendarView({
 
         // Prioritize payment status over reservation status for color coding
         if (paymentStatus === "PARTIALLY_PAID") return ["partially_paid"];
-        if (paymentStatus === "UNPAID") return ["pending_booking"];
+        if (paymentStatus === "UNPAID") return ["unpaid"];
         if (paymentStatus === "PAID") return ["paid"];
 
         // Fallback to reservation status if no payment status
@@ -173,7 +269,6 @@ export default function CalendarView({
       resourceAreaHeaderClassNames={[
         "bg-white dark:bg-gray-900 text-gray-900 dark:text-white pl-6"
       ]}
-      resourceAreaWidth="300px"
       resourceLabelContent={(info) => (
         <span
           onClick={() => setSelectedResource(info.resource.id)}
@@ -196,9 +291,6 @@ export default function CalendarView({
         if (isToday(date)) cls.push("bg-[#008080]");
         return cls;
       }}
-      resourceLaneClassNames={({ resource }) =>
-        resource.id === selectedResource ? ["bg-blue-50"] : []
-      }
       height="auto"
       slotMinWidth={50}
     />

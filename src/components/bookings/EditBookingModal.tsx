@@ -37,6 +37,7 @@ interface EditBookingModalProps {
   setChildren: (v: number) => void;
   handleUpdate: (e: React.FormEvent<HTMLFormElement>) => void;
   handleDelete: (id: string) => void;
+  onPaymentAdded?: () => void;
 }
 
 const EditBookingModal: React.FC<EditBookingModalProps> = ({

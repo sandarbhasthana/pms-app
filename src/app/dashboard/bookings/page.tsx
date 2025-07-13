@@ -27,7 +27,7 @@ import ViewDetailsModal from "@/components/bookings/ViewDetailsModal";
 import EditBookingModal from "@/components/bookings/EditBookingModal";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
-import LegendBar from "@/components/bookings/LegendBar";
+import LegendModal from "@/components/bookings/LegendModal";
 
 interface Reservation {
   id: string;
@@ -52,6 +52,7 @@ export default function BookingsCalendarPage() {
   const calendarRef = useRef<FullCalendar | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
+  const [showLegend, setShowLegend] = useState(false);
 
   const [datePickerDate, setDatePickerDate] = useState<Date | null>(new Date());
   const [selectedDate, setSelectedDate] = useState(
@@ -78,7 +79,7 @@ export default function BookingsCalendarPage() {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
 
-  // ← NEW: front‐desk customer detail fields
+  // Front‐desk customer detail fields
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -473,11 +474,39 @@ export default function BookingsCalendarPage() {
         });
         if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
         const roomsJson = await roomsRes.json();
-        type RawRoom = { id: string; name: string };
+        type RawRoom = { id: string; name: string; type: string };
         const roomsData: RawRoom[] = Array.isArray(roomsJson)
           ? roomsJson
           : roomsJson.rooms;
-        setResources(roomsData.map((r) => ({ id: r.id, title: r.name })));
+
+        interface GroupedResource {
+          id: string;
+          title: string;
+          children: Array<{ id: string; title: string }>;
+        }
+
+        const groupedResources = roomsData.reduce((acc, room) => {
+          const groupId = room.type;
+          if (!acc[groupId]) {
+            acc[groupId] = {
+              id: groupId,
+              title: groupId,
+              children: []
+            };
+          }
+          acc[groupId].children.push({
+            id: room.id,
+            title: room.name
+          });
+          return acc;
+        }, {} as Record<string, GroupedResource>);
+
+        const flattenedResources = Object.values(groupedResources);
+        console.log(
+          "Hierarchical Resources Structure:",
+          JSON.stringify(flattenedResources, null, 2)
+        );
+        setResources(flattenedResources);
 
         const res = await fetch("/api/reservations", {
           credentials: "include"
@@ -625,6 +654,7 @@ export default function BookingsCalendarPage() {
           setFlyoutNote={(text) =>
             setFlyout((f) => (f ? { ...f, noteText: text } : null))
           }
+          onPaymentAdded={reload}
         />
       )}
 
@@ -713,6 +743,7 @@ export default function BookingsCalendarPage() {
         childrenCount={children}
         setChildren={setChildren}
         handleDelete={(id) => handleDeleteBooking(id, reload)}
+        onPaymentAdded={reload}
       />
 
       {/* View Details Modal */}
@@ -722,7 +753,16 @@ export default function BookingsCalendarPage() {
       />
 
       {/* Legend Bar */}
-      <LegendBar />
+      <div className="mt-4 text-left text-md">
+        <button
+          onClick={() => setShowLegend(true)}
+          className="underline text-gray-900 dark:text-white font-bold hover:text-purple-600 cursor-pointer"
+        >
+          Legend
+        </button>
+      </div>
+
+      <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
     </div>
   );
 }
