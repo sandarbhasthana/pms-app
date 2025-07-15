@@ -17,7 +17,7 @@ import {
 import FullCalendar from "@fullcalendar/react";
 import { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import { DateClickArg } from "@fullcalendar/interaction";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
@@ -28,6 +28,7 @@ import EditBookingModal from "@/components/bookings/EditBookingModal";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import LegendModal from "@/components/bookings/LegendModal";
+import { LoadingSpinner } from "@/components/ui/spinner";
 
 interface Reservation {
   id: string;
@@ -149,7 +150,7 @@ export default function BookingsCalendarPage() {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() - 1);
+    d.setDate(d.getDate() - 7); // Changed from -1 to -7 (1 week)
     api.gotoDate(d);
     setSelectedDate(d.toISOString().slice(0, 10));
   }, []);
@@ -158,7 +159,7 @@ export default function BookingsCalendarPage() {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() + 1);
+    d.setDate(d.getDate() + 7); // Changed from +1 to +7 (1 week)
     api.gotoDate(d);
     setSelectedDate(d.toISOString().slice(0, 10));
   }, []);
@@ -304,7 +305,6 @@ export default function BookingsCalendarPage() {
           const { reservations } = await res.json();
           success(
             reservations.map((r: Reservation) => {
-              console.log("RESV STATUS:", r.guestName, r.paymentStatus);
               return {
                 id: r.id,
                 resourceId: r.roomId,
@@ -464,71 +464,137 @@ export default function BookingsCalendarPage() {
   }, [country]);
 
   // ------------------------
+  // Load rooms function (separated for reuse)
+  // ------------------------
+  const loadRooms = useCallback(async () => {
+    try {
+      const roomsRes = await fetch("/api/rooms", {
+        credentials: "include"
+      });
+      if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
+      const roomsJson = await roomsRes.json();
+      type RawRoom = { id: string; name: string; type: string };
+      const roomsData: RawRoom[] = Array.isArray(roomsJson)
+        ? roomsJson
+        : roomsJson.rooms;
+
+      interface GroupedResource {
+        id: string;
+        title: string;
+        children: Array<{ id: string; title: string; order: string }>;
+      }
+
+      const groupedResources = roomsData.reduce((acc, room) => {
+        const groupId = room.type;
+        if (!acc[groupId]) {
+          acc[groupId] = {
+            id: groupId,
+            title: groupId,
+            children: []
+          };
+        }
+        acc[groupId].children.push({
+          id: room.id,
+          title: room.name,
+          order: room.name // Add explicit order field for FullCalendar
+        });
+        return acc;
+      }, {} as Record<string, GroupedResource>);
+
+      // Natural/numeric sorting function for room names
+      const naturalSort = (a: string, b: string): number => {
+        return a.localeCompare(b, undefined, {
+          numeric: true,
+          sensitivity: "base"
+        });
+      };
+
+      // Sort children (rooms) within each room type group
+      Object.values(groupedResources).forEach((group) => {
+        group.children.sort((a, b) => naturalSort(a.title, b.title));
+      });
+
+      const flattenedResources = Object.values(groupedResources);
+      console.log(
+        "Hierarchical Resources Structure:",
+        JSON.stringify(flattenedResources, null, 2)
+      );
+      setResources(flattenedResources);
+      console.log("✅ Rooms refreshed from settings update");
+    } catch (e) {
+      console.error("Failed to load rooms:", e);
+      toast.error(e instanceof Error ? e.message : "Failed to load room data");
+    }
+  }, []);
+
+  // ------------------------
+  // Load reservations function
+  // ------------------------
+  const loadReservations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/reservations", {
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to fetch reservations");
+      const { reservations, count } = (await res.json()) as {
+        reservations: Reservation[];
+        count: number;
+      };
+      setEvents(reservations);
+      toast.success(`Loaded ${count} reservation(s)`);
+    } catch (e) {
+      console.error("Failed to load reservations:", e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load reservation data"
+      );
+    }
+  }, []);
+
+  // ------------------------
   // Initial load: rooms + reservations
   // ------------------------
   useEffect(() => {
     async function loadAll() {
       try {
-        const roomsRes = await fetch("/api/rooms", {
-          credentials: "include"
-        });
-        if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
-        const roomsJson = await roomsRes.json();
-        type RawRoom = { id: string; name: string; type: string };
-        const roomsData: RawRoom[] = Array.isArray(roomsJson)
-          ? roomsJson
-          : roomsJson.rooms;
-
-        interface GroupedResource {
-          id: string;
-          title: string;
-          children: Array<{ id: string; title: string }>;
-        }
-
-        const groupedResources = roomsData.reduce((acc, room) => {
-          const groupId = room.type;
-          if (!acc[groupId]) {
-            acc[groupId] = {
-              id: groupId,
-              title: groupId,
-              children: []
-            };
-          }
-          acc[groupId].children.push({
-            id: room.id,
-            title: room.name
-          });
-          return acc;
-        }, {} as Record<string, GroupedResource>);
-
-        const flattenedResources = Object.values(groupedResources);
-        console.log(
-          "Hierarchical Resources Structure:",
-          JSON.stringify(flattenedResources, null, 2)
-        );
-        setResources(flattenedResources);
-
-        const res = await fetch("/api/reservations", {
-          credentials: "include"
-        });
-        if (!res.ok) throw new Error("Failed to fetch reservations");
-        const { reservations, count } = (await res.json()) as {
-          reservations: Reservation[];
-          count: number;
-        };
-        setEvents(reservations);
-        toast.success(`Loaded ${count} reservation(s)`);
-      } catch (e) {
-        console.error(e);
-        toast.error(
-          e instanceof Error ? e.message : "Failed to load calendar data"
-        );
+        await Promise.all([loadRooms(), loadReservations()]);
       } finally {
         setLoading(false);
       }
     }
     loadAll();
-  }, []);
+  }, [loadRooms, loadReservations]);
+
+  // ------------------------
+  // Listen for room updates from settings page
+  // ------------------------
+  useEffect(() => {
+    const orgId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("orgId="))
+      ?.split("=")[1];
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === "calendar-refresh-event" && e.newValue) {
+        try {
+          const event = JSON.parse(e.newValue);
+          if (!event.orgId || !orgId || event.orgId === orgId) {
+            console.log(
+              "Received calendar refresh event, refreshing rooms...",
+              event
+            );
+            loadRooms();
+          }
+        } catch (error) {
+          console.error("Failed to parse calendar refresh event:", error);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageEvent);
+    return () => {
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, [loadRooms]);
 
   // ------------------------
   // Sync “today” periodically
@@ -559,7 +625,18 @@ export default function BookingsCalendarPage() {
   }, [flyout]);
 
   if (loading) {
-    return <p className="text-center mt-10">Loading calendar...</p>;
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold mb-6">Bookings Calendar</h1>
+        <LoadingSpinner
+          text="Loading Calendar..."
+          size="lg"
+          variant={"secondary"}
+          fullScreen={true}
+          className="text-purple-600"
+        />
+      </div>
+    );
   }
 
   // ------------------------

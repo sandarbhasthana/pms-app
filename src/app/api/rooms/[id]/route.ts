@@ -89,12 +89,88 @@ export async function DELETE(
   }
 
   try {
-    const deleted = await withTenantContext(orgId, async (tx) => {
-      return await tx.room.deleteMany({ where: { id: params.id } });
+    const result = await withTenantContext(orgId, async (tx) => {
+      // First, check if the room exists
+      const room = await tx.room.findFirst({
+        where: {
+          id: params.id,
+          organizationId: orgId
+        }
+      });
+
+      if (!room) {
+        return { success: false, error: "ROOM_NOT_FOUND" };
+      }
+
+      // Check for existing reservations
+      const existingReservations = await tx.reservation.findMany({
+        where: {
+          roomId: params.id,
+          organizationId: orgId
+        },
+        select: {
+          id: true,
+          guestName: true,
+          checkIn: true,
+          checkOut: true,
+          status: true
+        }
+      });
+
+      console.log(
+        `🔍 Room ${params.id} has ${existingReservations.length} existing reservations`
+      );
+
+      if (existingReservations.length > 0) {
+        console.log(
+          `❌ Cannot delete room ${params.id} - has reservations:`,
+          existingReservations
+        );
+        return {
+          success: false,
+          error: "HAS_RESERVATIONS",
+          reservationCount: existingReservations.length,
+          reservations: existingReservations
+        };
+      }
+
+      // Safe to delete - no reservations exist
+      const deleted = await tx.room.deleteMany({
+        where: {
+          id: params.id,
+          organizationId: orgId
+        }
+      });
+
+      return { success: true, deletedCount: deleted.count };
     });
-    if (deleted.count === 0) {
+
+    // Handle different scenarios
+    if (!result.success) {
+      if (result.error === "ROOM_NOT_FOUND") {
+        return new NextResponse("Room not found", { status: 404 });
+      }
+
+      if (result.error === "HAS_RESERVATIONS") {
+        return new NextResponse(
+          JSON.stringify({
+            error: "Cannot delete room with existing reservations",
+            message: `This room has ${result.reservationCount} existing reservation(s). Please cancel or move these reservations before deleting the room.`,
+            reservationCount: result.reservationCount,
+            reservations: result.reservations
+          }),
+          {
+            status: 409,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
+    }
+
+    if (result.deletedCount === 0) {
       return new NextResponse("Room not found", { status: 404 });
     }
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("DELETE /api/rooms/[id] error:", error);

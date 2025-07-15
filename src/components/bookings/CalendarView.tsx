@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 interface CalendarResource {
   id: string;
   title: string;
+  order?: string;
   children?: CalendarResource[];
 }
 
@@ -63,6 +64,7 @@ export default function CalendarView({
         }
       }}
       resources={resources}
+      resourceOrder="order"
       eventSources={eventSources}
       eventClick={handleEventClick}
       dateClick={handleDateClick}
@@ -213,26 +215,18 @@ export default function CalendarView({
           | "UNPAID"
           | "UNKNOWN";
 
-        console.log(
-          "Event class names - Title:",
-          event.title,
-          "Status:",
-          status,
-          "PaymentStatus:",
-          paymentStatus
-        );
-
         // Prioritize payment status over reservation status for color coding
+        if (paymentStatus === "PAID") return ["paid"];
         if (paymentStatus === "PARTIALLY_PAID") return ["partially_paid"];
         if (paymentStatus === "UNPAID") return ["unpaid"];
-        if (paymentStatus === "PAID") return ["paid"];
 
         // Fallback to reservation status if no payment status
         if (status === "CHECKED_IN") return ["checked_in_date"];
         if (status === "CHECKED_OUT") return ["checked_out_date"];
         if (status === "PENDING") return ["pending_booking"];
 
-        return [];
+        // Default fallback
+        return ["unpaid"];
       }}
       dayHeaderContent={(args) => (
         <span

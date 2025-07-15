@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={cn("bg-background text-foreground")}>
+      <body className={cn("bg-background text-foreground font-sans")}>
         <ThemeProviderWrapper>
           <Providers>
             {/* App header */}
@@ -30,4 +30,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 

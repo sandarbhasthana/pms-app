@@ -1,7 +1,7 @@
 // lib/bookings/handlers.ts
 
 //import { Reservation } from "@/types";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 // Utility: convert Date to YYYY-MM-DD
 export const toYMD = (d: Date) =>

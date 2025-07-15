@@ -2,8 +2,10 @@
 
 import { FC, useEffect, useState, KeyboardEvent } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { RoomGroup } from "@/types";
+import { RoomGroup, RoomType } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import { getCookie } from "cookies-next";
+import { toast } from "sonner";
 import {
   Form,
   FormField,
@@ -53,13 +55,6 @@ import {
   AlignRight,
   AlignJustify
 } from "lucide-react";
-
-// Form Values
-interface Props {
-  group: RoomGroup;
-  onCancel: () => void;
-  onSave: (data: FormValues) => void;
-}
 
 // Form Values
 export type FormValues = {
@@ -337,6 +332,9 @@ export const AccommodationDetailsForm: FC<Props> = ({
   onCancel,
   onSave
 }) => {
+  const [roomTypeData, setRoomTypeData] = useState<RoomType | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const form = useForm<FormValues>({
     defaultValues: {
       title: group.type,
@@ -377,17 +375,161 @@ export const AccommodationDetailsForm: FC<Props> = ({
   // local temp for custom-amenities input
   const [tagInput, setTagInput] = useState("");
 
-  // If you want to reset when group changes:
+  // Load existing room type data
   useEffect(() => {
-    form.reset({
-      ...form.getValues(),
-      title: group.type,
-      units: group.rooms.length
-    });
+    const loadRoomTypeData = async () => {
+      try {
+        const orgId = getCookie("orgId");
+        if (!orgId) {
+          setLoading(false);
+          return;
+        }
+
+        console.log(`🔍 Loading room type data for: "${group.type}"`);
+        const response = await fetch(
+          `/api/room-types/by-name?name=${encodeURIComponent(group.type)}`,
+          {
+            headers: {
+              "x-organization-id": orgId as string
+            }
+          }
+        );
+
+        console.log(`📡 API Response status: ${response.status}`);
+
+        if (response.ok) {
+          const roomType: RoomType = await response.json();
+          console.log("✅ Room type data loaded:", roomType);
+          setRoomTypeData(roomType);
+
+          // Update form with existing data
+          form.reset({
+            title: roomType.name,
+            abbreviation:
+              roomType.abbreviation ||
+              group.type
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 3),
+            privateOrDorm: roomType.privateOrDorm as "private" | "shared",
+            physicalOrVirtual: roomType.physicalOrVirtual as
+              | "physical"
+              | "virtual",
+            units: group.rooms.length,
+            maxOccupancy: roomType.maxOccupancy,
+            maxAdults: roomType.maxAdults,
+            maxChildren: roomType.maxChildren,
+            adultsIncluded: roomType.adultsIncluded,
+            childrenIncluded: roomType.childrenIncluded,
+            description: roomType.description || "",
+            amenities: roomType.amenities || [],
+            customAmenities: roomType.customAmenities || [],
+            featuredImage: null,
+            additionalImages: [],
+            rooms: group.rooms.map((r) => ({
+              id: r.id,
+              name: r.name || "",
+              description: r.description || "",
+              doorlockId: r.doorlockId || "",
+              images: []
+            }))
+          });
+        } else {
+          console.log(
+            `❌ Room type not found (${response.status}), using defaults`
+          );
+          setRoomTypeData(null);
+        }
+      } catch (error) {
+        console.error("Failed to load room type data:", error);
+        setRoomTypeData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRoomTypeData();
   }, [group, form]);
 
-  const onSubmit = (values: FormValues) => {
-    onSave(values);
+  // If you want to reset when group changes:
+  useEffect(() => {
+    if (!loading && !roomTypeData) {
+      form.reset({
+        ...form.getValues(),
+        title: group.type,
+        units: group.rooms.length
+      });
+    }
+  }, [group, form, loading, roomTypeData]);
+
+  const onSubmit = async (values: FormValues) => {
+    try {
+      console.log("💾 Saving room type data:", values);
+
+      // First save the room type data
+      const orgId = getCookie("orgId");
+      if (orgId) {
+        const roomTypePayload = {
+          name: values.title,
+          abbreviation: values.abbreviation,
+          privateOrDorm: values.privateOrDorm,
+          physicalOrVirtual: values.physicalOrVirtual,
+          maxOccupancy: parseInt(values.maxOccupancy.toString()) || 1,
+          maxAdults: parseInt(values.maxAdults.toString()) || 1,
+          maxChildren: parseInt(values.maxChildren.toString()) || 0,
+          adultsIncluded: parseInt(values.adultsIncluded.toString()) || 1,
+          childrenIncluded: parseInt(values.childrenIncluded.toString()) || 0,
+          description: values.description,
+          amenities: values.amenities || [],
+          customAmenities: values.customAmenities || [],
+          featuredImageUrl: null, // TODO: Handle image uploads
+          additionalImageUrls: [] // TODO: Handle image uploads
+        };
+
+        console.log("📤 Sending room type payload:", roomTypePayload);
+
+        const response = await fetch("/api/room-types/by-name", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-organization-id": orgId as string
+          },
+          body: JSON.stringify(roomTypePayload)
+        });
+
+        if (response.ok) {
+          const savedRoomType = await response.json();
+          console.log("✅ Room type saved successfully:", savedRoomType);
+          // Don't show toast here - let AccommodationsTable handle the final success message
+        } else {
+          const errorText = await response.text();
+          console.error(
+            "❌ Failed to save room type:",
+            response.status,
+            errorText
+          );
+          toast.error(
+            `Failed to save room type "${values.title}": ${
+              errorText || "Unknown error"
+            }`
+          );
+        }
+      }
+
+      // Then call the original onSave for room management
+      onSave(values);
+    } catch (error) {
+      console.error("Failed to save room type data:", error);
+      toast.error(
+        `Error saving room type "${values.title}": ${
+          error instanceof Error ? error.message : "Network or server error"
+        }`
+      );
+      // Still call onSave to handle room updates even if room type save fails
+      onSave(values);
+    }
   };
 
   const handleTagKeyDown = (
@@ -401,6 +543,15 @@ export const AccommodationDetailsForm: FC<Props> = ({
       setTagInput("");
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-4 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading accommodation settings...</p>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>

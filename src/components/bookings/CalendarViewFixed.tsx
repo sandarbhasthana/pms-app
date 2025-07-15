@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 interface CalendarResource {
   id: string;
   title: string;
+  order?: string;
   children?: CalendarResource[];
 }
 
@@ -47,10 +48,8 @@ export default function CalendarViewFixed({
 }: CalendarViewFixedProps) {
   // FIXED: One-time debug log on component mount
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("📅 CalendarViewFixed mounted - console spam eliminated");
-    }
-  }, []);
+    // Component mounted
+  }, [resources]);
   // FIXED: Memoized stable occupancy data to prevent random re-renders
   const occupancyData = useMemo(() => {
     const data: Record<string, { rate: number; available: number }> = {};
@@ -233,18 +232,17 @@ export default function CalendarViewFixed({
 
     // FIXED: Prioritize payment status over reservation status for color coding
     // These class names match the CSS in globals.css
-
+    if (paymentStatus === "PAID") return ["paid"];
     if (paymentStatus === "PARTIALLY_PAID") return ["partially_paid"];
     if (paymentStatus === "UNPAID") return ["unpaid"];
-    if (paymentStatus === "PAID") return ["paid"];
 
     // FIXED: Fallback to reservation status if no payment status
-    // Note: CSS uses hyphens, not underscores for these classes
     if (status === "CHECKED_IN") return ["checked-in-date"];
     if (status === "CHECKED_OUT") return ["checked-out-date"];
     if (status === "PENDING") return ["pending_booking"];
 
-    return [];
+    // Default fallback for any room type
+    return ["unpaid"];
   }, []);
 
   // FIXED: Memoized dayHeaderContent to prevent re-creation
@@ -338,6 +336,7 @@ export default function CalendarViewFixed({
         }
       }}
       resources={resources}
+      resourceOrder="order"
       eventSources={eventSources}
       eventClick={handleEventClick}
       dateClick={handleDateClick}

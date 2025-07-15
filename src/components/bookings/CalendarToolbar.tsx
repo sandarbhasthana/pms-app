@@ -34,8 +34,8 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           <button
             onClick={handlePrev}
             className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"
-            aria-label="Go to previous day"
-            title="Go to previous day"
+            aria-label="Go to previous week"
+            title="Go to previous week"
           >
             <ChevronLeftIcon
               className="h-6 w-6"
@@ -53,8 +53,8 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           <button
             onClick={handleNext}
             className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"
-            aria-label="Go to next day"
-            title="Go to next day"
+            aria-label="Go to next week"
+            title="Go to next week"
           >
             <ChevronRightIcon
               className="h-6 w-6"

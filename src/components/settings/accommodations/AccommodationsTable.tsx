@@ -32,41 +32,56 @@ import {
 } from "@/components/ui/sheet";
 import { AccommodationDetailsForm } from "./AccommodationDetailsForm";
 import { FormValues as Details } from "./AccommodationDetailsForm";
+import { notifyCalendarRefresh } from "@/lib/calendar/refresh";
+import { getCookie } from "cookies-next";
+import { Button } from "@/components/ui/button";
 
 interface AccommodationsTableProps {
   groupedRooms: RoomGroup[];
   setGroupedRooms: (r: RoomGroup[]) => void;
   onDelete: (id: string) => void;
+  onAddRoom: () => void;
 }
 
 const AccommodationsTable: FC<AccommodationsTableProps> = ({
   groupedRooms,
   setGroupedRooms,
-  onDelete
+  onDelete,
+  onAddRoom
 }) => {
   const sensors = useSensors(useSensor(PointerSensor));
-  const flattened = groupedRooms.flatMap((group) => group.rooms);
+
+  // Create unique group identifiers for drag and drop
+  const groupIds = groupedRooms.map(
+    (group, index) => `group-${index}-${group.type}`
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = flattened.findIndex((r) => r.id === active.id);
-    const newIndex = flattened.findIndex((r) => r.id === over.id);
-    const moved = arrayMove(flattened, oldIndex, newIndex);
+    // Find the indices of the dragged groups
+    const oldIndex = groupIds.findIndex((id) => id === active.id);
+    const newIndex = groupIds.findIndex((id) => id === over.id);
 
-    const regrouped = moved.reduce((acc, room) => {
-      if (!acc[room.type]) acc[room.type] = [];
-      acc[room.type].push(room);
-      return acc;
-    }, {} as Record<string, typeof flattened>);
+    if (oldIndex === -1 || newIndex === -1) return;
 
-    const next: RoomGroup[] = Object.entries(regrouped).map(
-      ([type, rooms]) => ({ type, rooms })
+    console.log(`🔄 Moving room type from position ${oldIndex} to ${newIndex}`);
+    console.log(
+      `📋 Before:`,
+      groupedRooms.map((g) => g.type)
     );
 
-    setGroupedRooms(next);
-    toast.success("Accommodation order updated");
+    // Move the entire room groups
+    const reorderedGroups = arrayMove(groupedRooms, oldIndex, newIndex);
+
+    console.log(
+      `📋 After:`,
+      reorderedGroups.map((g) => g.type)
+    );
+
+    setGroupedRooms(reorderedGroups);
+    toast.success("Room type order updated");
   };
 
   const getAbbreviation = (type: string) =>
@@ -99,15 +114,69 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
   const handleSave = async (data: Details) => {
     if (!selectedGroup) return;
     try {
-      // Separate existing rooms from new rooms
+      // Separate existing rooms from new rooms and identify deleted rooms
       const existingRoomIds = new Set(selectedGroup.rooms.map((r) => r.id));
+      const submittedRoomIds = new Set(data.rooms.map((r) => r.id));
+
       const existingRooms = data.rooms.filter((r) => existingRoomIds.has(r.id));
       const newRooms = data.rooms.filter((r) => !existingRoomIds.has(r.id));
+      const deletedRoomIds = selectedGroup.rooms
+        .filter((r) => !submittedRoomIds.has(r.id))
+        .map((r) => r.id);
 
       let updatedRooms: Room[] = [];
       let createdRooms: Room[] = [];
 
-      // 1) Update existing rooms if any
+      // 1) Delete removed rooms if any
+      if (deletedRoomIds.length > 0) {
+        console.log("Deleting rooms:", deletedRoomIds);
+        const deletePromises = deletedRoomIds.map(async (roomId) => {
+          const res = await fetch(`/api/rooms/${roomId}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" }
+          });
+
+          if (!res.ok) {
+            if (res.status === 409) {
+              // Handle reservation conflict
+              try {
+                const errorData = await res.json();
+                throw new Error(
+                  `RESERVATION_CONFLICT:${errorData.message}:${roomId}`
+                );
+              } catch {
+                throw new Error(
+                  `RESERVATION_CONFLICT:Cannot delete room with existing reservations:${roomId}`
+                );
+              }
+            } else {
+              const errorText = await res.text();
+              throw new Error(`Failed to delete room ${roomId}: ${errorText}`);
+            }
+          }
+          return roomId;
+        });
+
+        try {
+          await Promise.all(deletePromises);
+          console.log("Successfully deleted rooms:", deletedRoomIds);
+        } catch (error) {
+          // Handle reservation conflict errors gracefully
+          if (
+            error instanceof Error &&
+            error.message.startsWith("RESERVATION_CONFLICT:")
+          ) {
+            const [, message, roomId] = error.message.split(":");
+            const roomName =
+              selectedGroup.rooms.find((r) => r.id === roomId)?.name ||
+              "Unknown";
+            throw new Error(`Cannot delete room "${roomName}": ${message}`);
+          }
+          throw error; // Re-throw other errors
+        }
+      }
+
+      // 2) Update existing rooms if any
       if (existingRooms.length > 0) {
         const roomsRes = await fetch("/api/rooms/bulk-update", {
           method: "PUT",
@@ -126,7 +195,7 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
         updatedRooms = rooms;
       }
 
-      // 2) Create new rooms if any
+      // 3) Create new rooms if any
       if (newRooms.length > 0) {
         const createPromises = newRooms.map(async (r) => {
           const res = await fetch("/api/rooms", {
@@ -146,10 +215,17 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
         createdRooms = await Promise.all(createPromises);
       }
 
-      // 3) Combine all rooms
+      // 4) Update room type/abbreviation in database if changed
+      if (data.abbreviation !== selectedGroup.abbreviation) {
+        // Note: You might need to add an API endpoint to update room type abbreviations
+        // For now, we'll just update the local state
+        console.log("Room type abbreviation updated:", data.abbreviation);
+      }
+
+      // 5) Combine all remaining rooms
       const allRooms = [...updatedRooms, ...createdRooms];
 
-      // 4) Patch your local groupedRooms state
+      // 6) Update local groupedRooms state
       const updatedGroups: RoomGroup[] = groupedRooms.map((g: RoomGroup) =>
         g.type === selectedGroup.type
           ? {
@@ -162,7 +238,14 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
       );
 
       setGroupedRooms(updatedGroups);
-      toast.success("Saved!");
+
+      // 7) Notify calendar pages to refresh their resources
+      const orgId = getCookie("orgId");
+      await notifyCalendarRefresh(
+        typeof orgId === "string" ? orgId : undefined
+      );
+
+      toast.success(`Room type "${selectedGroup.type}" saved successfully!`);
       setOpen(false);
       setSelectedGroup(null);
     } catch (err) {
@@ -173,6 +256,12 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
 
   return (
     <>
+      {/* Add New Room */}
+      <div className="flex justify-end mb-4">
+        <Button onClick={onAddRoom} type="button" title="Add Room Type">
+          Add Room Type
+        </Button>
+      </div>
       <div className="overflow-x-auto border rounded-md text-md">
         <DndContext
           sensors={sensors}
@@ -208,12 +297,12 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
             </thead>
 
             <SortableContext
-              items={flattened.map((r) => r.id)}
+              items={groupIds}
               strategy={verticalListSortingStrategy}
             >
               <tbody>
-                {groupedRooms.map((group) => (
-                  <SortableItem key={group.rooms[0].id} id={group.rooms[0].id}>
+                {groupedRooms.map((group, index) => (
+                  <SortableItem key={groupIds[index]} id={groupIds[index]}>
                     <td
                       className="w-[16%] px-4 py-3 text-center text-purple-600 dark:text-purple-400 font-bold hover:underline hover:text-purple-900 dark:hover:text-purple-200 cursor-pointer text-lg"
                       onClick={() => handleTypeClick(group)}

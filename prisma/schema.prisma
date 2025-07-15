@@ -17,6 +17,7 @@ model Organization {
   channels     Channel[]
   reservations Reservation[]
   rooms        Room[]
+  roomTypes    RoomType[]
   users        UserOrg[]
 
   @@index([domain])
@@ -51,6 +52,32 @@ model UserOrg {
   @@index([organizationId])
 }
 
+model RoomType {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  name                 String
+  abbreviation         String?
+  privateOrDorm        String       @default("private")
+  physicalOrVirtual    String       @default("physical")
+  maxOccupancy         Int          @default(1)
+  maxAdults            Int          @default(1)
+  maxChildren          Int          @default(0)
+  adultsIncluded       Int          @default(1)
+  childrenIncluded     Int          @default(0)
+  description          String?
+  amenities            String[]
+  customAmenities      String[]
+  featuredImageUrl     String?
+  additionalImageUrls  String[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  rooms                Room[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
 model Room {
   id             String        @id @default(cuid())
   organizationId String
@@ -64,9 +91,11 @@ model Room {
   sizeSqFt       Int?
   description    String?       // Individual room description
   doorlockId     String?       // Door lock integration ID
+  roomTypeId     String?       // Link to RoomType
   favorites      Favorite[]
   reservations   Reservation[]
   organization   Organization  @relation(fields: [organizationId], references: [id])
+  roomType       RoomType?     @relation(fields: [roomTypeId], references: [id])
   galleryImages  RoomImage[]
   pricing        RoomPricing?  @relation("RoomPricingLink")
   amenities      Amenity[]     @relation("RoomAmenities")
