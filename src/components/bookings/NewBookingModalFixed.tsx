@@ -5,6 +5,22 @@ import { Dialog } from "@headlessui/react";
 import { useCallback, useMemo } from "react";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
 import AutocompleteInputFixed from "@/components/bookings/AutocompleteInputFixed";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+
+interface Customer {
+  guestName: string;
+  email?: string;
+  phone?: string;
+  idNumber?: string;
+  idType?: string;
+  issuingCountry?: string;
+}
 
 interface SelectedSlot {
   roomId: string;
@@ -72,23 +88,26 @@ const NewBookingModalFixed: React.FC<NewBookingModalFixedProps> = ({
   setLastScannedSlot
 }) => {
   // FIXED: Memoized customer select handler to prevent re-creation
-  const handleCustomerSelect = useCallback((r: any) => {
-    setFullName(r.guestName);
-    setEmail(r.email || "");
-    setPhone(r.phone || "");
-    setIdNumber(r.idNumber || "");
-    setIdType(r.idType || "passport");
-    setIssuingCountry(r.issuingCountry || "");
-  }, [setFullName, setEmail, setPhone, setIdNumber, setIdType, setIssuingCountry]);
+  const handleCustomerSelect = useCallback(
+    (r: Customer) => {
+      setFullName(r.guestName);
+      setEmail(r.email || "");
+      setPhone(r.phone || "");
+      setIdNumber(r.idNumber || "");
+      setIdType(r.idType || "passport");
+      setIssuingCountry(r.issuingCountry || "");
+    },
+    [setFullName, setEmail, setPhone, setIdNumber, setIdType, setIssuingCountry]
+  );
 
   // FIXED: Memoized date calculations
   const { checkInDate, checkOutDate } = useMemo(() => {
     if (!selectedSlot) return { checkInDate: "", checkOutDate: "" };
-    
+
     const checkIn = new Date(selectedSlot.date);
     const checkOut = new Date(checkIn);
     checkOut.setDate(checkOut.getDate() + 1);
-    
+
     return {
       checkInDate: checkIn.toISOString().slice(0, 10),
       checkOutDate: checkOut.toISOString().slice(0, 10)
@@ -106,6 +125,7 @@ const NewBookingModalFixed: React.FC<NewBookingModalFixedProps> = ({
       <div className="flex items-center justify-center min-h-screen bg-black/70 p-4">
         <Dialog.Panel className="relative w-[80%] max-w-6xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg shadow-2xl p-8">
           <button
+            type="button"
             onClick={() => setSelectedSlot(null)}
             className="absolute top-4 right-4 text-gray-500 hover:text-red-600"
             aria-label="Close modal"
@@ -132,131 +152,179 @@ const NewBookingModalFixed: React.FC<NewBookingModalFixedProps> = ({
           <form
             id="bookingForm"
             onSubmit={handleCreate}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm"
+            className="space-y-4 text-sm"
           >
-            <div>
-              <label className="block text-sm font-medium">Room</label>
-              <div className="mt-1 p-2 bg-gray-100 dark:bg-gray-900 rounded">
-                {selectedSlot.roomName}
+            {/* Row 1: Room No. (Read only) | Guest Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Room No.
+                </label>
+                <div className="p-2 bg-gray-100 dark:bg-gray-900 rounded border border-gray-600">
+                  {selectedSlot.roomName}
+                </div>
+              </div>
+              <AutocompleteInputFixed
+                label="Guest Name"
+                name="guestName"
+                value={fullName}
+                setValue={setFullName}
+                placeholder="John Doe"
+                onCustomerSelect={handleCustomerSelect}
+              />
+            </div>
+
+            {/* Row 2: Email | Phone No. */}
+            <div className="grid grid-cols-2 gap-4">
+              <AutocompleteInputFixed
+                label="Email"
+                name="email"
+                value={email}
+                type="email"
+                setValue={setEmail}
+                placeholder="guest@example.com"
+                onCustomerSelect={handleCustomerSelect}
+              />
+              <AutocompleteInputFixed
+                label="Phone"
+                name="phone"
+                value={phone}
+                type="tel"
+                setValue={setPhone}
+                placeholder="+1 (555) 555-5555"
+                onCustomerSelect={handleCustomerSelect}
+              />
+            </div>
+
+            {/* Row 3: Check-in Date | Check-out Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Check-in Date
+                </label>
+                <input
+                  name="checkIn"
+                  type="date"
+                  defaultValue={checkInDate}
+                  className="block w-full border border-gray-600 rounded p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Check-out Date
+                </label>
+                <input
+                  name="checkOut"
+                  type="date"
+                  defaultValue={checkOutDate}
+                  className="block w-full border border-gray-600 rounded p-2 text-sm"
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium">Date</label>
-              <div className="mt-1 p-2 bg-gray-100 dark:bg-gray-900 rounded">
-                {selectedSlot.date}
+            {/* Row 4: Adults (Stepper) | Child (Stepper) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Adults</label>
+                <div className="flex items-center border border-gray-600 rounded">
+                  <button
+                    type="button"
+                    onClick={() => setAdults(Math.max(1, adults - 1))}
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    −
+                  </button>
+                  <span className="flex-1 text-center py-2">{adults}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAdults(adults + 1)}
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Child</label>
+                <div className="flex items-center border border-gray-600 rounded">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setChildrenCount(Math.max(0, childrenCount - 1))
+                    }
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    −
+                  </button>
+                  <span className="flex-1 text-center py-2">
+                    {childrenCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setChildrenCount(childrenCount + 1)}
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* FIXED: Use optimized AutocompleteInput */}
-            <AutocompleteInputFixed
-              label="Guest Name"
-              name="guestName"
-              value={fullName}
-              setValue={setFullName}
-              placeholder="John Doe"
-              onCustomerSelect={handleCustomerSelect}
-            />
-
-            <AutocompleteInputFixed
-              label="Email"
-              name="email"
-              value={email}
-              type="email"
-              setValue={setEmail}
-              placeholder="guest@example.com"
-              onCustomerSelect={handleCustomerSelect}
-            />
-
-            <AutocompleteInputFixed
-              label="Phone"
-              name="phone"
-              value={phone}
-              type="tel"
-              setValue={setPhone}
-              placeholder="+1 (555) 555-5555"
-              onCustomerSelect={handleCustomerSelect}
-            />
-
-            <div>
-              <label className="block text-sm font-medium">Check-in</label>
-              <input
-                name="checkIn"
-                type="date"
-                defaultValue={checkInDate}
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
+            {/* Row 5: ID Type (full column) | ID Number & Issuing Country (split 50/50) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  ID Type
+                </label>
+                <Select value={idType} onValueChange={setIdType}>
+                  <SelectTrigger className="w-full border border-gray-600 rounded p-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+                    <SelectValue placeholder="Select ID Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="passport">Passport</SelectItem>
+                    <SelectItem value="drivers_license">
+                      Driver&apos;s License
+                    </SelectItem>
+                    <SelectItem value="national_id">National ID</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    ID Number
+                  </label>
+                  <input
+                    type="text"
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    placeholder="Enter ID number"
+                    className="block w-full border border-gray-600 rounded p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Issuing Country
+                  </label>
+                  <input
+                    type="text"
+                    value={issuingCountry}
+                    onChange={(e) => setIssuingCountry(e.target.value)}
+                    placeholder="e.g., United States"
+                    className="block w-full border border-gray-600 rounded p-2 text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium">Check-out</label>
-              <input
-                name="checkOut"
-                type="date"
-                defaultValue={checkOutDate}
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
+            {/* Row 6: "Fill manually or scan with OCR" text */}
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Fill manually or scan with OCR
             </div>
 
-            <div>
-              <label className="block text-sm font-medium">Adults</label>
-              <input
-                type="number"
-                min="1"
-                value={adults}
-                onChange={(e) => setAdults(parseInt(e.target.value) || 1)}
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Children</label>
-              <input
-                type="number"
-                min="0"
-                value={childrenCount}
-                onChange={(e) => setChildrenCount(parseInt(e.target.value) || 0)}
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">ID Type</label>
-              <select
-                value={idType}
-                onChange={(e) => setIdType(e.target.value)}
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              >
-                <option value="passport">Passport</option>
-                <option value="drivers_license">Driver's License</option>
-                <option value="national_id">National ID</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">ID Number</label>
-              <input
-                type="text"
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
-                placeholder="Enter ID number"
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium">Issuing Country</label>
-              <input
-                type="text"
-                value={issuingCountry}
-                onChange={(e) => setIssuingCountry(e.target.value)}
-                placeholder="e.g., United States"
-                className="mt-1 block w-full border border-gray-600 rounded p-2 text-sm"
-              />
-            </div>
-
-            <div className="md:col-span-2">
+            {/* Row 7: Scan ID Button | Cancel Save Buttons on the right */}
+            <div className="flex justify-between items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -268,36 +336,36 @@ const NewBookingModalFixed: React.FC<NewBookingModalFixedProps> = ({
               >
                 Scan ID
               </button>
+
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlot(null)}
+                  className="w-20 px-4 py-2 text-sm border border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const form = document.getElementById(
+                      "bookingForm"
+                    ) as HTMLFormElement;
+                    if (form) {
+                      const fakeEvent = {
+                        currentTarget: form,
+                        preventDefault: () => {}
+                      } as React.FormEvent<HTMLFormElement>;
+                      handleCreate(fakeEvent);
+                    }
+                  }}
+                  className="w-20 px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </form>
-
-          <div className="flex justify-end mt-6">
-            <button
-              type="button"
-              onClick={() => setSelectedSlot(null)}
-              className="mr-2 px-4 py-2 text-sm border rounded"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const form = document.getElementById(
-                  "bookingForm"
-                ) as HTMLFormElement;
-                if (form) {
-                  const fakeEvent = {
-                    currentTarget: form,
-                    preventDefault: () => {}
-                  } as React.FormEvent<HTMLFormElement>;
-                  handleCreate(fakeEvent);
-                }
-              }}
-              className="px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
-            >
-              Submit
-            </button>
-          </div>
         </Dialog.Panel>
       </div>
 
@@ -316,4 +384,3 @@ const NewBookingModalFixed: React.FC<NewBookingModalFixedProps> = ({
 };
 
 export default NewBookingModalFixed;
-

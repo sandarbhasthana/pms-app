@@ -258,7 +258,12 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
     <>
       {/* Add New Room */}
       <div className="flex justify-end mb-4">
-        <Button onClick={onAddRoom} type="button" title="Add Room Type">
+        <Button
+          onClick={onAddRoom}
+          type="button"
+          title="Add Room Type"
+          className="flex items-center rounded-sm bg-purple-500 hover:bg-purple-600 text-white"
+        >
           Add Room Type
         </Button>
       </div>

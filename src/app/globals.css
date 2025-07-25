@@ -245,28 +245,28 @@
   color: white !important;
 }
 
-/* Ensure colors work for all room types */
-.fc-event.paid,
-.fc-event.partially_paid,
-.fc-event.unpaid,
-.fc-event.pending_booking,
-.fc-event.checked-in-date,
-.fc-event.checked_in_date,
-.fc-event.checked-out-date,
-.fc-event.checked_out_date {
+/* Ensure colors work for all room types - exclude background events */
+.fc-event.paid:not(.fc-bg-event),
+.fc-event.partially_paid:not(.fc-bg-event),
+.fc-event.unpaid:not(.fc-bg-event),
+.fc-event.pending_booking:not(.fc-bg-event),
+.fc-event.checked-in-date:not(.fc-bg-event),
+.fc-event.checked_in_date:not(.fc-bg-event),
+.fc-event.checked-out-date:not(.fc-bg-event),
+.fc-event.checked_out_date:not(.fc-bg-event) {
   border-width: 2px !important;
 }
 
 /* STATUS STYLING END */
 
-/* Weekend highlight styling */
+/* Weekend highlight styling - Friday & Saturday with yellow color */
 .weekend-highlight {
-  background-color: #ffb7c5 !important; /* Light pink for light mode */
+  background-color: #fdeda5 !important; /* Light yellow for light mode (same as Sunday) */
 }
 
 /* Dark mode version */
 .dark .weekend-highlight {
-  background-color: #d48292 !important; /* Darker purple-pink for dark mode */
+  background-color: #fde57f !important; /* Darker yellow for dark mode (same as Sunday) */
 }
 
 /* Weekend highlight styling */
@@ -277,6 +277,17 @@
 /* Dark mode version */
 .dark .sunday-highlight {
   background-color: #fde57f !important; /* Darker yellow for dark mode */
+}
+
+/* Today highlight styling - higher specificity to override weekend */
+.today-highlight {
+  background-color: #74d4ff !important; /* Light sky blue */
+  z-index: 10 !important; /* Higher z-index to appear above weekend highlights */
+}
+
+/* Dark mode version */
+.dark .today-highlight {
+  background-color: #74d4ff !important; /* Same light sky blue for dark mode */
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -485,13 +496,38 @@ option {
 }
 
 option:hover {
-  background-color: #fff;
-  color: #0a0a0a;
+  background-color: #f9fafb !important; /* Very subtle gray-50 */
+  color: #0a0a0a !important;
 }
 
 .dark option:hover {
-  background-color: #0a0a0a;
-  color: #fff;
+  background-color: #1f2937 !important; /* Very subtle gray-800 */
+  color: #fff !important;
+}
+
+/* More specific styling for select dropdown options */
+select option {
+  background-color: #fff !important; /* Keep modal background color */
+  color: #0a0a0a !important;
+  padding: 8px 12px !important;
+}
+
+.dark select option {
+  background-color: #111827 !important; /* Keep modal background color (gray-900) */
+  color: #fff !important;
+  padding: 8px 12px !important;
+}
+
+select option:hover,
+select option:focus {
+  background-color: #f3f4f6 !important; /* gray-100 like stepper buttons */
+  color: #0a0a0a !important;
+}
+
+.dark select option:hover,
+.dark select option:focus {
+  background-color: #1f2937 !important; /* gray-800 like stepper buttons */
+  color: #fff !important;
 }
 
 option:checked {

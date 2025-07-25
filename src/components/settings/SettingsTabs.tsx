@@ -2,16 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-//import clsx from "clsx";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { label: "Property Settings", href: "/settings/general" },
   { label: "Accommodations", href: "/settings/accommodations" },
-  { label: "Pricing & Taxes", href: "/settings/pricing" },
+  { label: "Policies & Taxes", href: "/settings/policies" },
   { label: "Channel Managers", href: "/settings/channels" },
-  { label: "Policies", href: "/settings/policies" },
-  { label: "Rates", href: "/settings/rates" },
+  { label: "Pricing & Rates", href: "/settings/rates" },
   { label: "Import Reservations", href: "/settings/import" }
 ];
 

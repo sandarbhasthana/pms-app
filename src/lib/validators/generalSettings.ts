@@ -17,9 +17,10 @@ export const generalSettingsSchema = z.object({
   zip: z.string(),
   latitude: z.number(),
   longitude: z.number(),
+  isManuallyPositioned: z.boolean().optional().default(false),
   photos: z.array(z.string()).optional(), // array of uploaded URLs
   printHeaderImage: z.string().optional(),
-  description: z.any().optional(), // assuming Tiptap JSON
+  description: z.any().optional() // assuming Tiptap JSON
 });
 
 export type GeneralSettingsInput = z.infer<typeof generalSettingsSchema>;

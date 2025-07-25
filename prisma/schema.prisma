@@ -155,29 +155,30 @@ model Reservation {
 
 /// Property settings scoped to a tenant
 model PropertySettings {
-  id               String   @id @default(cuid())
-  orgId            String   @unique
-  propertyType     String
-  propertyName     String
-  propertyPhone    String
-  propertyEmail    String
-  propertyWebsite  String?
-  firstName        String
-  lastName         String
-  country          String
-  street           String
-  suite            String?
-  city             String
-  state            String
-  zip              String
-  latitude         Float
-  longitude        Float
-  photos           Json?
-  printHeader      String?
-  printHeaderImage String?
-  description      Json
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  orgId                   String   @unique
+  propertyType            String
+  propertyName            String
+  propertyPhone           String
+  propertyEmail           String
+  propertyWebsite         String?
+  firstName               String
+  lastName                String
+  country                 String
+  street                  String
+  suite                   String?
+  city                    String
+  state                   String
+  zip                     String
+  latitude                Float
+  longitude               Float
+  isManuallyPositioned    Boolean @default(false)
+  photos                  Json?
+  printHeader             String?
+  printHeaderImage        String?
+  description             Json
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 /// OTA or channel integration for external bookings

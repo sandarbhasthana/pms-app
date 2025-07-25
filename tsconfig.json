@@ -23,6 +23,13 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/script/enable-rls.ts"],
-  "exclude": ["node_modules"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "**/*.tsx_NoUse",
+    "**/*.tsx.bak",
+    "**/*_NoUse/**",
+    "**/bookings-og-nouse/**",
+    "**/bookings-fixed-second-nouse/**"
+  ]
 }

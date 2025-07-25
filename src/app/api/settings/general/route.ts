@@ -21,6 +21,7 @@ const GeneralSettingsSchema = z.object({
   zip: z.string(),
   latitude: z.number(),
   longitude: z.number(),
+  isManuallyPositioned: z.boolean().optional().default(false),
   photos: z.any().optional(), // Expecting array of URLs
   printHeaderImage: z.string().optional(),
   description: z.any() // TipTap JSON

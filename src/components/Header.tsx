@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 
 export function Header() {
   return (
@@ -17,7 +18,9 @@ export function Header() {
 
       {/* Right-side controls */}
       <div className="flex items-center space-x-4">
-        {/* Placeholder for future nav or user menu */}
+        {/* User menu with avatar and account options */}
+        <UserMenu />
+        {/* Theme toggle */}
         <ThemeToggle />
       </div>
     </header>

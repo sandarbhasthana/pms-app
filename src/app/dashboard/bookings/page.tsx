@@ -1,4 +1,5 @@
-// File: src/app/dashboard/bookings/page.tsx
+// File: src/app/dashboard/bookings-row-style/page.tsx
+// FIXED VERSION - Based on bookings-fixed with ResourceHeaderLane functionality
 "use client";
 
 import React, {
@@ -21,8 +22,8 @@ import { toast } from "sonner";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
-import CalendarView from "@/components/bookings/CalendarView";
-import NewBookingModal from "@/components/bookings/NewBookingModal";
+import CalendarViewRowStyle from "@/components/bookings/CalendarViewRowStyle";
+import NewBookingModalFixed from "@/components/bookings/NewBookingModalFixed";
 import ViewDetailsModal from "@/components/bookings/ViewDetailsModal";
 import EditBookingModal from "@/components/bookings/EditBookingModal";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
@@ -49,11 +50,15 @@ interface Room {
   title: string;
 }
 
-export default function BookingsCalendarPage() {
+export default function BookingsRowStylePage() {
   const calendarRef = useRef<FullCalendar | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const [showLegend, setShowLegend] = useState(false);
+
+  // Add refetch control state
+  const [lastRefetch, setLastRefetch] = useState<number>(0);
+  const [isRefetching, setIsRefetching] = useState(false);
 
   const [datePickerDate, setDatePickerDate] = useState<Date | null>(new Date());
   const [selectedDate, setSelectedDate] = useState(
@@ -63,7 +68,6 @@ export default function BookingsCalendarPage() {
   const [resources, setResources] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
-  const [today, setToday] = useState(new Date());
   const [ocrEnabled, setOcrEnabled] = useState(false);
   const [lastScannedSlot, setLastScannedSlot] = useState<{
     roomId: string;
@@ -112,36 +116,359 @@ export default function BookingsCalendarPage() {
   const [country, setCountry] = useState<string>("");
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
-  // Compute today’s background highlight range
-  const startOfToday = useMemo(
-    () => new Date(today.getFullYear(), today.getMonth(), today.getDate()),
-    [today]
-  );
+  // FIXED: Stable today highlight using local timezone consistently
+  const todayDateString = useMemo(() => {
+    const now = new Date();
+    // Use local timezone instead of UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`; // YYYY-MM-DD format in local timezone
+  }, []); // Only compute once on mount
+
+  const isToday = (date: Date) => {
+    const now = new Date();
+    return (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
+  };
+
+  // FIXED: Use stable date for today highlight in local timezone
+  const startOfToday = useMemo(() => {
+    const [year, month, day] = todayDateString.split("-").map(Number);
+    return new Date(year, month - 1, day); // Local timezone
+  }, [todayDateString]);
+
   const endOfToday = useMemo(() => {
     const dt = new Date(startOfToday);
     dt.setDate(dt.getDate() + 1);
     return dt;
   }, [startOfToday]);
 
-  const handleScanComplete = useCallback(
-    (result: {
-      idNumber: string;
-      fullName: string;
-      issuingCountry: string;
-    }) => {
-      if (!ocrEnabled) return;
-      setIdNumber(result.idNumber);
-      setFullName(result.fullName);
-      setIssuingCountry(result.issuingCountry);
-      setShowScanner(false);
-      setOcrEnabled(false);
-    },
-    [ocrEnabled]
-  );
+  // FIXED: Debounced refetch function to prevent rapid successive calls
+  const debouncedRefetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRefetch < 2000 || isRefetching) {
+      // Minimum 2 second gap
+      return;
+    }
 
-  const handleScanError = useCallback((err: Error) => {
-    toast.error("Scan failed: " + err.message);
+    setLastRefetch(now);
+    setIsRefetching(true);
+
+    setTimeout(() => {
+      calendarRef.current?.getApi().refetchEvents();
+      setIsRefetching(false);
+    }, 100);
+  }, [lastRefetch, isRefetching]);
+
+  // FIXED: Optimized eventSources without caching to ensure fresh payment status
+  const eventSources = useMemo(() => {
+    return [
+      async (
+        fetchInfo: { startStr: string; endStr: string },
+        success: (
+          events: {
+            id: string;
+            resourceId: string;
+            title: string;
+            start: string;
+            end: string;
+            allDay: boolean;
+            extendedProps: Record<string, unknown>;
+          }[]
+        ) => void,
+        failure: (error: Error) => void
+      ) => {
+        try {
+          // Get orgId from cookies for API calls
+          const orgId = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("orgId="))
+            ?.split("=")[1];
+
+          const params = new URLSearchParams({
+            start: fetchInfo.startStr,
+            end: fetchInfo.endStr
+          });
+          const res = await fetch(`/api/reservations?${params}`, {
+            credentials: "include",
+            // FIXED: Ensure fresh data for payment status updates
+            cache: "no-cache",
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+              // FIXED: Include organization context
+              ...(orgId && { "x-organization-id": orgId })
+            }
+          });
+          const { reservations } = await res.json();
+
+          success(
+            reservations.map((r: Reservation) => ({
+              id: r.id,
+              resourceId: r.roomId,
+              title: r.guestName,
+              start: r.checkIn,
+              end: r.checkOut,
+              allDay: true,
+              extendedProps: {
+                isPartialDay: true,
+                status: r.status,
+                paymentStatus: r.paymentStatus
+              }
+            }))
+          );
+        } catch (e) {
+          failure(e as Error);
+        }
+      },
+      // FIXED: Static today highlight that doesn't cause re-renders
+      {
+        events: [
+          {
+            id: "todayHighlight",
+            start: startOfToday.toISOString(),
+            end: endOfToday.toISOString(),
+            display: "background" as const,
+            backgroundColor: "#f0f9ff", // very light sky blue (sky-50)
+            classNames: ["today-highlight"],
+            allDay: true,
+            overlap: false
+          }
+        ]
+      },
+      // Weekend highlight function - Friday & Saturday only (yellow color)
+      (
+        info: { start: Date; end: Date },
+        success: (
+          events: {
+            id: string;
+            start: string;
+            end: string;
+            display: string;
+            classNames: string[];
+            allDay: boolean;
+          }[]
+        ) => void
+      ) => {
+        const wknd: {
+          id: string;
+          start: string;
+          end: string;
+          display: string;
+          classNames: string[];
+          allDay: boolean;
+        }[] = [];
+        for (
+          let d = new Date(info.start);
+          d < new Date(info.end);
+          d.setDate(d.getDate() + 1)
+        ) {
+          const dow = d.getDay();
+          // Only highlight Friday (5) and Saturday (6) - removed Sunday (0)
+          if (dow === 5 || dow === 6) {
+            const s = new Date(d),
+              e = new Date(d);
+            e.setDate(e.getDate() + 1);
+            wknd.push({
+              id: `wknd-${s.toISOString()}`,
+              start: s.toISOString(),
+              end: e.toISOString(),
+              display: "background",
+              classNames: ["weekend-highlight"],
+              allDay: true
+            });
+          }
+        }
+        success(wknd);
+      }
+    ];
+  }, [startOfToday, endOfToday]); // FIXED: Stable dependencies
+
+  // ------------------------
+  // Load rooms function (separated for reuse)
+  // ------------------------
+  const loadRooms = useCallback(async () => {
+    try {
+      const roomsRes = await fetch("/api/rooms", {
+        credentials: "include"
+      });
+      if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
+      const roomsJson = await roomsRes.json();
+      type RawRoom = { id: string; name: string; type: string };
+      const roomsData: RawRoom[] = Array.isArray(roomsJson)
+        ? roomsJson
+        : roomsJson.rooms;
+
+      interface GroupedResource {
+        id: string;
+        title: string;
+        children: Array<{ id: string; title: string; order: string }>;
+      }
+
+      const groupedResources = roomsData.reduce((acc, room) => {
+        const groupId = room.type;
+        if (!acc[groupId]) {
+          acc[groupId] = {
+            id: groupId,
+            title: groupId,
+            children: []
+          };
+        }
+        acc[groupId].children.push({
+          id: room.id,
+          title: room.name,
+          order: room.name // Add explicit order field for FullCalendar
+        });
+        return acc;
+      }, {} as Record<string, GroupedResource>);
+
+      // Natural/numeric sorting function for room names
+      const naturalSort = (a: string, b: string): number => {
+        return a.localeCompare(b, undefined, {
+          numeric: true,
+          sensitivity: "base"
+        });
+      };
+
+      // Sort children (rooms) within each room type group
+      Object.values(groupedResources).forEach((group) => {
+        group.children.sort((a, b) => naturalSort(a.title, b.title));
+      });
+
+      const flattenedResources = Object.values(groupedResources);
+      setResources(flattenedResources);
+    } catch (e) {
+      console.error("Failed to load rooms:", e);
+      toast.error(e instanceof Error ? e.message : "Failed to load room data");
+    }
   }, []);
+
+  // ------------------------
+  // Load reservations function
+  // ------------------------
+  const loadReservations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/reservations", {
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to fetch reservations");
+      const { reservations, count } = (await res.json()) as {
+        reservations: Reservation[];
+        count: number;
+      };
+      setEvents(reservations);
+      toast.success(`Loaded ${count} reservation(s)`);
+    } catch (e) {
+      console.error("Failed to load reservations:", e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load reservation data"
+      );
+    }
+  }, []);
+
+  // ------------------------
+  // Initial load: rooms + reservations
+  // ------------------------
+  useEffect(() => {
+    async function loadAll() {
+      try {
+        await Promise.all([loadRooms(), loadReservations()]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAll();
+  }, [loadRooms, loadReservations]);
+
+  // ------------------------
+  // Listen for room updates from settings page
+  // ------------------------
+  useEffect(() => {
+    const orgId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("orgId="))
+      ?.split("=")[1];
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === "calendar-refresh-event" && e.newValue) {
+        try {
+          const event = JSON.parse(e.newValue);
+          if (!event.orgId || !orgId || event.orgId === orgId) {
+            loadRooms();
+          }
+        } catch (error) {
+          console.error("Failed to parse calendar refresh event:", error);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageEvent);
+    return () => {
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, [loadRooms]);
+
+  // ------------------------
+  // Determine country via geolocation, fallback to browser locale
+  // ------------------------
+  useEffect(() => {
+    const fallback = () =>
+      (navigator.language.split("-")[1] || "US").toUpperCase();
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const resp = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            if (!resp.ok) throw new Error("Reverse-geocode failed");
+            const geo = await resp.json();
+            setCountry((geo.countryCode || fallback()).toUpperCase());
+          } catch {
+            setCountry(fallback());
+          }
+        },
+        () => setCountry(fallback())
+      );
+    } else {
+      setCountry(fallback());
+    }
+  }, []);
+
+  // ------------------------
+  // Fetch holidays from Calendarific
+  // ------------------------
+  useEffect(() => {
+    if (!country) return;
+    (async () => {
+      try {
+        const year = new Date().getFullYear();
+        const apiKey = process.env.NEXT_PUBLIC_CALENDARIFIC_API_KEY!;
+        const url = new URL("https://calendarific.com/api/v2/holidays");
+        url.searchParams.set("api_key", apiKey);
+        url.searchParams.set("country", country);
+        url.searchParams.set("year", String(year));
+        const res = await fetch(url.toString());
+        if (!res.ok) throw new Error(`Calendarific ${res.status}`);
+        const payload = await res.json();
+        const list = payload.response?.holidays as Array<{
+          date: { iso: string };
+          name: string;
+        }>;
+        if (!Array.isArray(list)) throw new Error("Invalid payload");
+        const map = Object.fromEntries(list.map((h) => [h.date.iso, h.name]));
+        setHolidays(map);
+      } catch (e) {
+        console.error("Failed to fetch holidays:", e);
+        setHolidays({});
+      }
+    })();
+  }, [country]);
 
   // ------------------------
   // Memoized toolbar handlers
@@ -187,7 +514,8 @@ export default function BookingsCalendarPage() {
       toast.error("Cannot create bookings in the past.");
       return;
     }
-    if (roomId && roomName) {
+    // Only allow booking on individual rooms (children), not room types (parents)
+    if (roomId && roomName && arg.resource?.getParent()) {
       setSelectedSlot({ roomId, roomName, date: dateTab });
       setAdults(1);
       setChildren(0);
@@ -265,351 +593,15 @@ export default function BookingsCalendarPage() {
               : prev
           );
         }
-        calendarRef.current?.getApi().refetchEvents();
+        // FIXED: Use debounced refetch instead of immediate refetch
+        debouncedRefetch();
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "Could not update");
         arg.revert();
       }
     },
-    [viewReservation]
+    [viewReservation, debouncedRefetch]
   );
-
-  // ------------------------
-  // Memoized eventSources for FullCalendar
-  // ------------------------
-  const eventSources = useMemo(
-    () => [
-      async (
-        fetchInfo: { startStr: string; endStr: string },
-        success: (
-          events: {
-            id: string;
-            resourceId: string;
-            title: string;
-            start: string;
-            end: string;
-            allDay: boolean;
-            extendedProps: Record<string, unknown>;
-          }[]
-        ) => void,
-        failure: (error: Error) => void
-      ) => {
-        try {
-          const params = new URLSearchParams({
-            start: fetchInfo.startStr,
-            end: fetchInfo.endStr
-          });
-          const res = await fetch(`/api/reservations?${params}`, {
-            credentials: "include"
-          });
-          const { reservations } = await res.json();
-          success(
-            reservations.map((r: Reservation) => {
-              return {
-                id: r.id,
-                resourceId: r.roomId,
-                title: r.guestName,
-                start: r.checkIn,
-                end: r.checkOut,
-                allDay: true,
-                extendedProps: {
-                  isPartialDay: true,
-                  status: r.status,
-                  paymentStatus: r.paymentStatus
-                }
-              };
-            })
-          );
-        } catch (e) {
-          failure(e as Error);
-        }
-      },
-      {
-        events: [
-          {
-            id: "todayHighlight",
-            start: startOfToday.toISOString(),
-            end: endOfToday.toISOString(),
-            display: "background" as const,
-            backgroundColor: "#574964",
-            allDay: true,
-            overlap: false
-          }
-        ]
-      },
-      (
-        info: { start: Date; end: Date },
-        success: (
-          events: {
-            id: string;
-            start: string;
-            end: string;
-            display: string;
-            classNames: string[];
-            allDay: boolean;
-          }[]
-        ) => void
-      ) => {
-        const wknd: {
-          id: string;
-          start: string;
-          end: string;
-          display: string;
-          classNames: string[];
-          allDay: boolean;
-        }[] = [];
-        for (
-          let d = new Date(info.start);
-          d < new Date(info.end);
-          d.setDate(d.getDate() + 1)
-        ) {
-          const dow = d.getDay();
-          if (dow === 5 || dow === 6) {
-            const s = new Date(d),
-              e = new Date(d);
-            e.setDate(e.getDate() + 1);
-            wknd.push({
-              id: `wknd-${s.toISOString()}`,
-              start: s.toISOString(),
-              end: e.toISOString(),
-              display: "background",
-              classNames: ["weekend-highlight"],
-              allDay: true
-            });
-          } else if (dow === 0) {
-            const s = new Date(d),
-              e = new Date(d);
-            e.setDate(e.getDate() + 1);
-            wknd.push({
-              id: `wknd-${s.toISOString()}`,
-              start: s.toISOString(),
-              end: e.toISOString(),
-              display: "background",
-              classNames: ["sunday-highlight"],
-              allDay: true
-            });
-          }
-        }
-        success(wknd);
-      }
-    ],
-    [startOfToday, endOfToday]
-  );
-
-  const isToday = (date: Date) => {
-    const n = new Date();
-    return (
-      date.getFullYear() === n.getFullYear() &&
-      date.getMonth() === n.getMonth() &&
-      date.getDate() === n.getDate()
-    );
-  };
-
-  // ------------------------
-  // Determine country via geolocation, fallback to browser locale
-  // ------------------------
-  useEffect(() => {
-    const fallback = () =>
-      (navigator.language.split("-")[1] || "US").toUpperCase();
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            const { latitude, longitude } = pos.coords;
-            const resp = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (!resp.ok) throw new Error("Reverse-geocode failed");
-            const geo = await resp.json();
-            setCountry((geo.countryCode || fallback()).toUpperCase());
-          } catch {
-            setCountry(fallback());
-          }
-        },
-        () => setCountry(fallback())
-      );
-    } else {
-      setCountry(fallback());
-    }
-  }, []);
-
-  // ------------------------
-  // Fetch holidays from Calendarific
-  // ------------------------
-  useEffect(() => {
-    if (!country) return;
-    (async () => {
-      try {
-        const year = new Date().getFullYear();
-        const apiKey = process.env.NEXT_PUBLIC_CALENDARIFIC_API_KEY!;
-        const url = new URL("https://calendarific.com/api/v2/holidays");
-        url.searchParams.set("api_key", apiKey);
-        url.searchParams.set("country", country);
-        url.searchParams.set("year", String(year));
-        const res = await fetch(url.toString());
-        if (!res.ok) throw new Error(`Calendarific ${res.status}`);
-        const payload = await res.json();
-        const list = payload.response?.holidays as Array<{
-          date: { iso: string };
-          name: string;
-        }>;
-        if (!Array.isArray(list)) throw new Error("Invalid payload");
-        const map = Object.fromEntries(list.map((h) => [h.date.iso, h.name]));
-        setHolidays(map);
-      } catch (e) {
-        console.error("Failed to fetch holidays:", e);
-        setHolidays({});
-      }
-    })();
-  }, [country]);
-
-  // ------------------------
-  // Load rooms function (separated for reuse)
-  // ------------------------
-  const loadRooms = useCallback(async () => {
-    try {
-      const roomsRes = await fetch("/api/rooms", {
-        credentials: "include"
-      });
-      if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
-      const roomsJson = await roomsRes.json();
-      type RawRoom = { id: string; name: string; type: string };
-      const roomsData: RawRoom[] = Array.isArray(roomsJson)
-        ? roomsJson
-        : roomsJson.rooms;
-
-      interface GroupedResource {
-        id: string;
-        title: string;
-        children: Array<{ id: string; title: string; order: string }>;
-      }
-
-      const groupedResources = roomsData.reduce((acc, room) => {
-        const groupId = room.type;
-        if (!acc[groupId]) {
-          acc[groupId] = {
-            id: groupId,
-            title: groupId,
-            children: []
-          };
-        }
-        acc[groupId].children.push({
-          id: room.id,
-          title: room.name,
-          order: room.name // Add explicit order field for FullCalendar
-        });
-        return acc;
-      }, {} as Record<string, GroupedResource>);
-
-      // Natural/numeric sorting function for room names
-      const naturalSort = (a: string, b: string): number => {
-        return a.localeCompare(b, undefined, {
-          numeric: true,
-          sensitivity: "base"
-        });
-      };
-
-      // Sort children (rooms) within each room type group
-      Object.values(groupedResources).forEach((group) => {
-        group.children.sort((a, b) => naturalSort(a.title, b.title));
-      });
-
-      const flattenedResources = Object.values(groupedResources);
-      console.log(
-        "Hierarchical Resources Structure:",
-        JSON.stringify(flattenedResources, null, 2)
-      );
-      setResources(flattenedResources);
-      console.log("✅ Rooms refreshed from settings update");
-    } catch (e) {
-      console.error("Failed to load rooms:", e);
-      toast.error(e instanceof Error ? e.message : "Failed to load room data");
-    }
-  }, []);
-
-  // ------------------------
-  // Load reservations function
-  // ------------------------
-  const loadReservations = useCallback(async () => {
-    try {
-      const res = await fetch("/api/reservations", {
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error("Failed to fetch reservations");
-      const { reservations, count } = (await res.json()) as {
-        reservations: Reservation[];
-        count: number;
-      };
-      setEvents(reservations);
-      toast.success(`Loaded ${count} reservation(s)`);
-    } catch (e) {
-      console.error("Failed to load reservations:", e);
-      toast.error(
-        e instanceof Error ? e.message : "Failed to load reservation data"
-      );
-    }
-  }, []);
-
-  // ------------------------
-  // Initial load: rooms + reservations
-  // ------------------------
-  useEffect(() => {
-    async function loadAll() {
-      try {
-        await Promise.all([loadRooms(), loadReservations()]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadAll();
-  }, [loadRooms, loadReservations]);
-
-  // ------------------------
-  // Listen for room updates from settings page
-  // ------------------------
-  useEffect(() => {
-    const orgId = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("orgId="))
-      ?.split("=")[1];
-
-    const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key === "calendar-refresh-event" && e.newValue) {
-        try {
-          const event = JSON.parse(e.newValue);
-          if (!event.orgId || !orgId || event.orgId === orgId) {
-            console.log(
-              "Received calendar refresh event, refreshing rooms...",
-              event
-            );
-            loadRooms();
-          }
-        } catch (error) {
-          console.error("Failed to parse calendar refresh event:", error);
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageEvent);
-    return () => {
-      window.removeEventListener("storage", handleStorageEvent);
-    };
-  }, [loadRooms]);
-
-  // ------------------------
-  // Sync “today” periodically
-  // ------------------------
-  useEffect(() => {
-    const upd = () => setToday(new Date());
-    const iv = setInterval(upd, 60000);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") upd();
-    });
-    return () => {
-      clearInterval(iv);
-      document.removeEventListener("visibilitychange", upd);
-    };
-  }, []);
 
   // ------------------------
   // Click-outside listener for flyout
@@ -639,23 +631,48 @@ export default function BookingsCalendarPage() {
     );
   }
 
-  // ------------------------
-  // Helpers for CRUD & checkout
-  // ------------------------
+  // FIXED: Optimized reload function with forced calendar refresh
   const reload = async () => {
-    const res = await fetch("/api/reservations", {
-      credentials: "include"
-    });
-    if (res.ok) {
-      const { reservations } = await res.json();
-      setEvents(reservations);
-      calendarRef.current?.getApi().refetchEvents();
+    try {
+      // Get orgId from cookies for API calls
+      const orgId = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("orgId="))
+        ?.split("=")[1];
+
+      const res = await fetch("/api/reservations", {
+        credentials: "include",
+        // FIXED: Force fresh data after payment updates
+        cache: "no-cache",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          // FIXED: Include organization context
+          ...(orgId && { "x-organization-id": orgId })
+        }
+      });
+
+      if (res.ok) {
+        const { reservations } = await res.json();
+
+        setEvents(reservations);
+
+        // FIXED: Force immediate calendar refetch to show updated payment status
+        calendarRef.current?.getApi().refetchEvents();
+      } else {
+        console.error("Reload failed:", res.status, res.statusText);
+      }
+    } catch (error) {
+      console.error("Failed to reload reservations:", error);
+      toast.error("Failed to refresh calendar data");
     }
   };
 
   return (
     <div ref={containerRef} className="relative p-6">
-      <h1 className="text-2xl font-semibold mb-4">Booking Calendar</h1>
+      <h1 className="text-2xl font-semibold mb-4">
+        Booking Calendar (Row Style)
+      </h1>
 
       {/* Toolbar */}
       <CalendarToolbar
@@ -668,8 +685,8 @@ export default function BookingsCalendarPage() {
         calendarRef={calendarRef}
       />
 
-      {/* FullCalendar */}
-      <CalendarView
+      {/* FullCalendar with Row Style */}
+      <CalendarViewRowStyle
         calendarRef={calendarRef}
         resources={resources}
         eventSources={eventSources}
@@ -682,6 +699,84 @@ export default function BookingsCalendarPage() {
         isToday={isToday}
         setSelectedResource={setSelectedResource}
       />
+
+      {/* New Booking Dialog */}
+      <NewBookingModalFixed
+        handleCreate={(e) => {
+          if (!selectedSlot) return;
+          handleCreateBooking({
+            selectedSlot,
+            data: {
+              guestName: fullName,
+              phone,
+              email,
+              idType,
+              idNumber,
+              issuingCountry,
+              checkIn: e.currentTarget.checkIn.value,
+              checkOut: e.currentTarget.checkOut.value,
+              adults,
+              children: children
+            },
+            reload,
+            onClose: () => setSelectedSlot(null)
+          });
+        }}
+        selectedSlot={selectedSlot}
+        setSelectedSlot={setSelectedSlot}
+        fullName={fullName}
+        setFullName={setFullName}
+        phone={phone}
+        setPhone={setPhone}
+        email={email}
+        setEmail={setEmail}
+        idType={idType}
+        setIdType={setIdType}
+        idNumber={idNumber}
+        setIdNumber={setIdNumber}
+        issuingCountry={issuingCountry}
+        setIssuingCountry={setIssuingCountry}
+        adults={adults}
+        setAdults={setAdults}
+        childrenCount={children}
+        setChildrenCount={setChildren}
+        showScanner={showScanner}
+        setShowScanner={setShowScanner}
+        setOcrEnabled={setOcrEnabled}
+        handleScanComplete={(result) => {
+          if (!ocrEnabled) return;
+          setIdNumber(result.idNumber);
+          setFullName(result.fullName);
+          setIssuingCountry(result.issuingCountry);
+          setShowScanner(false);
+          setOcrEnabled(false);
+        }}
+        handleScanError={(err) => {
+          toast.error("Scan failed: " + err.message);
+        }}
+        setLastScannedSlot={setLastScannedSlot}
+      />
+
+      {/* Scanner Overlay */}
+      {showScanner && (
+        <IDScannerWithOCR
+          onComplete={(result) => {
+            if (!ocrEnabled) return;
+            setIdNumber(result.idNumber);
+            setFullName(result.fullName);
+            setIssuingCountry(result.issuingCountry);
+            setShowScanner(false);
+            setOcrEnabled(false);
+          }}
+          onError={(err) => {
+            toast.error("Scan failed: " + err.message);
+          }}
+          onClose={() => {
+            setShowScanner(false);
+            if (lastScannedSlot) setSelectedSlot(lastScannedSlot);
+          }}
+        />
+      )}
 
       {/* Flyout Menu */}
       {flyout && (
@@ -735,66 +830,6 @@ export default function BookingsCalendarPage() {
         />
       )}
 
-      {/* New Booking Dialog */}
-      <NewBookingModal
-        handleCreate={(e) => {
-          if (!selectedSlot) return;
-          handleCreateBooking({
-            selectedSlot,
-            data: {
-              guestName: fullName,
-              phone,
-              email,
-              idType,
-              idNumber,
-              issuingCountry,
-              checkIn: e.currentTarget.checkIn.value,
-              checkOut: e.currentTarget.checkOut.value,
-              adults,
-              children: children
-            },
-            reload,
-            onClose: () => setSelectedSlot(null)
-          });
-        }}
-        selectedSlot={selectedSlot}
-        setSelectedSlot={setSelectedSlot}
-        fullName={fullName}
-        setFullName={setFullName}
-        phone={phone}
-        setPhone={setPhone}
-        email={email}
-        setEmail={setEmail}
-        idType={idType}
-        setIdType={setIdType}
-        idNumber={idNumber}
-        setIdNumber={setIdNumber}
-        issuingCountry={issuingCountry}
-        setIssuingCountry={setIssuingCountry}
-        adults={adults}
-        setAdults={setAdults}
-        childrenCount={children}
-        setChildrenCount={setChildren}
-        showScanner={showScanner}
-        setShowScanner={setShowScanner}
-        setOcrEnabled={setOcrEnabled}
-        handleScanComplete={handleScanComplete}
-        handleScanError={handleScanError}
-        setLastScannedSlot={setLastScannedSlot}
-      />
-
-      {/* Scanner Overlay */}
-      {showScanner && (
-        <IDScannerWithOCR
-          onComplete={handleScanComplete}
-          onError={handleScanError}
-          onClose={() => {
-            setShowScanner(false);
-            if (lastScannedSlot) setSelectedSlot(lastScannedSlot);
-          }}
-        />
-      )}
-
       {/* Edit/Delete Modal */}
       <EditBookingModal
         handleUpdate={(e) => {
@@ -832,6 +867,7 @@ export default function BookingsCalendarPage() {
       {/* Legend Bar */}
       <div className="mt-4 text-left text-md">
         <button
+          type="button"
           onClick={() => setShowLegend(true)}
           className="underline text-gray-900 dark:text-white font-bold hover:text-purple-600 cursor-pointer"
         >
@@ -840,6 +876,17 @@ export default function BookingsCalendarPage() {
       </div>
 
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
+
+      {/* Debug Info (Development Only) */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+          <p>
+            🔧 Debug: Last refetch: {new Date(lastRefetch).toLocaleTimeString()}
+          </p>
+          <p>🔧 Debug: Is refetching: {isRefetching ? "Yes" : "No"}</p>
+          <p>🔧 Debug: Events count: {events.length}</p>
+        </div>
+      )}
     </div>
   );
 }

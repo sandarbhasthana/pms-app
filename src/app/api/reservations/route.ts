@@ -5,6 +5,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantContext } from "@/lib/tenant";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
 
+// Type for the reservation data returned from the database query
+type ReservationFromDB = {
+  id: string;
+  guestName: string | null;
+  roomId: string;
+  checkIn: Date;
+  checkOut: Date;
+  adults: number;
+  children: number;
+  status: string;
+  notes: string | null;
+};
+
 export async function GET(req: NextRequest) {
   const orgId = req.cookies.get("orgId")?.value;
   if (!orgId) {
@@ -15,27 +28,29 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const reservations = await withTenantContext(orgId, (tx) =>
-      tx.reservation.findMany({
-        where: { organizationId: orgId },
-        select: {
-          id: true,
-          guestName: true,
-          roomId: true,
-          checkIn: true,
-          checkOut: true,
-          adults: true,
-          children: true,
-          status: true,
-          notes: true
-        },
-        orderBy: { checkIn: "asc" }
-      })
+    const reservations: ReservationFromDB[] = await withTenantContext(
+      orgId,
+      (tx) =>
+        tx.reservation.findMany({
+          where: { organizationId: orgId },
+          select: {
+            id: true,
+            guestName: true,
+            roomId: true,
+            checkIn: true,
+            checkOut: true,
+            adults: true,
+            children: true,
+            status: true,
+            notes: true
+          },
+          orderBy: { checkIn: "asc" }
+        })
     );
 
     // Add paymentStatus to each reservation with tenant context
     const enriched = await Promise.all(
-      reservations.map(async (r) => {
+      reservations.map(async (r: ReservationFromDB) => {
         const paymentStatus = await calculatePaymentStatus(r.id, orgId);
         return { ...r, paymentStatus };
       })

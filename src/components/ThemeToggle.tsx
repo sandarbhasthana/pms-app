@@ -34,7 +34,7 @@ export function ThemeToggle() {
           variant="ghost"
           size="icon"
           title="Toggle theme"
-          className="pl-2"
+          className="pl-2 cursor-pointer"
         >
           {current.icon}
         </Button>

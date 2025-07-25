@@ -13,6 +13,14 @@ import LocationPickerMap from "@/components/settings/general/LocationPickerMap";
 import DescriptionTiptap from "@/components/settings/general/DescriptionTiptap";
 import { useGeneralSettings } from "@/lib/hooks/useGeneralSettings";
 import { getCookie } from "cookies-next";
+import { toast } from "sonner";
+
+// Type definition for react-phone-input-2 country object
+interface PhoneInputCountry {
+  name: string;
+  dialCode: string;
+  countryCode: string;
+}
 
 type FormValues = {
   propertyType: string;
@@ -31,6 +39,7 @@ type FormValues = {
   zip: string;
   latitude: number;
   longitude: number;
+  isManuallyPositioned: boolean;
   description: string;
   photos: FileList | null;
   printHeaderImage: File | null;
@@ -59,6 +68,7 @@ export default function GeneralSettingsFormFixed() {
   const [photoPreview, setPhotoPreview] = useState<string[]>([]);
   const [latitude, setLatitude] = useState(28.6139); // default to New Delhi
   const [longitude, setLongitude] = useState(77.209);
+  const [isManuallyPositioned, setIsManuallyPositioned] = useState(false);
   const [locationAccuracy, setLocationAccuracy] =
     useState<string>("approximate");
 
@@ -68,6 +78,7 @@ export default function GeneralSettingsFormFixed() {
   const [printHeaderPreview, setPrintHeaderPreview] = useState<string | null>(
     null
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Property type options
   const propertyTypeOptions = [
@@ -133,7 +144,7 @@ export default function GeneralSettingsFormFixed() {
 
   // Fetch settings - NOW USING FIXED SWR HOOK
   const orgId = getCookie("orgId") as string;
-  const { settings, isLoading } = useGeneralSettings(orgId);
+  const { settings, isLoading, mutate } = useGeneralSettings(orgId);
 
   useEffect(() => {
     if (settings && !settings.error && !hasUserInteracted) {
@@ -156,6 +167,14 @@ export default function GeneralSettingsFormFixed() {
       setLatitude(lat);
       setLongitude(lng);
 
+      // Set manual positioning flag from settings
+      setIsManuallyPositioned(settings.isManuallyPositioned || false);
+
+      // Set initial location accuracy for zoom calculation
+      if (!settings.isManuallyPositioned) {
+        setLocationAccuracy("approximate"); // Default for loaded settings
+      }
+
       // Set country-state-city values
       if (settings.country) {
         setSelectedCountry(settings.country);
@@ -165,7 +184,17 @@ export default function GeneralSettingsFormFixed() {
           const countryStates = State.getStatesOfCountry(countryData.isoCode);
 
           if (settings.state) {
-            setSelectedState(settings.state);
+            // Validate that the saved state exists for this country
+            const stateExists = countryStates.some(
+              (state) => state.name === settings.state
+            );
+            if (stateExists) {
+              setSelectedState(settings.state);
+            } else {
+              // If saved state doesn't exist for this country, clear it
+              setSelectedState("");
+              setValue("state", "");
+            }
           }
         }
       }
@@ -176,6 +205,8 @@ export default function GeneralSettingsFormFixed() {
   // Register propertyType field with validation
   useEffect(() => {
     register("propertyType", { required: "Property type is required" });
+    register("propertyPhone", { required: "Phone number is required" });
+    register("phoneCode", { required: "Phone country code is required" });
   }, [register]);
 
   // Geocode address
@@ -193,19 +224,45 @@ export default function GeneralSettingsFormFixed() {
         const data = await response.json();
 
         if (data.success) {
+          console.log(
+            "🌍 Geocoding successful:",
+            data.accuracy,
+            "zoom will be calculated based on accuracy"
+          );
           setLatitude(data.latitude);
           setLongitude(data.longitude);
           setLocationAccuracy(data.accuracy || "approximate");
+
+          // Show subtle success toast for geocoding
+          toast.success("Location updated", {
+            description: `Found ${data.accuracy} location for your address`
+          });
+        } else {
+          // Show error toast for failed geocoding
+          toast.error("Location not found", {
+            description: "Could not find coordinates for the entered address"
+          });
         }
       } catch (error) {
         console.error("Geocoding error:", error);
+        toast.error("Geocoding failed", {
+          description: "Unable to find location for the entered address"
+        });
       }
     },
     [setLatitude, setLongitude, setLocationAccuracy]
   );
 
-  // Geocode address on change
+  // Geocode address on change (only if not manually positioned)
   useEffect(() => {
+    // Skip geocoding if coordinates are manually positioned
+    if (isManuallyPositioned) {
+      console.log(
+        "🚫 Skipping geocoding - coordinates are manually positioned"
+      );
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const fullAddress = [
         watchedStreet,
@@ -218,6 +275,7 @@ export default function GeneralSettingsFormFixed() {
         .join(", ");
 
       if (fullAddress.length >= 10) {
+        console.log("🌍 Auto-geocoding address:", fullAddress);
         geocodeAddress(fullAddress);
       }
     }, 600);
@@ -229,7 +287,8 @@ export default function GeneralSettingsFormFixed() {
     watchedCity,
     watchedState,
     watchedCountry,
-    geocodeAddress
+    geocodeAddress,
+    isManuallyPositioned
   ]);
 
   // Country change handler
@@ -256,16 +315,119 @@ export default function GeneralSettingsFormFixed() {
     setHasUserInteracted(true);
   };
 
+  // Handle manual positioning of marker
+  const handleManualPositioning = useCallback(() => {
+    console.log("🎯 Coordinates manually positioned by user");
+    setIsManuallyPositioned(true);
+    setHasUserInteracted(true);
+  }, []);
+
+  // Reset to address-based positioning
+  const handleResetToAddressBased = useCallback(() => {
+    console.log("🔄 Resetting to address-based positioning");
+    setIsManuallyPositioned(false);
+    setHasUserInteracted(true);
+
+    toast.info("Reset to address-based location", {
+      description: "Marker will now update automatically when address changes"
+    });
+
+    // Trigger geocoding immediately
+    const fullAddress = [
+      watchedStreet,
+      watchedSuite,
+      watchedCity,
+      watchedState,
+      watchedCountry
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    if (fullAddress.length >= 10) {
+      console.log("🔄 Triggering geocoding after reset to address-based");
+      geocodeAddress(fullAddress);
+    } else {
+      // If no full address, set default accuracy for zoom
+      setLocationAccuracy("approximate");
+    }
+  }, [
+    watchedStreet,
+    watchedSuite,
+    watchedCity,
+    watchedState,
+    watchedCountry,
+    geocodeAddress
+  ]);
+
   // Submit form
-  const onSubmit = (data: FormValues) => {
-    const fullData = {
-      ...data,
-      latitude,
-      longitude
-    };
-    localStorage.removeItem(STORAGE_KEY);
-    console.log("Form Data:", fullData);
-    // Submit fullData to your API
+  const onSubmit = async (data: FormValues) => {
+    console.log("🚀 onSubmit called with data:", data);
+    console.log("🔍 Form errors:", errors);
+    try {
+      setIsSubmitting(true);
+
+      const submitData = {
+        orgId,
+        propertyType: data.propertyType,
+        propertyName: data.propertyName,
+        propertyPhone: data.propertyPhone,
+        phoneCode: data.phoneCode,
+        propertyEmail: data.propertyEmail,
+        propertyWebsite: data.propertyWebsite || "",
+        firstName: data.firstName,
+        lastName: data.lastName,
+        country: data.country,
+        street: data.street,
+        suite: data.suite || "",
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        latitude,
+        longitude,
+        isManuallyPositioned,
+        description: data.description || {},
+        photos: [], // For now, skip file uploads
+        printHeaderImage: "" // For now, skip file uploads
+      };
+
+      const response = await fetch("/api/settings/general", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      if (response.ok) {
+        console.log("Settings saved successfully");
+        localStorage.removeItem(STORAGE_KEY);
+        mutate(); // Refresh the data
+        toast.success("Settings saved successfully!", {
+          description: "Your property settings have been updated."
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || "Failed to save settings";
+        console.error("Failed to save settings:", errorMessage);
+        toast.error("Failed to save settings", {
+          description: errorMessage
+        });
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      toast.error("Error saving settings", {
+        description: errorMessage
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle form validation errors
+  const onError = (errors: Record<string, { message?: string }>) => {
+    console.log("❌ Form validation errors:", errors);
   };
 
   if (isLoading) {
@@ -278,7 +440,10 @@ export default function GeneralSettingsFormFixed() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-10 pb-10">
+    <form
+      onSubmit={handleSubmit(onSubmit, onError)}
+      className="space-y-10 pb-10"
+    >
       {/* 1. Property Details */}
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Property Details</h2>
@@ -288,7 +453,7 @@ export default function GeneralSettingsFormFixed() {
             <select
               value={watch("propertyType") || ""}
               onChange={(e) => setValue("propertyType", e.target.value)}
-              className="mt-1 block w-full border border-input bg-background rounded-md px-3 py-2 text-sm"
+              className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
               required
             >
               <option value="">Select a property type</option>
@@ -322,16 +487,65 @@ export default function GeneralSettingsFormFixed() {
             <PhoneInput
               country={"us"}
               value={watch("propertyPhone")}
-              onChange={(phone, country: any) => {
+              onChange={(phone, country: PhoneInputCountry) => {
                 setValue("propertyPhone", phone);
                 setValue("phoneCode", `+${country.dialCode}`);
               }}
               inputStyle={{
                 width: "100%",
-                height: "40px",
+                height: "36px",
                 fontSize: "14px",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "6px"
+                border: "1px solid rgb(107 114 128)", // gray-500
+                borderLeft: "none", // Remove left border to connect with dropdown
+                borderTopRightRadius: "6px",
+                borderBottomRightRadius: "6px",
+                borderTopLeftRadius: "0",
+                borderBottomLeftRadius: "0",
+                backgroundColor: "transparent",
+                color: "inherit",
+                boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+                transition: "all 0.2s ease"
+              }}
+              buttonStyle={{
+                border: "1px solid rgb(107 114 128)", // gray-500
+                borderRight: "none", // Remove right border to connect with input
+                borderTopLeftRadius: "6px",
+                borderBottomLeftRadius: "6px",
+                borderTopRightRadius: "0",
+                borderBottomRightRadius: "0",
+                backgroundColor: "transparent",
+                height: "36px"
+              }}
+              inputProps={{
+                onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
+                  e.target.style.outline = "none";
+                  // Style the input (right side)
+                  e.target.style.borderColor = "rgb(168 85 247)"; // purple-400
+                  e.target.style.boxShadow = "0 0 0 3px rgb(168 85 247 / 0.2)";
+
+                  // Style the dropdown button (left side)
+                  const button = e.target.parentElement?.querySelector(
+                    ".flag-dropdown"
+                  ) as HTMLElement;
+                  if (button) {
+                    button.style.borderColor = "rgb(168 85 247)"; // purple-400
+                    button.style.boxShadow = "0 0 0 3px rgb(168 85 247 / 0.2)";
+                  }
+                },
+                onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                  // Reset input (right side)
+                  e.target.style.borderColor = "rgb(107 114 128)"; // gray-500
+                  e.target.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.05)";
+
+                  // Reset dropdown button (left side)
+                  const button = e.target.parentElement?.querySelector(
+                    ".flag-dropdown"
+                  ) as HTMLElement;
+                  if (button) {
+                    button.style.borderColor = "rgb(107 114 128)"; // gray-500
+                    button.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.05)";
+                  }
+                }
               }}
               containerStyle={{ width: "100%" }}
             />
@@ -417,7 +631,7 @@ export default function GeneralSettingsFormFixed() {
                   {...field}
                   value={selectedCountry}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="mt-1 block w-full border border-input bg-background rounded-md px-3 py-2 text-sm"
+                  className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select Country</option>
                   {Country.getAllCountries().map((country) => (
@@ -440,7 +654,7 @@ export default function GeneralSettingsFormFixed() {
                   value={selectedState}
                   onChange={(e) => handleStateChange(e.target.value)}
                   disabled={!selectedCountry}
-                  className="mt-1 block w-full border border-input bg-background rounded-md px-3 py-2 text-sm disabled:opacity-50"
+                  className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select State</option>
                   {selectedCountry &&
@@ -466,7 +680,7 @@ export default function GeneralSettingsFormFixed() {
                 <select
                   {...field}
                   disabled={!selectedState}
-                  className="mt-1 block w-full border border-input bg-background rounded-md px-3 py-2 text-sm disabled:opacity-50"
+                  className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select City</option>
                   {selectedCountry &&
@@ -512,11 +726,30 @@ export default function GeneralSettingsFormFixed() {
             </div>
             <div className="flex-1">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Location Accuracy:</strong> The map shows a
-                {locationAccuracy === "exact" ? "n exact" : "n approximate"}
-                location based on your address ({locationAccuracy}). For precise
-                positioning, click on the map or drag the red marker to the
-                exact location.
+                <strong>Location Accuracy:</strong>
+                {isManuallyPositioned ? (
+                  <span className="text-green-700 dark:text-green-300">
+                    {" "}
+                    The marker has been manually positioned by you. Address
+                    changes will not move the marker automatically.{" "}
+                    <button
+                      type="button"
+                      onClick={handleResetToAddressBased}
+                      className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-200"
+                    >
+                      Reset to address-based location
+                    </button>
+                  </span>
+                ) : (
+                  <>
+                    {" "}
+                    The map shows a
+                    {locationAccuracy === "exact" ? "n exact" : "n approximate"}
+                    location based on your address ({locationAccuracy}). For
+                    precise positioning, click on the map or drag the red marker
+                    to the exact location.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -527,6 +760,8 @@ export default function GeneralSettingsFormFixed() {
             lng={longitude}
             setLat={setLatitude}
             setLng={setLongitude}
+            onManualPositioning={handleManualPositioning}
+            locationAccuracy={locationAccuracy}
           />
         </div>
       </section>
@@ -598,9 +833,10 @@ export default function GeneralSettingsFormFixed() {
       <div className="pt-2">
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="w-full md:w-fit bg-purple-700 hover:bg-purple-600 rounded-sm"
         >
-          Save Changes
+          {isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
       </div>
     </form>

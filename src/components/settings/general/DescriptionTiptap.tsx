@@ -55,6 +55,7 @@ interface FormValues {
   zip: string;
   latitude: number;
   longitude: number;
+  isManuallyPositioned: boolean;
   description: string;
   photos: FileList | null;
   printHeaderImage: File | null;
@@ -532,7 +533,7 @@ const DescriptionTiptap = ({ control, errors }: Props) => {
         render={({ field }) => {
           onUpdateRef.current = field.onChange;
           return (
-            <div className="border rounded-md min-h-[200px] bg-background text-foreground px-4 py-2">
+            <div className="border border-gray-500 dark:border-gray-400 rounded-md min-h-[200px] bg-transparent text-foreground px-4 py-2 shadow-xs transition-colors focus-within:ring-3 focus-within:ring-purple-400/20 focus-within:border-purple-400">
               <EditorContent
                 editor={editor}
                 className="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1 [&_a]:text-blue-600 [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-blue-800 dark:[&_a]:text-blue-400 dark:hover:[&_a]:text-blue-300"
