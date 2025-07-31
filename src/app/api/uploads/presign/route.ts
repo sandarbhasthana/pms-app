@@ -1,12 +1,10 @@
-// File: app/api/uploads/presign/route.ts
+// app/api/uploads/presign/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Run this code on the server
 export const runtime = "nodejs";
 
-// Initialize S3 client with your env vars
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -21,36 +19,32 @@ export async function POST(req: NextRequest) {
       fileName: string;
       fileType: string;
     };
-
-    // Grab your orgId from cookies to namespace uploads per tenant
     const orgId = req.cookies.get("orgId")?.value;
     if (!orgId) {
       return NextResponse.json(
-        { error: "Missing org context" },
-        { status: 400 }
+        { error: "Organization ID not found in cookies" },
+        { status: 401 }
       );
     }
+    const key = `${orgId}/uploads/${Date.now()}_${fileName}`;
 
-    // Build a unique S3 key, e.g. "orgId/uploads/1678991234567_myphoto.jpg"
-    const timestamp = Date.now();
-    const key = `${orgId}/uploads/${timestamp}_${fileName}`;
-
-    // Create the presign command
+    // NOTE: ACL removed
     const cmd = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET!,
       Key: key,
-      ContentType: fileType,
-      ACL: "private" // or "public-read" if you want immediately public URLs
+      ContentType: fileType
+      // ACL: "public-read",  ← remove this line!
     });
 
-    // Generate a presigned URL valid for 60 seconds
-    const presignedUrl = await getSignedUrl(s3, cmd, { expiresIn: 60 });
+    const presignedUrl = await getSignedUrl(s3, cmd, { expiresIn: 300 });
 
-    // Return both the URL and the final key so the client can upload
-    return NextResponse.json({ presignedUrl, key });
+    // Build the public URL on the server side
+    const publicUrl = `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    return NextResponse.json({ presignedUrl, publicUrl });
   } catch (err: unknown) {
     console.error("Presign error:", err);
-    const errorMessage = err instanceof Error ? err.message : "Internal error";
+    const errorMessage =
+      err instanceof Error ? err.message : "An unknown error occurred";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

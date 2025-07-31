@@ -33,12 +33,12 @@ function FirebaseProvider(options: {
     authorization: { params: { scope: "openid email profile" } },
     profile(profile: FirebaseProfile) {
       return {
-        id:    profile.sub,
-        name:  profile.name,
+        id: profile.sub,
+        name: profile.name,
         email: profile.email,
-        image: profile.picture,
+        image: profile.picture
       };
-    },
+    }
   };
 }
 
@@ -49,7 +49,11 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: "Dev Login",
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "org_admin@example.com" },
+        email: {
+          label: "Email",
+          type: "text",
+          placeholder: "org_admin@example.com"
+        }
       },
       // ← note the two params—credentials + _req—to match NextAuth’s types
       async authorize(credentials) {
@@ -57,35 +61,35 @@ export const authOptions: AuthOptions = {
 
         // 1. lookup user
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email }
         });
         if (!user) return null;
 
         // 2. fetch ALL memberships if you’d like, but for the JWT we only need one:
         const membership = await prisma.userOrg.findFirst({
-          where: { userId: user.id },
+          where: { userId: user.id }
         });
         if (!membership) return null;
 
         // 3. return the shape NextAuth expects — cast to `any` to avoid TS excess-property checks
         return {
-          id:    user.id,
-          name:  user.name,
+          id: user.id,
+          name: user.name,
           email: user.email,
           image: user.image,
           // custom props for our callbacks
           orgId: membership.organizationId,
-          role:  membership.role,
+          role: membership.role
         } as never;
-      },
+      }
     }),
 
     // @ts-expect-error custom shape
     FirebaseProvider({
-      clientId:     process.env.FIREBASE_CLIENT_ID!,
+      clientId: process.env.FIREBASE_CLIENT_ID!,
       clientSecret: process.env.FIREBASE_CLIENT_SECRET!,
-      issuer:       process.env.FIREBASE_ISSUER_URL!,
-    }),
+      issuer: process.env.FIREBASE_ISSUER_URL!
+    })
   ],
 
   callbacks: {
@@ -93,17 +97,17 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.orgId = user.orgId;
-        token.role  = user.role;
+        token.role = user.role;
       }
       return token;
     },
     // expose them via session.user
     async session({ session, token }) {
       if (token.orgId) session.user.orgId = token.orgId as string;
-      if (token.role)  session.user.role  = token.role  as string;
+      if (token.role) session.user.role = token.role as string;
       return session;
-    },
-  },
+    }
+  }
 };
 
 // App Router requires named exports for HTTP methods

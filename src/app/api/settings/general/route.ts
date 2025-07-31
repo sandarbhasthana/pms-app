@@ -1,3 +1,4 @@
+// app/api/settings/general/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -22,60 +23,50 @@ const GeneralSettingsSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   isManuallyPositioned: z.boolean().optional().default(false),
-  photos: z.any().optional(), // Expecting array of URLs
-  printHeaderImage: z.string().optional(),
+  photos: z.array(z.string()).optional(), // array of S3 URLs
+  printHeaderImage: z.string().optional(), // single S3 URL
   description: z.any() // TipTap JSON
 });
 
 export async function POST(req: NextRequest) {
+  // 1. Auth check
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // 2. Parse & validate body
   const body = await req.json();
-  const parse = GeneralSettingsSchema.safeParse(body);
-  if (!parse.success) {
-    return NextResponse.json({ error: parse.error.flatten() }, { status: 400 });
+  const result = GeneralSettingsSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.flatten() },
+      { status: 400 }
+    );
   }
+  const data = result.data;
 
-  const data = parse.data;
-
-  // Ensure description is always provided with a default value if missing
-  // This matches TipTap's empty document structure
+  // 3. Default empty TipTap document if none provided
   const defaultDescription = {
     type: "doc",
-    content: [
-      {
-        type: "paragraph",
-        content: []
-      }
-    ]
+    content: [{ type: "paragraph", content: [] }]
   };
-
-  const dataWithDefaults = {
+  const record = {
     ...data,
     description: data.description || defaultDescription
   };
 
   try {
-    const existing = await prisma.propertySettings.findFirst({
-      where: { orgId: data.orgId }
+    // 4. Upsert in one call
+    const saved = await prisma.propertySettings.upsert({
+      where: { orgId: record.orgId },
+      create: record,
+      update: record
     });
 
-    let saved;
-    if (existing) {
-      saved = await prisma.propertySettings.update({
-        where: { id: existing.id },
-        data: dataWithDefaults
-      });
-    } else {
-      saved = await prisma.propertySettings.create({ data: dataWithDefaults });
-    }
-
     return NextResponse.json(saved, { status: 200 });
-  } catch (err) {
-    console.error(err);
+  } catch (error: unknown) {
+    console.error("POST /api/settings/general error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
@@ -84,29 +75,35 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  // 1. Auth check
   const session = await getServerSession(authOptions);
-  if (!session)
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  // 2. Get orgId from query
   const { searchParams } = new URL(req.url);
   const orgId = searchParams.get("orgId");
-
   if (!orgId) {
     return NextResponse.json({ error: "Missing orgId" }, { status: 400 });
   }
 
   try {
-    const settings = await prisma.propertySettings.findFirst({
+    // 3. Fetch the settings
+    const settings = await prisma.propertySettings.findUnique({
       where: { orgId }
     });
 
     if (!settings) {
-      return NextResponse.json({ error: "No settings found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No settings found for this organization" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(settings);
-  } catch (err) {
-    console.error(err);
+    return NextResponse.json(settings, { status: 200 });
+  } catch (error: unknown) {
+    console.error("GET /api/settings/general error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

@@ -1,4 +1,4 @@
-import GeneralSettingsFormFixed from "@/components/settings/general/GeneralSettingsFormFixed";
+import GeneralSettingsFormFixed from "@/components/settings/general/GeneralSettingsFormFixedS3";
 
 export default function GeneralSettingsFixedPage() {
   return (
@@ -8,12 +8,22 @@ export default function GeneralSettingsFixedPage() {
           🎉 COMPLETE ORIGINAL FORM - With SWR Fix Applied
         </h1>
         <p className="text-sm text-green-700 dark:text-green-300">
-          This is the complete original GeneralSettingsForm with ALL features enabled and the SWR fix applied.
+          This is the complete original GeneralSettingsForm with ALL features
+          enabled and the SWR fix applied.
         </p>
         <ul className="text-sm text-green-700 dark:text-green-300 mt-2 ml-4 list-disc">
-          <li><strong>✅ All Features Enabled:</strong> Geocoding, Maps, Country-State-City, Phone Input, Rich Text Editor</li>
-          <li><strong>🔧 SWR Fix Applied:</strong> useGeneralSettings hook now has stable configuration</li>
-          <li><strong>🎯 Expected Result:</strong> No infinite Fast Refresh rebuilding</li>
+          <li>
+            <strong>✅ All Features Enabled:</strong> Geocoding, Maps,
+            Country-State-City, Phone Input, Rich Text Editor
+          </li>
+          <li>
+            <strong>🔧 SWR Fix Applied:</strong> useGeneralSettings hook now has
+            stable configuration
+          </li>
+          <li>
+            <strong>🎯 Expected Result:</strong> No infinite Fast Refresh
+            rebuilding
+          </li>
         </ul>
         <div className="mt-3 p-3 bg-green-100 dark:bg-green-800/30 rounded border border-green-300 dark:border-green-700">
           <p className="text-sm text-green-800 dark:text-green-200 font-medium">
