@@ -154,7 +154,7 @@ async function main() {
 
   console.log("✅ Users with all roles created");
 
-  // Create Room Types
+  // Create Room Types with base pricing
   const roomTypes = await Promise.all([
     prisma.roomType.create({
       data: {
@@ -163,7 +163,11 @@ async function main() {
         maxOccupancy: 2,
         organizationId: organization.id,
         amenities: [],
-        customAmenities: []
+        customAmenities: [],
+        basePrice: 2500.0, // ₹2,500 base price
+        weekdayPrice: 2200.0, // ₹2,200 weekday price
+        weekendPrice: 2800.0, // ₹2,800 weekend price
+        availability: 10 // 10 standard rooms available
       }
     }),
     prisma.roomType.create({
@@ -173,7 +177,11 @@ async function main() {
         maxOccupancy: 2,
         organizationId: organization.id,
         amenities: [],
-        customAmenities: []
+        customAmenities: [],
+        basePrice: 3500.0, // ₹3,500 base price
+        weekdayPrice: 3200.0, // ₹3,200 weekday price
+        weekendPrice: 3800.0, // ₹3,800 weekend price
+        availability: 8 // 8 deluxe rooms available
       }
     }),
     prisma.roomType.create({
@@ -183,7 +191,11 @@ async function main() {
         maxOccupancy: 2,
         organizationId: organization.id,
         amenities: [],
-        customAmenities: []
+        customAmenities: [],
+        basePrice: 5500.0, // ₹5,500 base price
+        weekdayPrice: 5000.0, // ₹5,000 weekday price
+        weekendPrice: 6000.0, // ₹6,000 weekend price
+        availability: 4 // 4 executive suites available
       }
     }),
     prisma.roomType.create({
@@ -193,7 +205,11 @@ async function main() {
         maxOccupancy: 4,
         organizationId: organization.id,
         amenities: [],
-        customAmenities: []
+        customAmenities: [],
+        basePrice: 12000.0, // ₹12,000 base price
+        weekdayPrice: 10000.0, // ₹10,000 weekday price
+        weekendPrice: 15000.0, // ₹15,000 weekend price
+        availability: 2 // 2 presidential suites available
       }
     })
   ]);

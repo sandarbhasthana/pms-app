@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import resourceTimelinePlugin from "@fullcalendar/resource-timeline";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -10,6 +10,8 @@ import {
 } from "@fullcalendar/core";
 import { DateClickArg } from "@fullcalendar/interaction";
 import { cn } from "@/lib/utils";
+import { useRatesData } from "@/lib/hooks/useRatesData";
+import { addDays, format } from "date-fns";
 
 interface CalendarResource {
   id: string;
@@ -45,6 +47,68 @@ export default function CalendarViewRowStyle({
   isToday,
   setSelectedResource
 }: CalendarViewRowStyleProps) {
+  // State to track calendar view changes
+  const [calendarStartDate, setCalendarStartDate] = React.useState(
+    () => new Date(selectedDate)
+  );
+
+  // Update calendar start date when selectedDate changes or calendar view changes
+  React.useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      const view = api.view;
+      const start = view.activeStart;
+      if (start) {
+        setCalendarStartDate(start);
+        return;
+      }
+    }
+    // Fallback to selectedDate
+    setCalendarStartDate(new Date(selectedDate));
+  }, [selectedDate, calendarRef]);
+
+  // Fetch rates data for the 14-day calendar view
+  const { data: ratesData, isLoading: ratesLoading } = useRatesData(
+    calendarStartDate,
+    14, // 14 days to match calendar duration
+    "base" // Using base rate plan
+  );
+
+  // Create a mapping between calendar room types and database room type names
+  const roomTypeMapping = useMemo(() => {
+    return {
+      Standard: "Standard Room",
+      Deluxe: "Deluxe Room",
+      Suite: "Executive Suite",
+      Presidential: "Presidential Suite"
+    };
+  }, []);
+
+  // Create a lookup map for rates by room type and date
+  const ratesLookup = useMemo(() => {
+    if (!ratesData || ratesData.length === 0) return {};
+
+    const lookup: Record<string, Record<string, number>> = {};
+
+    ratesData.forEach((roomTypeRates) => {
+      // Find the calendar room type that maps to this database room type name
+      const calendarRoomType = Object.keys(roomTypeMapping).find(
+        (key) =>
+          roomTypeMapping[key as keyof typeof roomTypeMapping] ===
+          roomTypeRates.roomTypeName
+      );
+
+      if (calendarRoomType) {
+        lookup[calendarRoomType] = {};
+        Object.entries(roomTypeRates.dates).forEach(([dateStr, rateData]) => {
+          lookup[calendarRoomType][dateStr] = rateData.finalPrice;
+        });
+      }
+    });
+
+    return lookup;
+  }, [ratesData, roomTypeMapping]);
+
   return (
     <FullCalendar
       ref={calendarRef}
@@ -75,6 +139,10 @@ export default function CalendarViewRowStyle({
       weekends
       slotDuration={{ hours: 12 }}
       slotLabelInterval={{ days: 1 }}
+      // Listen for view changes to update calendar start date
+      datesSet={(dateInfo) => {
+        setCalendarStartDate(dateInfo.start);
+      }}
       // Enhanced styling for parent resources (room type headers)
       resourceGroupLabelClassNames="font-bold text-purple-800 bg-white dark:bg-purple-900 dark:text-white py-3 border-b-2 border-purple-200"
       // Enhanced content for parent resource rows with more detailed info
@@ -105,34 +173,61 @@ export default function CalendarViewRowStyle({
       // Enhanced resource area width for better visibility
       resourceAreaWidth="320px"
       resourcesInitiallyExpanded={true}
-      // Enhanced background for parent resources with white background AND test values
+      // Enhanced background for parent resources with white background AND pricing values
       resourceLaneContent={(info) => {
         // Only add content to parent resources (room type rows)
         if (!info.resource.getParent()) {
-          // Add test values for Standard room type - positioned in each day column
-          if (info.resource.id === "Standard") {
-            return (
-              <div className="h-full w-full absolute top-0 left-0 pointer-events-none z-0">
-                <div className="h-full w-full !bg-white dark:!bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 flex">
-                  {/* Create 14 day columns with test values */}
-                  {Array.from({ length: 14 }, (_, i) => (
+          const calendarRoomType = info.resource.title; // This is like "Standard", "Deluxe", etc.
+          const roomTypeRates = ratesLookup[calendarRoomType];
+
+          // Show pricing for room types that have rates data, otherwise show test values
+          return (
+            <div className="h-full w-full absolute top-0 left-0 pointer-events-none z-0">
+              <div className="h-full w-full !bg-white dark:!bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 flex">
+                {/* Create 14 day columns with pricing values */}
+                {Array.from({ length: 14 }, (_, i) => {
+                  let displayPrice;
+
+                  if (roomTypeRates && !ratesLoading) {
+                    // Use real rates data if available
+                    const currentDate = addDays(calendarStartDate, i);
+                    const dateStr = format(currentDate, "yyyy-MM-dd");
+                    const price = roomTypeRates[dateStr];
+                    displayPrice =
+                      price !== undefined ? `₹${Math.round(price)}` : "--";
+                  } else {
+                    // Fallback to test values for demonstration
+                    const basePrice =
+                      calendarRoomType === "Standard"
+                        ? 2500
+                        : calendarRoomType === "Deluxe"
+                        ? 3500
+                        : calendarRoomType === "Suite"
+                        ? 5500
+                        : calendarRoomType === "Presidential"
+                        ? 12000
+                        : 1000;
+                    displayPrice = `₹${basePrice + i * 100}`;
+                  }
+
+                  return (
                     <div
                       key={i}
                       className="flex-1 h-full flex items-center justify-center border-r border-gray-200 dark:border-gray-600"
                     >
-                      <div className="text-green-600 dark:text-green-400 font-bold text-lg">
-                        ${i + 1}
-                      </div>
+                      {ratesLoading ? (
+                        <div className="text-blue-500 dark:text-blue-400 font-bold text-sm">
+                          ...
+                        </div>
+                      ) : (
+                        <div className="text-green-600 dark:text-green-400 font-bold text-lg">
+                          {displayPrice}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            );
-          }
-
-          return (
-            <div className="h-full w-full absolute top-0 left-0 pointer-events-none z-0">
-              <div className="h-full w-full !bg-white dark:!bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700"></div>
             </div>
           );
         }

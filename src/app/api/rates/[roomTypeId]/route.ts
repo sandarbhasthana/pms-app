@@ -40,6 +40,9 @@ export async function PATCH(
     const orgId =
       req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
     if (!orgId) {
+      console.error(
+        "PATCH /api/rates/[roomTypeId] - Missing organization context"
+      );
       return NextResponse.json(
         { error: "Organization context missing" },
         { status: 400 }
@@ -47,16 +50,24 @@ export async function PATCH(
     }
 
     const { roomTypeId } = params;
+    const requestBody = await req.json();
     const {
       date,
       price,
       availability,
       restrictions,
       ratePlan = "base"
-    } = await req.json();
+    } = requestBody;
+
+    console.log("PATCH /api/rates/[roomTypeId] - Request data:", {
+      roomTypeId,
+      orgId,
+      requestBody
+    });
 
     // Validate required fields
     if (typeof price !== "number" || price < 0) {
+      console.error("PATCH /api/rates/[roomTypeId] - Invalid price:", price);
       return NextResponse.json(
         { error: "Valid price is required" },
         { status: 400 }
@@ -64,6 +75,11 @@ export async function PATCH(
     }
 
     const result = await withTenantContext(orgId, async (tx) => {
+      console.log("PATCH /api/rates/[roomTypeId] - Looking for room type:", {
+        roomTypeId,
+        orgId
+      });
+
       // Verify room type exists and belongs to organization
       const roomType = await tx.roomType.findFirst({
         where: {
@@ -71,6 +87,11 @@ export async function PATCH(
           organizationId: orgId
         }
       });
+
+      console.log(
+        "PATCH /api/rates/[roomTypeId] - Room type found:",
+        !!roomType
+      );
 
       if (!roomType) {
         throw new Error("Room type not found");
@@ -83,58 +104,87 @@ export async function PATCH(
       if (date) {
         // Update daily rate (date-specific override)
         const updateDate = new Date(date);
+        console.log(
+          "PATCH /api/rates/[roomTypeId] - Updating daily rate for date:",
+          {
+            date,
+            updateDate: updateDate.toISOString(),
+            price,
+            availability
+          }
+        );
 
         // Get existing daily rate for old price logging
-        const existingDailyRate = await tx.dailyRate.findUnique({
+        const existingDailyRate = await tx.dailyRate.findFirst({
           where: {
-            roomTypeId_date: {
-              roomTypeId,
-              date: updateDate
-            }
+            roomTypeId,
+            date: updateDate
           }
         });
 
+        console.log(
+          "PATCH /api/rates/[roomTypeId] - Existing daily rate:",
+          existingDailyRate
+        );
         oldPrice = existingDailyRate?.basePrice || null;
 
-        updateResult = await tx.dailyRate.upsert({
-          where: {
-            roomTypeId_date: {
-              roomTypeId,
-              date: updateDate
-            }
-          },
-          update: {
-            basePrice: price,
-            availability: availability !== undefined ? availability : undefined,
-            minLOS:
-              restrictions?.minLOS !== undefined
-                ? restrictions.minLOS
-                : undefined,
-            maxLOS:
-              restrictions?.maxLOS !== undefined
-                ? restrictions.maxLOS
-                : undefined,
-            closedToArrival:
-              restrictions?.closedToArrival !== undefined
-                ? restrictions.closedToArrival
-                : undefined,
-            closedToDeparture:
-              restrictions?.closedToDeparture !== undefined
-                ? restrictions.closedToDeparture
-                : undefined,
-            updatedAt: new Date()
-          },
-          create: {
-            roomTypeId,
-            date: updateDate,
-            basePrice: price,
-            availability: availability || undefined,
-            minLOS: restrictions?.minLOS || undefined,
-            maxLOS: restrictions?.maxLOS || undefined,
-            closedToArrival: restrictions?.closedToArrival || false,
-            closedToDeparture: restrictions?.closedToDeparture || false
+        try {
+          if (existingDailyRate) {
+            // Update existing rate
+            updateResult = await tx.dailyRate.update({
+              where: {
+                id: existingDailyRate.id
+              },
+              data: {
+                basePrice: price,
+                availability:
+                  availability !== undefined ? availability : undefined,
+                minLOS:
+                  restrictions?.minLOS !== undefined
+                    ? restrictions.minLOS
+                    : undefined,
+                maxLOS:
+                  restrictions?.maxLOS !== undefined
+                    ? restrictions.maxLOS
+                    : undefined,
+                closedToArrival:
+                  restrictions?.closedToArrival !== undefined
+                    ? restrictions.closedToArrival
+                    : undefined,
+                closedToDeparture:
+                  restrictions?.closedToDeparture !== undefined
+                    ? restrictions.closedToDeparture
+                    : undefined,
+                updatedAt: new Date()
+              }
+            });
+          } else {
+            // Create new rate
+            updateResult = await tx.dailyRate.create({
+              data: {
+                roomTypeId,
+                date: updateDate,
+                basePrice: price,
+                availability: availability || undefined,
+                minLOS: restrictions?.minLOS || undefined,
+                maxLOS: restrictions?.maxLOS || undefined,
+                closedToArrival: restrictions?.closedToArrival || false,
+                closedToDeparture: restrictions?.closedToDeparture || false
+              }
+            });
           }
-        });
+
+          console.log(
+            "PATCH /api/rates/[roomTypeId] - Daily rate operation successful:",
+            updateResult
+          );
+        } catch (dbError) {
+          console.error(
+            "PATCH /api/rates/[roomTypeId] - Database operation failed:",
+            dbError
+          );
+          throw dbError;
+        }
 
         changeType = "DAILY_RATE";
       } else {
@@ -236,18 +286,24 @@ export async function PATCH(
         changeType = "BASE_RATE";
       }
 
-      // Log the rate change
-      await tx.rateChangeLog.create({
-        data: {
-          roomTypeId,
-          date: date ? new Date(date) : null,
-          oldPrice,
-          newPrice: price,
-          changeType,
-          reason: `Updated via rates matrix - ${ratePlan} rate`,
-          userId: session.user.email || "unknown"
-        }
-      });
+      // Log the rate change (only if we have a valid user ID)
+      if (session.user.id) {
+        await tx.rateChangeLog.create({
+          data: {
+            roomTypeId,
+            date: date ? new Date(date) : null,
+            oldPrice,
+            newPrice: price,
+            changeType,
+            reason: `Updated via rates matrix - ${ratePlan} rate`,
+            userId: session.user.id
+          }
+        });
+      } else {
+        console.warn(
+          "PATCH /api/rates/[roomTypeId] - No valid user ID for rate change log"
+        );
+      }
 
       return {
         roomTypeId,
@@ -351,18 +407,24 @@ export async function DELETE(
         }
       });
 
-      // Log the rate change
-      await tx.rateChangeLog.create({
-        data: {
-          roomTypeId,
-          date: deleteDate,
-          oldPrice: existingDailyRate.basePrice,
-          newPrice: 0, // Indicates deletion/reset to base rate
-          changeType: "DAILY_RATE_DELETED",
-          reason: "Removed daily rate override via rates matrix",
-          userId: session.user.email || "unknown"
-        }
-      });
+      // Log the rate change (only if we have a valid user ID)
+      if (session.user.id) {
+        await tx.rateChangeLog.create({
+          data: {
+            roomTypeId,
+            date: deleteDate,
+            oldPrice: existingDailyRate.basePrice,
+            newPrice: 0, // Indicates deletion/reset to base rate
+            changeType: "DAILY_RATE_DELETED",
+            reason: "Removed daily rate override via rates matrix",
+            userId: session.user.id
+          }
+        });
+      } else {
+        console.warn(
+          "DELETE /api/rates/[roomTypeId] - No valid user ID for rate change log"
+        );
+      }
 
       return {
         roomTypeId,

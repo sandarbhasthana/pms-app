@@ -210,12 +210,20 @@ export function useRateUpdates() {
           const errorData = await response
             .json()
             .catch(() => ({ error: "Network error" }));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          console.error("Rate update API error:", {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
+          throw new Error(
+            errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          );
         }
 
         const result = await response.json();
 
         if (!result.success) {
+          console.error("Rate update failed:", result);
           throw new Error(result.error || "Update failed");
         }
 
