@@ -55,8 +55,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse and validate request body
-    const { name, type, capacity, imageUrl, description, doorlockId } =
-      await req.json();
+    const {
+      name,
+      type,
+      capacity,
+      imageUrl,
+      description,
+      doorlockId,
+      roomTypeId,
+      // Optional pricing fields
+      basePrice,
+      weekdayPrice,
+      weekendPrice,
+      availability,
+      minLOS,
+      maxLOS,
+      closedToArrival,
+      closedToDeparture
+    } = await req.json();
+
     if (
       typeof name !== "string" ||
       typeof type !== "string" ||
@@ -65,9 +82,9 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Invalid payload", { status: 422 });
     }
 
-    // Create new room
+    // Create new room with optional pricing
     const room = await withTenantContext(orgId, async (tx) => {
-      return await tx.room.create({
+      const newRoom = await tx.room.create({
         data: {
           organizationId: orgId, // Still required for insert policy to pass
           name,
@@ -75,9 +92,29 @@ export async function POST(req: NextRequest) {
           capacity,
           imageUrl,
           description,
-          doorlockId
+          doorlockId,
+          roomTypeId: roomTypeId || null
         }
       });
+
+      // Create initial pricing if basePrice is provided
+      if (typeof basePrice === "number" && basePrice > 0) {
+        await tx.roomPricing.create({
+          data: {
+            roomId: newRoom.id,
+            basePrice,
+            weekdayPrice: weekdayPrice || null,
+            weekendPrice: weekendPrice || null,
+            availability: availability || 1,
+            minLOS: minLOS || null,
+            maxLOS: maxLOS || null,
+            closedToArrival: closedToArrival || false,
+            closedToDeparture: closedToDeparture || false
+          }
+        });
+      }
+
+      return newRoom;
     });
     return NextResponse.json(room, { status: 201 });
   } catch (error) {

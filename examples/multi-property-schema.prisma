@@ -1,0 +1,120 @@
+// Enhanced Schema for Multi-Property Organizations
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String        // "Grand Palace Hotels"
+  domain       String?       @unique // "grandpalace"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relationships
+  properties   Property[]    // NEW: Multiple properties
+  users        UserOrg[]     // Organization-level users
+  
+  @@index([domain])
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       // "Downtown NYC", "Beach Resort"
+  address        String?
+  phone          String?
+  email          String?
+  timezone       String       @default("UTC")
+  currency       String       @default("USD")
+  isActive       Boolean      @default(true)
+  
+  // Relationships
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  roomTypes      RoomType[]
+  rooms          Room[]
+  reservations   Reservation[]
+  userProperties UserProperty[] // Property-level access
+  
+  @@index([organizationId])
+  @@unique([organizationId, name]) // Unique property names within org
+}
+
+model UserOrg {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           UserRole     // ORG_ADMIN, ORG_MANAGER
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+// NEW: Property-level access control
+model UserProperty {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  role       PropertyRole // PROPERTY_MGR, HOUSEKEEPING, FRONT_DESK, etc.
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  user       User     @relation(fields: [userId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+  
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+}
+
+model RoomType {
+  id         String   @id @default(cuid())
+  propertyId String   // Changed from organizationId
+  name       String
+  // ... existing fields
+  
+  property   Property @relation(fields: [propertyId], references: [id])
+  rooms      Room[]
+  
+  @@index([propertyId])
+  @@unique([propertyId, name])
+}
+
+model Room {
+  id         String   @id @default(cuid())
+  propertyId String   // Changed from organizationId
+  name       String
+  // ... existing fields
+  
+  property     Property      @relation(fields: [propertyId], references: [id])
+  reservations Reservation[]
+  
+  @@index([propertyId])
+}
+
+model Reservation {
+  id         String   @id @default(cuid())
+  propertyId String   // Changed from organizationId
+  // ... existing fields
+  
+  property   Property @relation(fields: [propertyId], references: [id])
+  
+  @@index([propertyId])
+}
+
+enum PropertyRole {
+  PROPERTY_MGR
+  FRONT_DESK
+  HOUSEKEEPING
+  MAINTENANCE
+  SECURITY
+  GUEST_SERVICES
+}
+
+enum UserRole {
+  SUPER_ADMIN    // Platform admin
+  ORG_ADMIN      // Organization owner
+  ORG_MANAGER    // Organization manager
+}

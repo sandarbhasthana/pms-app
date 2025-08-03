@@ -15,7 +15,11 @@ import { Avatar } from "@/components/ui/avatar";
 import Link from "next/link";
 
 export function UserMenu() {
-  const { data: session, status } = useSession();
+  const { data: session, status } = useSession({
+    required: false,
+    refetchInterval: 5 * 60 * 1000, // Only refetch every 5 minutes
+    refetchOnWindowFocus: false // Don't refetch when window gains focus
+  });
 
   // Don't render anything if not authenticated or still loading
   if (status === "loading") {
@@ -37,6 +41,10 @@ export function UserMenu() {
   // Check if user has access to settings (Admins and Property Managers)
   const hasSettingsAccess =
     userRole === "ORG_ADMIN" || userRole === "PROPERTY_MGR";
+
+  // Check if user has access to admin settings (Only Admins and Super Admins)
+  const hasAdminSettingsAccess =
+    userRole === "ORG_ADMIN" || userRole === "SUPER_ADMIN";
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/auth/signin" });
@@ -80,12 +88,22 @@ export function UserMenu() {
             </Link>
           </DropdownMenuItem>
 
-          {/* Settings - Only for Admins and Property Managers */}
-          {hasSettingsAccess && (
+          {/* Admin Settings - Only for Admins and Super Admins */}
+          {hasAdminSettingsAccess && (
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings/profile" className="cursor-pointer">
+                <Settings className="mr-3 h-4 w-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+          )}
+
+          {/* Property Settings - Only for Property Managers (non-admin) */}
+          {hasSettingsAccess && !hasAdminSettingsAccess && (
             <DropdownMenuItem asChild>
               <Link href="/settings/general" className="cursor-pointer">
                 <Settings className="mr-3 h-4 w-4" />
-                Settings
+                Property Settings
               </Link>
             </DropdownMenuItem>
           )}

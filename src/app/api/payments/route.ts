@@ -1,7 +1,6 @@
 export const runtime = "nodejs"; // ✅ Use Node.js runtime for RLS context
 import { NextRequest, NextResponse } from "next/server";
 import { withTenantContext } from "@/lib/tenant";
-import { calculatePaymentStatus } from "@/lib/payments/utils";
 
 export async function POST(req: NextRequest) {
   try {

@@ -277,7 +277,8 @@ export default function CalendarViewRowStyle({
           "bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
         ];
         const dow = date.getDay();
-        // Removed pink background for Friday (5) and Saturday (6)
+        // Highlight Friday (5) and Saturday (6) only - no Sunday
+        if (dow === 5 || dow === 6) cls.push("bg-pink-100");
         if (date.toLocaleDateString("en-CA") === selectedDate)
           cls.push("bg-blue-100");
         if (isToday(date)) cls.push("bg-[#008080]");

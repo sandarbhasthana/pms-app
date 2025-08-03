@@ -42,7 +42,7 @@ export default function IDScanner({
 
         // 1) Load WASM engine
         const loadSettings = new BlinkIDSDK.WasmSDKLoadSettings(licenseKey);
-        
+
         loadSettings.engineLocation = "/resources/advanced";
         loadSettings.workerLocation = "/resources/advanced-threads";
 
@@ -87,13 +87,16 @@ export default function IDScanner({
       }
     })();
 
+    // Capture the current video element for cleanup
+    const currentVideoElement = videoRef.current;
+
     return () => {
       cancelled = true;
       videoRecognizerRef.current?.releaseVideoFeed();
       runnerRef.current?.delete();
       recognizerRef.current?.delete();
-      if (videoRef.current?.srcObject instanceof MediaStream) {
-        (videoRef.current.srcObject as MediaStream)
+      if (currentVideoElement?.srcObject instanceof MediaStream) {
+        (currentVideoElement.srcObject as MediaStream)
           .getTracks()
           .forEach((t) => t.stop());
       }

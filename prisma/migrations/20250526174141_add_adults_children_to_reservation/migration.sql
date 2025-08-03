@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Reservation" ADD COLUMN     "adults" INTEGER NOT NULL DEFAULT 1,
-ADD COLUMN     "children" INTEGER NOT NULL DEFAULT 0;

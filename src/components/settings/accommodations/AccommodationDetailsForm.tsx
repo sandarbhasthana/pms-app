@@ -73,6 +73,16 @@ export type FormValues = {
   customAmenities: string[];
   featuredImage: File | null;
   additionalImages: File[];
+  // Pricing fields
+  basePrice: number;
+  weekdayPrice?: number;
+  weekendPrice?: number;
+  currency: string;
+  availability?: number;
+  minLOS?: number;
+  maxLOS?: number;
+  closedToArrival: boolean;
+  closedToDeparture: boolean;
   rooms: {
     id: string;
     name: string;
@@ -357,6 +367,16 @@ export const AccommodationDetailsForm: FC<Props> = ({
       customAmenities: [],
       featuredImage: null,
       additionalImages: [],
+      // Pricing defaults
+      basePrice: 0,
+      weekdayPrice: undefined,
+      weekendPrice: undefined,
+      currency: "INR",
+      availability: 1,
+      minLOS: undefined,
+      maxLOS: undefined,
+      closedToArrival: false,
+      closedToDeparture: false,
       rooms: group.rooms.map((r) => ({
         id: r.id,
         name: r.name || "",
@@ -485,7 +505,17 @@ export const AccommodationDetailsForm: FC<Props> = ({
           amenities: values.amenities || [],
           customAmenities: values.customAmenities || [],
           featuredImageUrl: null, // TODO: Handle image uploads
-          additionalImageUrls: [] // TODO: Handle image uploads
+          additionalImageUrls: [], // TODO: Handle image uploads
+          // Pricing fields
+          basePrice: values.basePrice,
+          weekdayPrice: values.weekdayPrice || null,
+          weekendPrice: values.weekendPrice || null,
+          currency: values.currency,
+          availability: values.availability || null,
+          minLOS: values.minLOS || null,
+          maxLOS: values.maxLOS || null,
+          closedToArrival: values.closedToArrival,
+          closedToDeparture: values.closedToDeparture
         };
 
         console.log("📤 Sending room type payload:", roomTypePayload);
@@ -809,6 +839,226 @@ export const AccommodationDetailsForm: FC<Props> = ({
           />
         </div>
 
+        {/* Pricing Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Base Pricing</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="basePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base Price *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value) || 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="currency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INR">INR (₹)</SelectItem>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="weekdayPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weekday Price (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Leave empty to use base price"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="weekendPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weekend Price (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Leave empty to use base price"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="availability"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Availability per Room</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? parseInt(e.target.value) : undefined
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="minLOS"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Min Length of Stay</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="No minimum"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? parseInt(e.target.value) : undefined
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="maxLOS"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Max Length of Stay</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="No maximum"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? parseInt(e.target.value) : undefined
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="closedToArrival"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-0.5"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-medium leading-4">
+                    Closed to Arrival
+                  </FormLabel>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="closedToDeparture"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-0.5"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-medium leading-4">
+                    Closed to Departure
+                  </FormLabel>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
         {/* Description */}
         <FormField
           control={form.control}
@@ -838,7 +1088,7 @@ export const AccommodationDetailsForm: FC<Props> = ({
                   {PREDEFINED_AMENITIES.map((amenity) => (
                     <label
                       key={amenity}
-                      className="flex items-center space-x-2"
+                      className="flex items-start space-x-2 cursor-pointer"
                     >
                       <Checkbox
                         checked={field.value.includes(amenity)}
@@ -848,8 +1098,11 @@ export const AccommodationDetailsForm: FC<Props> = ({
                             : field.value.filter((a) => a !== amenity);
                           field.onChange(next);
                         }}
+                        className="mt-0.5"
                       />
-                      <span>{amenity}</span>
+                      <span className="text-sm font-medium leading-4">
+                        {amenity}
+                      </span>
                     </label>
                   ))}
                 </div>

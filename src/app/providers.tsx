@@ -7,7 +7,11 @@ import { Toaster } from "sonner";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider
+      // Reduce session polling frequency to prevent excessive API calls
+      refetchInterval={5 * 60} // 5 minutes instead of default 1 minute
+      refetchOnWindowFocus={false} // Don't refetch when window gains focus
+    >
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {/* Global toast container - using Sonner with progress bar */}
         <Toaster

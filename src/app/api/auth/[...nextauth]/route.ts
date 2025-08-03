@@ -96,6 +96,7 @@ export const authOptions: AuthOptions = {
     // stash orgId & role on the token when they first sign in
     async jwt({ token, user }) {
       if (user) {
+        token.userId = user.id;
         token.orgId = user.orgId;
         token.role = user.role;
       }
@@ -103,6 +104,7 @@ export const authOptions: AuthOptions = {
     },
     // expose them via session.user
     async session({ session, token }) {
+      if (token.userId) session.user.id = token.userId as string;
       if (token.orgId) session.user.orgId = token.orgId as string;
       if (token.role) session.user.role = token.role as string;
       return session;

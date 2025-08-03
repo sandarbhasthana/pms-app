@@ -75,11 +75,29 @@ export async function POST(req: NextRequest) {
       amenities,
       customAmenities,
       featuredImageUrl,
-      additionalImageUrls
+      additionalImageUrls,
+      // Pricing fields
+      basePrice,
+      weekdayPrice,
+      weekendPrice,
+      currency,
+      availability,
+      minLOS,
+      maxLOS,
+      closedToArrival,
+      closedToDeparture
     } = await req.json();
 
     if (typeof name !== "string" || !name.trim()) {
       return new NextResponse("Invalid room type name", { status: 422 });
+    }
+
+    // Validate pricing if provided
+    if (
+      basePrice !== undefined &&
+      (typeof basePrice !== "number" || basePrice < 0)
+    ) {
+      return new NextResponse("Valid base price is required", { status: 400 });
     }
 
     // Create new room type
@@ -100,7 +118,17 @@ export async function POST(req: NextRequest) {
           amenities: amenities || [],
           customAmenities: customAmenities || [],
           featuredImageUrl: featuredImageUrl || null,
-          additionalImageUrls: additionalImageUrls || []
+          additionalImageUrls: additionalImageUrls || [],
+          // Pricing fields
+          basePrice: basePrice || null,
+          weekdayPrice: weekdayPrice || null,
+          weekendPrice: weekendPrice || null,
+          currency: currency || "INR",
+          availability: availability || null,
+          minLOS: minLOS || null,
+          maxLOS: maxLOS || null,
+          closedToArrival: closedToArrival || false,
+          closedToDeparture: closedToDeparture || false
         }
       });
     });

@@ -29,11 +29,12 @@ model User {
   email        String        @unique
   name         String?
   image        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  favorites    Favorite[]
-  reservations Reservation[]
-  memberships  UserOrg[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  favorites      Favorite[]
+  reservations   Reservation[]
+  memberships    UserOrg[]
+  rateChangeLogs RateChangeLog[] // Audit trail for rate changes
 }
 
 /// Join table: user membership in a tenant with a role
@@ -69,10 +70,23 @@ model RoomType {
   customAmenities      String[]
   featuredImageUrl     String?
   additionalImageUrls  String[]
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  organization         Organization @relation(fields: [organizationId], references: [id])
+  // Base pricing fields (migrated from RoomPricing concept)
+  basePrice            Float?                  // Base price for this room type
+  weekdayPrice         Float?                  // Separate weekday pricing
+  weekendPrice         Float?                  // Separate weekend pricing
+  currency             String       @default("INR")
+  availability         Int?                    // Available rooms count per room
+  minLOS               Int?                    // Minimum length of stay
+  maxLOS               Int?                    // Maximum length of stay
+  closedToArrival      Boolean      @default(false)
+  closedToDeparture    Boolean      @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  organization         Organization    @relation(fields: [organizationId], references: [id])
   rooms                Room[]
+  dailyRates           DailyRate[]     // Date-specific rates
+  seasonalRates        SeasonalRate[]  // Seasonal pricing
+  rateChangeLogs       RateChangeLog[] // Audit trail
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -225,14 +239,85 @@ model Payment {
 }
 
 model RoomPricing {
-  id        String   @id @default(cuid())
-  basePrice Float
-  currency  String   @default("INR")
-  mode      String   @default("MANUAL")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  roomId    String   @unique
-  room      Room     @relation("RoomPricingLink", fields: [roomId], references: [id])
+  id                            String            @id @default(cuid())
+  basePrice                     Float
+  weekdayPrice                  Float?            // Separate weekday pricing
+  weekendPrice                  Float?            // Separate weekend pricing
+  currency                      String            @default("INR")
+  mode                          String            @default("MANUAL")
+  availability                  Int?              // Available rooms count
+  minLOS                        Int?              // Minimum length of stay
+  maxLOS                        Int?              // Maximum length of stay
+  closedToArrival               Boolean           @default(false)
+  closedToDeparture             Boolean           @default(false)
+  createdAt                     DateTime          @default(now())
+  updatedAt                     DateTime          @updatedAt
+  roomId                        String            @unique
+  room                          Room              @relation("RoomPricingLink", fields: [roomId], references: [id])
+  dailyRates                    DailyRate[]       // Date-specific rates
+  seasonalRates                 SeasonalRate[]    // Seasonal pricing
+}
+
+/// Daily rate overrides for specific dates
+model DailyRate {
+  id                        String          @id @default(cuid())
+  roomTypeId                String          // Link to RoomType instead of individual room
+  date                      DateTime        @db.Date
+  basePrice                 Float
+  availability              Int?            // Available rooms for this date
+  minLOS                    Int?            // Minimum length of stay
+  maxLOS                    Int?            // Maximum length of stay
+  closedToArrival           Boolean         @default(false)
+  closedToDeparture         Boolean         @default(false)
+  restrictions              Json?           // Flexible restrictions (JSON)
+  notes                     String?         // Optional notes
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  roomType                  RoomType        @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  pricingId                 String?         // Optional link to RoomPricing
+  pricing                   RoomPricing?    @relation(fields: [pricingId], references: [id])
+
+  @@unique([roomTypeId, date])
+  @@index([date])
+  @@index([roomTypeId])
+}
+
+/// Seasonal rate multipliers
+model SeasonalRate {
+  id          String      @id @default(cuid())
+  name        String      // e.g., "Summer Season", "Holiday Premium"
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  multiplier  Float       // 1.2 for 20% increase, 0.8 for 20% decrease
+  isActive    Boolean     @default(true)
+  roomTypeId  String?     // Optional: specific to room type
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  roomType    RoomType?   @relation(fields: [roomTypeId], references: [id])
+  pricingId   String?     // Optional link to RoomPricing
+  pricing     RoomPricing? @relation(fields: [pricingId], references: [id])
+
+  @@index([startDate, endDate])
+  @@index([roomTypeId])
+}
+
+/// Rate change audit log
+model RateChangeLog {
+  id          String      @id @default(cuid())
+  roomTypeId  String
+  date        DateTime?   @db.Date // null for base rate changes
+  oldPrice    Float?
+  newPrice    Float
+  changeType  String      // "BASE_RATE", "DAILY_RATE", "SEASONAL_RATE"
+  reason      String?     // Optional reason for change
+  userId      String      // Who made the change
+  createdAt   DateTime    @default(now())
+  roomType    RoomType    @relation(fields: [roomTypeId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([roomTypeId])
+  @@index([date])
+  @@index([createdAt])
 }
 
 enum UserRole {

@@ -20,16 +20,20 @@ const nextConfig: NextConfig = {
   },
   images: {
     // Option A: simple domains list
-    domains: ["pms-app-updated.s3.eu-north-1.amazonaws.com"]
-    // Option B: more flexible pattern matching
-    // remotePatterns: [
-    //   {
-    //     protocol: "https",
-    //     hostname: "pms-app-updated.s3.eu-north-1.amazonaws.com",
-    //     port: "",
-    //     pathname: "/**"
-    //   }
+    // domains: [
+    //   process.env.NEXT_PUBLIC_S3_IMAGE_HOSTNAME || "pms-app-updated.s3.eu-north-1.amazonaws.com"
     // ]
+    // Option B: more flexible pattern matching
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname:
+          process.env.NEXT_PUBLIC_S3_IMAGE_HOSTNAME ||
+          "pms-app-updated.s3.eu-north-1.amazonaws.com", // ← comma here
+        port: "",
+        pathname: "/**"
+      }
+    ]
   }
 };
 
