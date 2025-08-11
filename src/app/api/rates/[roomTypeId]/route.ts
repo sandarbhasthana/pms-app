@@ -2,13 +2,12 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 import { format } from "date-fns";
-
-// Allowed roles for modifying rates
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
 
 /**
  * PATCH /api/rates/[roomTypeId] - Update specific room type rates
@@ -27,29 +26,23 @@ const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { roomTypeId: string } }
+  context: { params: Promise<{ roomTypeId: string }> }
 ) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
+  const { roomTypeId } = await context.params;
 
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      console.error(
-        "PATCH /api/rates/[roomTypeId] - Missing organization context"
-      );
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
-    const { roomTypeId } = params;
+    const { propertyId, userId } = validation;
     const requestBody = await req.json();
     const {
       date,
@@ -61,7 +54,7 @@ export async function PATCH(
 
     console.log("PATCH /api/rates/[roomTypeId] - Request data:", {
       roomTypeId,
-      orgId,
+      propertyId,
       requestBody
     });
 
@@ -74,17 +67,17 @@ export async function PATCH(
       );
     }
 
-    const result = await withTenantContext(orgId, async (tx) => {
+    const result = await withPropertyContext(propertyId!, async (tx) => {
       console.log("PATCH /api/rates/[roomTypeId] - Looking for room type:", {
         roomTypeId,
-        orgId
+        propertyId
       });
 
-      // Verify room type exists and belongs to organization
+      // Verify room type exists and belongs to property
       const roomType = await tx.roomType.findFirst({
         where: {
           id: roomTypeId,
-          organizationId: orgId
+          propertyId: propertyId
         }
       });
 
@@ -94,7 +87,9 @@ export async function PATCH(
       );
 
       if (!roomType) {
-        throw new Error("Room type not found");
+        throw new Error(
+          "Room type not found or doesn't belong to this property"
+        );
       }
 
       let updateResult;
@@ -192,7 +187,7 @@ export async function PATCH(
         const rooms = await tx.room.findMany({
           where: {
             roomTypeId,
-            organizationId: orgId
+            propertyId: propertyId
           },
           include: {
             pricing: true
@@ -287,7 +282,7 @@ export async function PATCH(
       }
 
       // Log the rate change (only if we have a valid user ID)
-      if (session.user.id) {
+      if (userId) {
         await tx.rateChangeLog.create({
           data: {
             roomTypeId,
@@ -296,7 +291,7 @@ export async function PATCH(
             newPrice: price,
             changeType,
             reason: `Updated via rates matrix - ${ratePlan} rate`,
-            userId: session.user.id
+            userId: userId
           }
         });
       } else {
@@ -323,7 +318,7 @@ export async function PATCH(
       data: result
     });
   } catch (error) {
-    console.error(`PATCH /api/rates/${params.roomTypeId} error:`, error);
+    console.error(`PATCH /api/rates/${roomTypeId} error:`, error);
     return NextResponse.json(
       { error: "Failed to update rate", details: (error as Error).message },
       { status: 500 }
@@ -338,25 +333,23 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { roomTypeId: string } }
+  context: { params: Promise<{ roomTypeId: string }> }
 ) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
+  const { roomTypeId } = await context.params;
 
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
+    const { propertyId, userId } = validation;
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
 
@@ -366,21 +359,21 @@ export async function DELETE(
         { status: 400 }
       );
     }
-
-    const { roomTypeId } = params;
     const deleteDate = new Date(date);
 
-    const result = await withTenantContext(orgId, async (tx) => {
-      // Verify room type exists
+    const result = await withPropertyContext(propertyId!, async (tx) => {
+      // Verify room type exists and belongs to property
       const roomType = await tx.roomType.findFirst({
         where: {
           id: roomTypeId,
-          organizationId: orgId
+          propertyId: propertyId
         }
       });
 
       if (!roomType) {
-        throw new Error("Room type not found");
+        throw new Error(
+          "Room type not found or doesn't belong to this property"
+        );
       }
 
       // Get existing daily rate for logging
@@ -408,7 +401,7 @@ export async function DELETE(
       });
 
       // Log the rate change (only if we have a valid user ID)
-      if (session.user.id) {
+      if (userId) {
         await tx.rateChangeLog.create({
           data: {
             roomTypeId,
@@ -417,7 +410,7 @@ export async function DELETE(
             newPrice: 0, // Indicates deletion/reset to base rate
             changeType: "DAILY_RATE_DELETED",
             reason: "Removed daily rate override via rates matrix",
-            userId: session.user.id
+            userId: userId
           }
         });
       } else {
@@ -439,7 +432,7 @@ export async function DELETE(
       data: result
     });
   } catch (error) {
-    console.error(`DELETE /api/rates/${params.roomTypeId} error:`, error);
+    console.error(`DELETE /api/rates/${roomTypeId} error:`, error);
     return NextResponse.json(
       {
         error: "Failed to delete daily rate",

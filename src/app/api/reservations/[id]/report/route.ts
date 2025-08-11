@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const orgId = req.cookies.get("orgId")?.value;
@@ -19,9 +19,11 @@ export async function GET(
       );
     }
 
+    const { id } = await context.params;
+
     // Fetch reservation details
     const reservation = await withTenantContext(orgId, (tx) =>
-      tx.reservation.findUnique({ where: { id: params.id } })
+      tx.reservation.findUnique({ where: { id } })
     );
     if (!reservation) {
       return NextResponse.json(

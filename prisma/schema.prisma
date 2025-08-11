@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Tenant entity representing a property/organization
+/// Tenant entity representing an organization that can have multiple properties
 model Organization {
   id           String        @id @default(cuid())
   name         String
@@ -15,26 +15,59 @@ model Organization {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   channels     Channel[]
-  reservations Reservation[]
-  rooms        Room[]
-  roomTypes    RoomType[]
+  reservations Reservation[] // Keep for backward compatibility during migration
+  rooms        Room[]        // Keep for backward compatibility during migration
+  roomTypes    RoomType[]    // Keep for backward compatibility during migration
   users        UserOrg[]
+  properties   Property[]    // NEW: Organization can have multiple properties
+  invitations  InvitationToken[] // NEW: User invitations for this organization
 
   @@index([domain])
 }
 
+/// Property entity representing individual properties within an organization
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       // "Downtown NYC", "Beach Resort"
+  address        String?
+  phone          String?
+  email          String?
+  timezone       String       @default("UTC")
+  currency       String       @default("USD")
+  isActive       Boolean      @default(true)
+  isDefault      Boolean      @default(false) // NEW: Mark default property per organization
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relationships
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  roomTypes      RoomType[]
+  rooms          Room[]
+  reservations   Reservation[]
+  userProperties UserProperty[] // Property-level user access
+  invitations    InvitationToken[] // NEW: Property-specific invitations
+
+  @@index([organizationId])
+  @@index([organizationId, isDefault]) // NEW: Index for finding default properties
+  @@unique([organizationId, name]) // Unique property names within org
+}
+
 /// Application user
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  image        String?
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  phone          String?         // NEW: Phone number for staff management
+  image          String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   favorites      Favorite[]
   reservations   Reservation[]
-  memberships    UserOrg[]
+  memberships    UserOrg[]       // Organization-level access
+  userProperties UserProperty[]  // NEW: Property-level access
   rateChangeLogs RateChangeLog[] // Audit trail for rate changes
+  sentInvitations InvitationToken[] @relation("InvitationCreator") // NEW: Invitations sent by this user
 }
 
 /// Join table: user membership in a tenant with a role
@@ -53,9 +86,55 @@ model UserOrg {
   @@index([organizationId])
 }
 
+/// Join table: user access to specific properties with property-level roles
+model UserProperty {
+  id         String       @id @default(cuid())
+  userId     String
+  propertyId String
+  role       PropertyRole
+  shift      ShiftType?   // NEW: Basic shift assignment
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  user       User         @relation(fields: [userId], references: [id])
+  property   Property     @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+}
+
+/// Invitation tokens for user management
+model InvitationToken {
+  id             String       @id @default(cuid())
+  email          String
+  organizationId String
+  role           UserRole     // Organization-level role for the invitation
+  propertyId     String?      // Optional: specific property assignment
+  propertyRole   PropertyRole? // Optional: property-level role
+  shift          ShiftType?   // Optional: shift assignment
+  phone          String?      // Phone number for the invited user
+  token          String       @unique
+  expiresAt      DateTime
+  createdBy      String       // Admin who sent invite
+  createdAt      DateTime     @default(now())
+  used           Boolean      @default(false)
+  usedAt         DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  property       Property?    @relation(fields: [propertyId], references: [id])
+  creator        User         @relation("InvitationCreator", fields: [createdBy], references: [id])
+
+  @@index([token])
+  @@index([email])
+  @@index([organizationId])
+  @@index([propertyId])
+}
+
 model RoomType {
   id                   String       @id @default(cuid())
-  organizationId       String
+  organizationId       String       // Keep for backward compatibility during migration
+  propertyId           String?      // NEW: Property-level association
   name                 String
   abbreviation         String?
   privateOrDorm        String       @default("private")
@@ -83,6 +162,7 @@ model RoomType {
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
   organization         Organization    @relation(fields: [organizationId], references: [id])
+  property             Property?       @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
   rooms                Room[]
   dailyRates           DailyRate[]     // Date-specific rates
   seasonalRates        SeasonalRate[]  // Seasonal pricing
@@ -90,11 +170,13 @@ model RoomType {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@index([propertyId]) // NEW: Index for property-based queries
 }
 
 model Room {
   id             String        @id @default(cuid())
-  organizationId String
+  organizationId String        // Keep for backward compatibility during migration
+  propertyId     String?       // NEW: Property-level association
   name           String
   type           String
   capacity       Int
@@ -109,12 +191,14 @@ model Room {
   favorites      Favorite[]
   reservations   Reservation[]
   organization   Organization  @relation(fields: [organizationId], references: [id])
+  property       Property?     @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
   roomType       RoomType?     @relation(fields: [roomTypeId], references: [id])
   galleryImages  RoomImage[]
   pricing        RoomPricing?  @relation("RoomPricingLink")
   amenities      Amenity[]     @relation("RoomAmenities")
 
   @@index([organizationId])
+  @@index([propertyId]) // NEW: Index for property-based queries
 }
 
 model Amenity {
@@ -136,7 +220,8 @@ model RoomImage {
 /// Reservation or booking entity
 model Reservation {
   id             String            @id @default(cuid())
-  organizationId String
+  organizationId String            // Keep for backward compatibility during migration
+  propertyId     String?           // NEW: Property-level association
   roomId         String
   userId         String?
   guestName      String?
@@ -158,10 +243,12 @@ model Reservation {
   Payment        Payment[]
   channel        Channel?          @relation(fields: [channelId], references: [id])
   organization   Organization      @relation(fields: [organizationId], references: [id])
+  property       Property?         @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
   room           Room              @relation(fields: [roomId], references: [id])
   user           User?             @relation(fields: [userId], references: [id])
 
   @@index([organizationId])
+  @@index([propertyId]) // NEW: Index for property-based queries
   @@index([roomId])
   @@index([userId])
   @@index([channelId])
@@ -320,6 +407,17 @@ model RateChangeLog {
   @@index([createdAt])
 }
 
+enum PropertyRole {
+  PROPERTY_MGR
+  FRONT_DESK
+  HOUSEKEEPING
+  MAINTENANCE
+  SECURITY
+  GUEST_SERVICES
+  ACCOUNTANT
+  IT_SUPPORT
+}
+
 enum UserRole {
   SUPER_ADMIN
   ORG_ADMIN
@@ -330,6 +428,7 @@ enum UserRole {
   ACCOUNTANT
   OWNER
   IT_SUPPORT
+  SECURITY
 }
 
 enum ReservationSource {
@@ -354,4 +453,11 @@ enum ChannelType {
   AIRBNB
   VRBO
   OTHER
+}
+
+enum ShiftType {
+  MORNING    // 6 AM - 2 PM
+  EVENING    // 2 PM - 10 PM
+  NIGHT      // 10 PM - 6 AM
+  FLEXIBLE   // No fixed shift
 }

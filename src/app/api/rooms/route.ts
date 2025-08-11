@@ -1,27 +1,34 @@
 // File: src/app/api/rooms/route.ts
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   try {
-    // Determine organization ID from header, cookie, or query param
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const url = new URL(req.url);
-    const orgIdQuery = url.searchParams.get("orgId");
-    const orgId = orgIdHeader || orgIdCookie || orgIdQuery;
-    console.log("GET /api/rooms, resolved orgId:", orgId);
-
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
-    // Fetch rooms scoped to this organization
-    const rooms = await withTenantContext(orgId, async (tx) => {
+    const { propertyId } = validation;
+    console.log("GET /api/rooms, resolved propertyId:", propertyId);
+
+    // Fetch rooms scoped to this property
+    const rooms = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.room.findMany({
+        where: { propertyId: propertyId },
+        include: {
+          roomType: {
+            select: { id: true, name: true, basePrice: true }
+          }
+        },
         orderBy: { name: "asc" }
       });
     });
@@ -37,22 +44,19 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Access control: only Org Admin and Property Manager can add rooms
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || (role !== "ORG_ADMIN" && role !== "PROPERTY_MGR")) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    // Determine organization ID from header or cookie
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const orgId = orgIdHeader || orgIdCookie;
-
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     // Parse and validate request body
     const {
@@ -82,11 +86,24 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Invalid payload", { status: 422 });
     }
 
-    // Create new room with optional pricing
-    const room = await withTenantContext(orgId, async (tx) => {
+    // Get property details for organizationId (still needed for backward compatibility)
+    const property = await withPropertyContext(propertyId!, async (tx) => {
+      return await tx.property.findUnique({
+        where: { id: propertyId },
+        select: { organizationId: true }
+      });
+    });
+
+    if (!property) {
+      return new NextResponse("Property not found", { status: 404 });
+    }
+
+    // Create new room with property association
+    const room = await withPropertyContext(propertyId!, async (tx) => {
       const newRoom = await tx.room.create({
         data: {
-          organizationId: orgId, // Still required for insert policy to pass
+          organizationId: property.organizationId, // Keep for backward compatibility
+          propertyId: propertyId, // NEW: Associate with property
           name,
           type,
           capacity,
@@ -116,9 +133,13 @@ export async function POST(req: NextRequest) {
 
       return newRoom;
     });
+
     return NextResponse.json(room, { status: 201 });
   } catch (error) {
     console.error("POST /api/rooms error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }

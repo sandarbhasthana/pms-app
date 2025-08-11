@@ -28,8 +28,9 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { RoomTypeRates } from "@/lib/hooks/useRatesData";
+import { RoomTypeRates, RateRestrictions } from "@/lib/hooks/useRatesData";
 import { toast } from "sonner";
+import { fetchWithPropertyContext } from "@/lib/api-client";
 
 interface AdvancedSettingsModalProps {
   isOpen: boolean;
@@ -140,7 +141,7 @@ const AdvancedSettingsModal = memo(function AdvancedSettingsModal({
         date: string;
         price: number;
         availability?: number;
-        restrictions?: any;
+        restrictions?: RateRestrictions;
       }> = [];
       const startDate = new Date(blockDatesForm.startDate);
       const endDate = new Date(blockDatesForm.endDate);
@@ -230,7 +231,7 @@ const AdvancedSettingsModal = memo(function AdvancedSettingsModal({
         date: string;
         price: number;
         availability?: number;
-        restrictions?: any;
+        restrictions?: RateRestrictions;
       }> = [];
       const startDate = new Date(restrictionsForm.startDate);
       const endDate = new Date(restrictionsForm.endDate);
@@ -265,10 +266,9 @@ const AdvancedSettingsModal = memo(function AdvancedSettingsModal({
         });
       }
 
-      const response = await fetch("/api/rates", {
+      const response = await fetchWithPropertyContext("/api/rates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ updates })
       });
 
@@ -714,7 +714,7 @@ const AdvancedSettingsModal = memo(function AdvancedSettingsModal({
               </div>
 
               <div>
-                <Label htmlFor="confirmText">Type "RESET" to confirm</Label>
+                <Label htmlFor="confirmText">Type &quot;RESET&quot; to confirm</Label>
                 <Input
                   id="confirmText"
                   placeholder="RESET"

@@ -1,51 +1,105 @@
 // File: src/app/api/rooms/[id]/route.ts
 export const runtime = "nodejs"; // ✅ Use Node.js runtime for RLS context
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { prisma } from "@/lib/prisma";
 
-// Allowed roles for modifying rooms
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+/**
+ * GET /api/rooms/[id]
+ * Get specific room details
+ */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+
+  try {
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
+    }
+
+    const { propertyId } = validation;
+
+    // Get detailed room information
+    const roomDetails = await withPropertyContext(propertyId!, async (tx) => {
+      return await tx.room.findUnique({
+        where: { id },
+        include: {
+          roomType: true,
+          pricing: true,
+          property: {
+            select: { id: true, name: true }
+          }
+        }
+      });
+    });
+
+    if (!roomDetails) {
+      return new NextResponse("Room not found", { status: 404 });
+    }
+
+    return NextResponse.json(roomDetails);
+  } catch (error) {
+    console.error(`GET /api/rooms/${id} error:`, error);
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * Update a room by ID (PUT /api/rooms/[id])
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  // Access control
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
-  // Determine orgId context
-  const orgId =
-    req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-  if (!orgId) {
-    return new NextResponse("Organization context missing", { status: 400 });
-  }
-
-  // Parse and validate body
-  const { name, type, capacity, imageUrl, description, doorlockId } =
-    await req.json();
-  if (
-    (name && typeof name !== "string") ||
-    (type && typeof type !== "string") ||
-    (capacity && typeof capacity !== "number") ||
-    (description && typeof description !== "string") ||
-    (doorlockId && typeof doorlockId !== "string")
-  ) {
-    return new NextResponse("Invalid payload", { status: 422 });
-  }
+  const { id } = await context.params;
 
   try {
-    const updated = await withTenantContext(orgId, async (tx) => {
-      return await tx.room.updateMany({
-        where: { id: params.id },
+    // Get room to determine property
+    const room = await prisma.room.findUnique({
+      where: { id },
+      select: { propertyId: true }
+    });
+
+    if (!room || !room.propertyId) {
+      return new NextResponse("Room not found", { status: 404 });
+    }
+
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(req, "PROPERTY_MGR");
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
+    }
+
+    // Parse and validate body
+    const { name, type, capacity, imageUrl, description, doorlockId } =
+      await req.json();
+    if (
+      (name && typeof name !== "string") ||
+      (type && typeof type !== "string") ||
+      (capacity && typeof capacity !== "number") ||
+      (description && typeof description !== "string") ||
+      (doorlockId && typeof doorlockId !== "string")
+    ) {
+      return new NextResponse("Invalid payload", { status: 422 });
+    }
+
+    const updated = await withPropertyContext(room.propertyId, async (tx) => {
+      return await tx.room.update({
+        where: { id },
         data: {
           name,
           type,
@@ -57,13 +111,14 @@ export async function PUT(
         }
       });
     });
-    if (updated.count === 0) {
-      return new NextResponse("Room not found", { status: 404 });
-    }
-    return NextResponse.json({ updated: updated.count });
+
+    return NextResponse.json(updated);
   } catch (error) {
     console.error("PUT /api/rooms/[id] error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }
 
@@ -72,41 +127,35 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  // Access control
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
-  // Determine orgId context
-  const orgId =
-    req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-  if (!orgId) {
-    return new NextResponse("Organization context missing", { status: 400 });
-  }
+  const { id } = await context.params;
 
   try {
-    const result = await withTenantContext(orgId, async (tx) => {
-      // First, check if the room exists
-      const room = await tx.room.findFirst({
-        where: {
-          id: params.id,
-          organizationId: orgId
-        }
+    // Get room to determine property
+    const room = await prisma.room.findUnique({
+      where: { id },
+      select: { propertyId: true }
+    });
+
+    if (!room || !room.propertyId) {
+      return new NextResponse("Room not found", { status: 404 });
+    }
+
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(req, "PROPERTY_MGR");
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
       });
+    }
 
-      if (!room) {
-        return { success: false, error: "ROOM_NOT_FOUND" };
-      }
-
+    const result = await withPropertyContext(room.propertyId, async (tx) => {
       // Check for existing reservations
       const existingReservations = await tx.reservation.findMany({
         where: {
-          roomId: params.id,
-          organizationId: orgId
+          roomId: id,
+          propertyId: room.propertyId
         },
         select: {
           id: true,
@@ -118,12 +167,12 @@ export async function DELETE(
       });
 
       console.log(
-        `🔍 Room ${params.id} has ${existingReservations.length} existing reservations`
+        `🔍 Room ${id} has ${existingReservations.length} existing reservations`
       );
 
       if (existingReservations.length > 0) {
         console.log(
-          `❌ Cannot delete room ${params.id} - has reservations:`,
+          `❌ Cannot delete room ${id} - has reservations:`,
           existingReservations
         );
         return {
@@ -135,45 +184,34 @@ export async function DELETE(
       }
 
       // Safe to delete - no reservations exist
-      const deleted = await tx.room.deleteMany({
-        where: {
-          id: params.id,
-          organizationId: orgId
-        }
+      const deleted = await tx.room.delete({
+        where: { id }
       });
 
-      return { success: true, deletedCount: deleted.count };
+      return { success: true, deleted };
     });
 
     // Handle different scenarios
     if (!result.success) {
-      if (result.error === "ROOM_NOT_FOUND") {
-        return new NextResponse("Room not found", { status: 404 });
-      }
-
       if (result.error === "HAS_RESERVATIONS") {
-        return new NextResponse(
-          JSON.stringify({
+        return NextResponse.json(
+          {
             error: "Cannot delete room with existing reservations",
             message: `This room has ${result.reservationCount} existing reservation(s). Please cancel or move these reservations before deleting the room.`,
             reservationCount: result.reservationCount,
             reservations: result.reservations
-          }),
-          {
-            status: 409,
-            headers: { "Content-Type": "application/json" }
-          }
+          },
+          { status: 409 }
         );
       }
-    }
-
-    if (result.deletedCount === 0) {
-      return new NextResponse("Room not found", { status: 404 });
     }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("DELETE /api/rooms/[id] error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }

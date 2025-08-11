@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { useState, useCallback, useMemo } from "react";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
+import { fetchWithPropertyContext } from "@/lib/api-client";
 
 // Types for rates data
 export interface RateRestrictions {
@@ -46,9 +47,28 @@ export interface RateLogsPagination {
   hasMore: boolean;
 }
 
+export interface RateChangeLog {
+  id: string;
+  roomType: {
+    id: string;
+    name: string;
+  };
+  date: string | null;
+  oldPrice: number | null;
+  newPrice: number;
+  changeType: string;
+  reason: string | null;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  createdAt: string;
+}
+
 export interface RateLogsResponse {
   success: boolean;
-  data: any[];
+  data: RateChangeLog[];
   pagination: RateLogsPagination;
 }
 
@@ -73,11 +93,10 @@ export interface SeasonalRatesResponse {
 
 // Fetcher function with error handling
 const fetcher = async (url: string): Promise<RatesResponse> => {
-  const res = await fetch(url, {
+  const res = await fetchWithPropertyContext(url, {
     headers: {
       "Content-Type": "application/json"
-    },
-    credentials: "include" // Include cookies for orgId
+    }
   });
 
   if (!res.ok) {
@@ -97,11 +116,35 @@ const fetcher = async (url: string): Promise<RatesResponse> => {
 
 // Fetcher for logs API
 const logsFetcher = async (url: string): Promise<RateLogsResponse> => {
-  const res = await fetch(url, {
+  const res = await fetchWithPropertyContext(url, {
     headers: {
       "Content-Type": "application/json"
-    },
-    credentials: "include"
+    }
+  });
+
+  if (!res.ok) {
+    const errorData = await res
+      .json()
+      .catch(() => ({ error: "Network error" }));
+    throw new Error(errorData.error || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(data.error || "API returned unsuccessful response");
+  }
+
+  return data;
+};
+
+// Fetcher for seasonal rates API
+const seasonalRatesFetcher = async (
+  url: string
+): Promise<SeasonalRatesResponse> => {
+  const res = await fetchWithPropertyContext(url, {
+    headers: {
+      "Content-Type": "application/json"
+    }
   });
 
   if (!res.ok) {
@@ -197,14 +240,16 @@ export function useRateUpdates() {
           ratePlan: options?.ratePlan || "base"
         };
 
-        const response = await fetch(`/api/rates/${roomTypeId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify(body)
-        });
+        const response = await fetchWithPropertyContext(
+          `/api/rates/${roomTypeId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response
@@ -254,12 +299,11 @@ export function useRateUpdates() {
       setIsUpdating(true);
 
       try {
-        const response = await fetch("/api/rates", {
+        const response = await fetchWithPropertyContext("/api/rates", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          credentials: "include",
           body: JSON.stringify({ updates })
         });
 
@@ -294,10 +338,12 @@ export function useRateUpdates() {
     setIsUpdating(true);
 
     try {
-      const response = await fetch(`/api/rates/${roomTypeId}?date=${date}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
+      const response = await fetchWithPropertyContext(
+        `/api/rates/${roomTypeId}?date=${date}`,
+        {
+          method: "DELETE"
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response
@@ -343,7 +389,7 @@ export function useSeasonalRates(roomTypeId?: string) {
 
   const { data, error, isLoading, mutate } = useSWR<SeasonalRatesResponse>(
     swrKey,
-    logsFetcher,
+    seasonalRatesFetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false, // Fixed: Disable reconnect revalidation
@@ -353,7 +399,9 @@ export function useSeasonalRates(roomTypeId?: string) {
       errorRetryCount: 1, // Reduce retry attempts
       onError: (error) => {
         console.error("Seasonal rates fetch error:", error);
-        toast.error(`Failed to load seasonal rates: ${error.message}`);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        toast.error(`Failed to load seasonal rates: ${errorMessage}`);
       }
     }
   );
@@ -481,9 +529,9 @@ export function useRatesExport() {
           params.set("roomTypeIds", options.roomTypeIds.join(","));
         }
 
-        const response = await fetch(`/api/rates/export?${params.toString()}`, {
-          credentials: "include"
-        });
+        const response = await fetchWithPropertyContext(
+          `/api/rates/export?${params.toString()}`
+        );
 
         if (!response.ok) {
           const errorData = await response

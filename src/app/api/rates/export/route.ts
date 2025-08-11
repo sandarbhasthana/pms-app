@@ -2,14 +2,13 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 import { addDays, format, isWeekend } from "date-fns";
 import { Prisma } from "@prisma/client";
-
-// Allowed roles for exporting rates
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR", "FRONT_DESK"];
 
 /**
  * GET /api/rates/export - Export rates data to CSV or Excel
@@ -20,23 +19,19 @@ const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR", "FRONT_DESK"];
  * - roomTypeIds?: string (comma-separated room type IDs)
  */
 export async function GET(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (FRONT_DESK and above can export rates)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.FRONT_DESK
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
+    const { propertyId } = validation;
     const { searchParams } = new URL(req.url);
     const exportFormat = searchParams.get("format") || "csv";
     const startDateParam = searchParams.get("startDate");
@@ -54,10 +49,10 @@ export async function GET(req: NextRequest) {
     const dates = Array.from({ length: days }, (_, i) => addDays(startDate, i));
 
     // Fetch rates data
-    const exportData = await withTenantContext(orgId, async (tx) => {
+    const exportData = await withPropertyContext(propertyId!, async (tx) => {
       // Build room types query
       const roomTypesWhere: Prisma.RoomTypeWhereInput = {
-        organizationId: orgId
+        propertyId: propertyId
       };
       if (roomTypeIds) {
         roomTypesWhere.id = { in: roomTypeIds };
@@ -324,24 +319,16 @@ export async function GET(req: NextRequest) {
  * }
  */
 export async function POST(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (
-    !session?.user ||
-    !["ORG_ADMIN", "PROPERTY_MGR"].includes(role as string)
-  ) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (PROPERTY_MGR and above can create export schedules)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
     const {

@@ -26,6 +26,7 @@ import { useSeasonalRates, RoomTypeRates } from "@/lib/hooks/useRatesData";
 
 import { SeasonalRate } from "@/lib/hooks/useRatesData";
 import { toast } from "sonner";
+import { fetchWithPropertyContext } from "@/lib/api-client";
 
 interface SeasonalRatesManagerProps {
   isOpen: boolean;
@@ -83,17 +84,18 @@ const SeasonalRatesManager = memo(function SeasonalRatesManager({
     resetForm();
   };
 
-  const handleEdit = (rate: any) => {
-    setFormData({
+  const handleEdit = (rate: SeasonalRate) => {
+    const formData = {
       id: rate.id,
       name: rate.name,
       startDate: format(new Date(rate.startDate), "yyyy-MM-dd"),
       endDate: format(new Date(rate.endDate), "yyyy-MM-dd"),
       multiplier: rate.multiplier.toString(),
-      roomTypeId: rate.roomTypeId,
+      roomTypeId: rate.roomTypeId || null,
       isActive: rate.isActive
-    });
-    setEditingRate(rate);
+    };
+    setFormData(formData);
+    setEditingRate(formData);
     setShowForm(true);
   };
 
@@ -123,10 +125,9 @@ const SeasonalRatesManager = memo(function SeasonalRatesManager({
 
       if (editingRate) {
         // Update existing rate
-        const response = await fetch("/api/rates/seasonal", {
+        const response = await fetchWithPropertyContext("/api/rates/seasonal", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             id: editingRate.id,
             name: formData.name,

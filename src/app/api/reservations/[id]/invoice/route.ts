@@ -22,7 +22,7 @@ export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const orgId = req.cookies.get("orgId")?.value;
@@ -34,6 +34,7 @@ export async function GET(
     }
 
     // Fetch reservation + payment details
+    const params = await context.params;
     const reservation: ReservationData | null = await withTenantContext(
       orgId,
       (tx) =>

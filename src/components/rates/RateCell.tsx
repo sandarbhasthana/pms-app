@@ -31,7 +31,6 @@ interface RateCellProps {
 }
 
 const RateCell = memo(function RateCell({
-  roomTypeId,
   roomTypeName,
   date,
   rateData,
@@ -48,7 +47,7 @@ const RateCell = memo(function RateCell({
   const [showDetails, setShowDetails] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const dateString = format(date, "yyyy-MM-dd");
+  //const dateString = format(date, "yyyy-MM-dd");
 
   // Focus input when editing starts
   useEffect(() => {

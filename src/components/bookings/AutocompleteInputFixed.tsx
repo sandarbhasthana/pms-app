@@ -1,6 +1,12 @@
 // FIXED VERSION - Optimized AutocompleteInput to prevent Fast Refresh issues
 "use client";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo
+} from "react";
 
 interface Reservation {
   id: string;
@@ -53,15 +59,15 @@ export default function AutocompleteInputFixed({
         `/api/customers/search?q=${encodeURIComponent(query)}`,
         { signal: abortControllerRef.current.signal }
       );
-      
-      if (!response.ok) throw new Error('Search failed');
-      
+
+      if (!response.ok) throw new Error("Search failed");
+
       const data = await response.json();
       setResults(data.results || []);
       setShowDropdown(true);
     } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Customer search error:', error);
+      if (error instanceof Error && error.name !== "AbortError") {
+        console.error("Customer search error:", error);
         setResults([]);
         setShowDropdown(false);
       }
@@ -88,7 +94,7 @@ export default function AutocompleteInputFixed({
         r.phone === trimmed ||
         r.idNumber === trimmed
     );
-    
+
     if (exactMatch) {
       setShowDropdown(false);
       return;
@@ -106,7 +112,7 @@ export default function AutocompleteInputFixed({
         abortControllerRef.current.abort();
       }
     };
-  }, [value, searchCustomers]); // FIXED: Removed results from dependencies to prevent loops
+  }, [value, searchCustomers, results]); // FIXED: Include results in dependencies
 
   // FIXED: Memoized click outside handler
   const handleClickOutside = useCallback((e: MouseEvent) => {
@@ -123,16 +129,20 @@ export default function AutocompleteInputFixed({
   useEffect(() => {
     if (showDropdown) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showDropdown, handleClickOutside]);
 
   // FIXED: Memoized customer selection handler
-  const handleCustomerClick = useCallback((customer: Reservation) => {
-    onCustomerSelect(customer);
-    setShowDropdown(false);
-    setResults([]);
-  }, [onCustomerSelect]);
+  const handleCustomerClick = useCallback(
+    (customer: Reservation) => {
+      onCustomerSelect(customer);
+      setShowDropdown(false);
+      setResults([]);
+    },
+    [onCustomerSelect]
+  );
 
   // FIXED: Memoized focus handler
   const handleFocus = useCallback(() => {
@@ -142,9 +152,12 @@ export default function AutocompleteInputFixed({
   }, [results.length, value]);
 
   // FIXED: Memoized change handler
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-  }, [setValue]);
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue(e.target.value);
+    },
+    [setValue]
+  );
 
   // FIXED: Memoized dropdown items to prevent unnecessary re-renders
   const dropdownItems = useMemo(() => {
@@ -186,7 +199,7 @@ export default function AutocompleteInputFixed({
           </div>
         )}
       </div>
-      
+
       {/* FIXED: Optimized dropdown with better styling and performance */}
       {showDropdown && results.length > 0 && (
         <ul
@@ -196,13 +209,16 @@ export default function AutocompleteInputFixed({
           {dropdownItems}
         </ul>
       )}
-      
+
       {/* No results message */}
-      {showDropdown && !isLoading && results.length === 0 && value.trim().length > 1 && (
-        <div className="absolute z-50 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg w-full mt-1 p-3 text-sm text-gray-500 dark:text-gray-400">
-          No customers found for "{value.trim()}"
-        </div>
-      )}
+      {showDropdown &&
+        !isLoading &&
+        results.length === 0 &&
+        value.trim().length > 1 && (
+          <div className="absolute z-50 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg w-full mt-1 p-3 text-sm text-gray-500 dark:text-gray-400">
+            No customers found for &quot;{value.trim()}&quot;
+          </div>
+        )}
     </div>
   );
 }

@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 const adminTabs = [
   { label: "Profile Settings", href: "/admin/settings/profile" },
   { label: "Select Organization", href: "/admin/settings/organization" },
-  { label: "Property Settings", href: "/settings/general" },
+  { label: "Properties", href: "/admin/settings/properties" },
+  { label: "User Assignments", href: "/admin/settings/user-properties" },
+  { label: "Property Settings", href: "/settings/general" }
 ];
 
 export default function AdminSettingsTabs() {

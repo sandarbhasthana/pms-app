@@ -1,48 +1,53 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
-
-// Allowed roles for modifying room types
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
+    }
+
+    const { propertyId } = validation;
     const url = new URL(req.url);
     const name = url.searchParams.get("name");
 
     console.log(
-      `🔍 GET /api/room-types/by-name - orgId: ${orgId}, name: "${name}"`
+      `🔍 GET /api/room-types/by-name - propertyId: ${propertyId}, name: "${name}"`
     );
-
-    if (!orgId) {
-      console.log("❌ Missing organization context");
-      return new NextResponse("Organization context missing", { status: 400 });
-    }
 
     if (!name) {
       console.log("❌ Missing room type name");
       return new NextResponse("Room type name is required", { status: 400 });
     }
 
-    const roomType = await withTenantContext(orgId, async (tx) => {
+    const roomType = await withPropertyContext(propertyId!, async (tx) => {
       // First, let's see what room types exist
       const allRoomTypes = await tx.roomType.findMany({
-        where: { organizationId: orgId },
+        where: { propertyId: propertyId },
         select: { id: true, name: true }
       });
-      console.log(`📋 All room types for org ${orgId}:`, allRoomTypes);
+      console.log(
+        `📋 All room types for property ${propertyId}:`,
+        allRoomTypes
+      );
 
       return await tx.roomType.findFirst({
         where: {
-          organizationId: orgId,
+          propertyId: propertyId,
           name: name
         },
         include: {
           rooms: {
+            where: { propertyId: propertyId },
             orderBy: { name: "asc" }
           }
         }
@@ -50,7 +55,9 @@ export async function GET(req: NextRequest) {
     });
 
     if (!roomType) {
-      console.log(`❌ Room type "${name}" not found for org ${orgId}`);
+      console.log(
+        `❌ Room type "${name}" not found for property ${propertyId}`
+      );
       return new NextResponse("Room type not found", { status: 404 });
     }
 
@@ -63,24 +70,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Access control: only Org Admin and Property Manager can create room types
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    console.log(`❌ Access denied - role: ${role}`);
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-
-    console.log(`💾 POST /api/room-types/by-name - orgId: ${orgId}`);
-
-    if (!orgId) {
-      console.log("❌ Missing organization context");
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
+    console.log(`💾 POST /api/room-types/by-name - propertyId: ${propertyId}`);
 
     const requestBody = await req.json();
     console.log("📥 Request body:", requestBody);
@@ -109,19 +112,23 @@ export async function POST(req: NextRequest) {
 
     // Try to find existing room type first
     console.log(`🔍 Looking for existing room type: "${name.trim()}"`);
-    const existingRoomType = await withTenantContext(orgId, async (tx) => {
-      return await tx.roomType.findFirst({
-        where: {
-          organizationId: orgId,
-          name: name.trim()
-        },
-        include: {
-          rooms: {
-            orderBy: { name: "asc" }
+    const existingRoomType = await withPropertyContext(
+      propertyId!,
+      async (tx) => {
+        return await tx.roomType.findFirst({
+          where: {
+            propertyId: propertyId,
+            name: name.trim()
+          },
+          include: {
+            rooms: {
+              where: { propertyId: propertyId },
+              orderBy: { name: "asc" }
+            }
           }
-        }
-      });
-    });
+        });
+      }
+    );
 
     console.log(
       `📋 Existing room type found:`,
@@ -138,7 +145,7 @@ export async function POST(req: NextRequest) {
       console.log(`📝 Update data - description:`, description);
 
       try {
-        const updated = await withTenantContext(orgId, async (tx) => {
+        const updated = await withPropertyContext(propertyId!, async (tx) => {
           return await tx.roomType.update({
             where: { id: existingRoomType.id },
             data: {
@@ -181,10 +188,21 @@ export async function POST(req: NextRequest) {
       console.log(`📝 Create data - customAmenities:`, customAmenities);
 
       try {
-        const roomType = await withTenantContext(orgId, async (tx) => {
+        const roomType = await withPropertyContext(propertyId!, async (tx) => {
+          // Get the property to get organizationId
+          const property = await tx.property.findUnique({
+            where: { id: propertyId! },
+            select: { organizationId: true }
+          });
+
+          if (!property) {
+            throw new Error("Property not found");
+          }
+
           return await tx.roomType.create({
             data: {
-              organizationId: orgId,
+              organizationId: property.organizationId,
+              propertyId: propertyId!,
               name: name.trim(),
               abbreviation: abbreviation || null,
               privateOrDorm: privateOrDorm || "private",

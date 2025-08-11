@@ -1,63 +1,87 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
-
-// Allowed roles for modifying room types
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
+  const { id } = await context.params;
 
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+  try {
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
-    const roomType = await withTenantContext(orgId, async (tx) => {
-      return await tx.roomType.findFirst({
-        where: { id: params.id },
-        include: {
-          rooms: {
-            orderBy: { name: "asc" }
-          }
-        }
-      });
-    });
+    const { propertyId } = validation;
 
-    if (!roomType) {
+    // Get detailed room type information
+    const roomTypeDetails = await withPropertyContext(
+      propertyId!,
+      async (tx) => {
+        return await tx.roomType.findUnique({
+          where: { id },
+          include: {
+            rooms: {
+              where: { propertyId: propertyId },
+              orderBy: { name: "asc" }
+            },
+            property: {
+              select: { id: true, name: true }
+            },
+            _count: {
+              select: { rooms: true }
+            }
+          }
+        });
+      }
+    );
+
+    if (!roomTypeDetails) {
       return new NextResponse("Room type not found", { status: 404 });
     }
 
-    return NextResponse.json(roomType);
+    return NextResponse.json(roomTypeDetails);
   } catch (error) {
     console.error("GET /api/room-types/[id] error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  // Access control
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
+  const { id } = await context.params;
 
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
+    // Get room type to determine property
+    const roomType = await prisma.roomType.findUnique({
+      where: { id },
+      select: { propertyId: true }
+    });
 
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    if (!roomType || !roomType.propertyId) {
+      return new NextResponse("Room type not found", { status: 404 });
+    }
+
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(req, "PROPERTY_MGR");
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
     // Parse and validate body
@@ -75,77 +99,125 @@ export async function PUT(
       amenities,
       customAmenities,
       featuredImageUrl,
-      additionalImageUrls
+      additionalImageUrls,
+      // Pricing fields
+      basePrice,
+      weekdayPrice,
+      weekendPrice,
+      currency,
+      availability,
+      minLOS,
+      maxLOS,
+      closedToArrival,
+      closedToDeparture
     } = await req.json();
 
-    const updated = await withTenantContext(orgId, async (tx) => {
-      return await tx.roomType.update({
-        where: { id: params.id },
-        data: {
-          name: name?.trim(),
-          abbreviation: abbreviation || null,
-          privateOrDorm: privateOrDorm || "private",
-          physicalOrVirtual: physicalOrVirtual || "physical",
-          maxOccupancy: maxOccupancy || 1,
-          maxAdults: maxAdults || 1,
-          maxChildren: maxChildren || 0,
-          adultsIncluded: adultsIncluded || 1,
-          childrenIncluded: childrenIncluded || 0,
-          description: description || null,
-          amenities: amenities || [],
-          customAmenities: customAmenities || [],
-          featuredImageUrl: featuredImageUrl || null,
-          additionalImageUrls: additionalImageUrls || []
-        }
-      });
-    });
+    const updated = await withPropertyContext(
+      roomType.propertyId,
+      async (tx) => {
+        return await tx.roomType.update({
+          where: { id },
+          data: {
+            name: name?.trim(),
+            abbreviation: abbreviation || null,
+            privateOrDorm: privateOrDorm || "private",
+            physicalOrVirtual: physicalOrVirtual || "physical",
+            maxOccupancy: maxOccupancy || 1,
+            maxAdults: maxAdults || 1,
+            maxChildren: maxChildren || 0,
+            adultsIncluded: adultsIncluded || 1,
+            childrenIncluded: childrenIncluded || 0,
+            description: description || null,
+            amenities: amenities || [],
+            customAmenities: customAmenities || [],
+            featuredImageUrl: featuredImageUrl || null,
+            additionalImageUrls: additionalImageUrls || [],
+            // Pricing fields
+            basePrice: basePrice !== undefined ? basePrice : undefined,
+            weekdayPrice: weekdayPrice !== undefined ? weekdayPrice : undefined,
+            weekendPrice: weekendPrice !== undefined ? weekendPrice : undefined,
+            currency: currency || undefined,
+            availability: availability !== undefined ? availability : undefined,
+            minLOS: minLOS !== undefined ? minLOS : undefined,
+            maxLOS: maxLOS !== undefined ? maxLOS : undefined,
+            closedToArrival:
+              closedToArrival !== undefined ? closedToArrival : undefined,
+            closedToDeparture:
+              closedToDeparture !== undefined ? closedToDeparture : undefined
+          }
+        });
+      }
+    );
 
     return NextResponse.json(updated);
   } catch (error) {
     console.error("PUT /api/room-types/[id] error:", error);
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        return new NextResponse("Room type name already exists", {
-          status: 409
-        });
+        return NextResponse.json(
+          { error: "Room type name already exists in this property" },
+          { status: 409 }
+        );
       }
       if (error.code === "P2025") {
         return new NextResponse("Room type not found", { status: 404 });
       }
     }
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  // Access control
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
+  const { id } = await context.params;
 
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
+    // Get room type to determine property
+    const roomType = await prisma.roomType.findUnique({
+      where: { id },
+      select: { propertyId: true }
+    });
 
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    if (!roomType || !roomType.propertyId) {
+      return new NextResponse("Room type not found", { status: 404 });
     }
 
-    await withTenantContext(orgId, async (tx) => {
-      // First, unlink any rooms from this room type
-      await tx.room.updateMany({
-        where: { roomTypeId: params.id },
-        data: { roomTypeId: null }
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(req, "PROPERTY_MGR");
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
       });
+    }
 
-      // Then delete the room type
+    // Check if room type has associated rooms
+    const roomCount = await prisma.room.count({
+      where: {
+        roomTypeId: id,
+        propertyId: roomType.propertyId
+      }
+    });
+
+    if (roomCount > 0) {
+      return NextResponse.json(
+        {
+          error: "Cannot delete room type with associated rooms",
+          message: `This room type has ${roomCount} associated room(s). Please reassign or delete these rooms first.`,
+          roomCount
+        },
+        { status: 409 }
+      );
+    }
+
+    await withPropertyContext(roomType.propertyId, async (tx) => {
+      // Delete the room type
       return await tx.roomType.delete({
-        where: { id: params.id }
+        where: { id }
       });
     });
 
@@ -160,6 +232,9 @@ export async function DELETE(
     ) {
       return new NextResponse("Room type not found", { status: 404 });
     }
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }

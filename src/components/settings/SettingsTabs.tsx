@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { label: "Property Settings", href: "/settings/general" },
   { label: "Accommodations", href: "/settings/accommodations" },
+  { label: "Staff Management", href: "/settings/staff" },
   { label: "Policies & Taxes", href: "/settings/policies" },
   { label: "Channel Managers", href: "/settings/channels" },
   { label: "Pricing & Rates", href: "/settings/rates" },
@@ -15,11 +17,31 @@ const tabs = [
 
 export default function SettingsTabs() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  // Filter tabs based on user role
+  const getVisibleTabs = () => {
+    const userRole = session?.user?.role;
+
+    // Staff Management is only visible to SUPER_ADMIN, ORG_ADMIN, and PROPERTY_MGR
+    const hasStaffAccess =
+      userRole &&
+      ["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(userRole);
+
+    return tabs.filter((tab) => {
+      if (tab.href === "/settings/staff") {
+        return hasStaffAccess;
+      }
+      return true; // Show all other tabs
+    });
+  };
+
+  const visibleTabs = getVisibleTabs();
 
   return (
     <div className="border-b border-gray-300 dark:border-gray-700 mb-6">
       <nav className="flex flex-wrap gap-4 text-lg font-medium text-gray-600 dark:text-gray-300">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = pathname === tab.href;
           return (
             <Link

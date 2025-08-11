@@ -2,13 +2,12 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  validatePropertyAccess,
+  withPropertyContext
+} from "@/lib/property-context";
 import { addDays, format, isWeekend } from "date-fns";
-
-// Allowed roles for viewing/modifying rates
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR", "FRONT_DESK"];
+import { PropertyRole } from "@prisma/client";
 
 // Type definitions for API responses
 interface RateData {
@@ -50,23 +49,16 @@ interface RatesResponse {
  * - ratePlan: "base" | "promo" (default: "base")
  */
 export async function GET(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    // Get organization context
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     // Parse query parameters
     const { searchParams } = new URL(req.url);
@@ -86,11 +78,11 @@ export async function GET(req: NextRequest) {
     const dates = Array.from({ length: days }, (_, i) => addDays(startDate, i));
     const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd"));
 
-    // Fetch data within tenant context
-    const ratesData = await withTenantContext(orgId, async (tx) => {
+    // Fetch data within property context
+    const ratesData = await withPropertyContext(propertyId!, async (tx) => {
       // 1. Get all room types with their rooms and base pricing
       const roomTypes = await tx.roomType.findMany({
-        where: { organizationId: orgId },
+        where: { propertyId: propertyId },
         include: {
           rooms: {
             include: {
@@ -278,36 +270,19 @@ export async function GET(req: NextRequest) {
  * }
  */
 export async function POST(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-
-  // Debug session data
-  console.log("🔍 Session debug:", {
-    hasSession: !!session,
-    hasUser: !!session?.user,
-    userEmail: session?.user?.email,
-    userId: session?.user?.id,
-    userRole: session?.user?.role,
-    userOrgId: session?.user?.orgId
-  });
-
-  if (
-    !session?.user ||
-    !["ORG_ADMIN", "PROPERTY_MGR"].includes(role as string)
-  ) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId, userId } = validation;
 
     const { updates } = await req.json();
     if (!Array.isArray(updates) || updates.length === 0) {
@@ -317,8 +292,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process bulk updates within tenant context
-    const results = await withTenantContext(orgId, async (tx) => {
+    // Process bulk updates within property context
+    const results = await withPropertyContext(propertyId!, async (tx) => {
       const updatePromises = updates.map(async (update) => {
         const { roomTypeId, date, price, availability, restrictions } = update;
 
@@ -358,19 +333,7 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        // Get user ID for rate change log
-        let userId: string | undefined = session.user.id;
-
-        // If session doesn't have user ID (old JWT token), look up by email
-        if (!userId && session.user.email) {
-          const user = await tx.user.findUnique({
-            where: { email: session.user.email },
-            select: { id: true }
-          });
-          userId = user?.id || undefined;
-        }
-
-        // Only create rate change log if we have a valid user ID
+        // Create rate change log
         if (userId) {
           await tx.rateChangeLog.create({
             data: {

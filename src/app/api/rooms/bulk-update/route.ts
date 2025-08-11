@@ -1,38 +1,60 @@
 export const runtime = "nodejs"; // ✅ Use Node.js runtime for RLS context
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
-
-// Allowed roles for modifying rooms
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 
 export async function PUT(req: NextRequest) {
-  // Access control
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
-  // Determine orgId context
-  const orgId =
-    req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-  if (!orgId) {
-    return new NextResponse("Organization context missing", { status: 400 });
-  }
-
-  // Expecting an array of rooms with id, name, description, doorlockId
-  const roomsToUpdate: {
-    id: string;
-    name: string;
-    description?: string;
-    doorlockId?: string;
-  }[] = await req.json();
-
   try {
-    // Perform all updates in parallel within tenant context
-    const updated = await withTenantContext(orgId, async (tx) => {
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
+    }
+
+    const { propertyId } = validation;
+
+    // Expecting an array of rooms with id, name, description, doorlockId
+    const roomsToUpdate: {
+      id: string;
+      name: string;
+      description?: string;
+      doorlockId?: string;
+    }[] = await req.json();
+
+    if (!Array.isArray(roomsToUpdate) || roomsToUpdate.length === 0) {
+      return NextResponse.json(
+        { error: "Invalid rooms array" },
+        { status: 400 }
+      );
+    }
+
+    // Perform all updates in parallel within property context
+    const updated = await withPropertyContext(propertyId!, async (tx) => {
+      // First verify all rooms belong to this property
+      const roomIds = roomsToUpdate.map((r) => r.id);
+      const existingRooms = await tx.room.findMany({
+        where: {
+          id: { in: roomIds },
+          propertyId: propertyId
+        },
+        select: { id: true }
+      });
+
+      if (existingRooms.length !== roomIds.length) {
+        throw new Error(
+          "Some rooms not found or don't belong to this property"
+        );
+      }
+
+      // Perform updates
       return await Promise.all(
         roomsToUpdate.map((r) =>
           tx.room.update({
@@ -46,9 +68,13 @@ export async function PUT(req: NextRequest) {
         )
       );
     });
+
     return NextResponse.json({ rooms: updated });
   } catch (error: unknown) {
     console.error("Bulk update error:", error);
-    return new NextResponse("Failed to update rooms", { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update rooms" },
+      { status: 500 }
+    );
   }
 }

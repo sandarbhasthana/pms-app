@@ -16,9 +16,7 @@ import Link from "next/link";
 
 export function UserMenu() {
   const { data: session, status } = useSession({
-    required: false,
-    refetchInterval: 5 * 60 * 1000, // Only refetch every 5 minutes
-    refetchOnWindowFocus: false // Don't refetch when window gains focus
+    required: false
   });
 
   // Don't render anything if not authenticated or still loading

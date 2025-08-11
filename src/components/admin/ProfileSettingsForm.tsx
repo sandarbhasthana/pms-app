@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/spinner";
@@ -22,7 +23,6 @@ export default function ProfileSettingsForm() {
     role: "",
     image: ""
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function ProfileSettingsForm() {
   }, [session]);
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
-    setProfileData(prev => ({
+    setProfileData((prev) => ({
       ...prev,
       [field]: value
     }));
@@ -54,12 +54,12 @@ export default function ProfileSettingsForm() {
       const response = await fetch("/api/admin/profile", {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           name: profileData.name,
           image: profileData.image
-        }),
+        })
       });
 
       if (!response.ok) {
@@ -110,7 +110,10 @@ export default function ProfileSettingsForm() {
         <CardContent className="space-y-6">
           {/* Name Field */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Full Name
             </label>
             <input
@@ -125,7 +128,10 @@ export default function ProfileSettingsForm() {
 
           {/* Email Field (Read-only) */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Email Address
             </label>
             <input
@@ -136,28 +142,43 @@ export default function ProfileSettingsForm() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 cursor-not-allowed"
               placeholder="Email address"
             />
-            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Email cannot be changed
+            </p>
           </div>
 
           {/* Role Field (Read-only) */}
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="role"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Role
             </label>
             <input
               id="role"
               type="text"
-              value={profileData.role?.replace("_", " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) || ""}
+              value={
+                profileData.role
+                  ?.replace("_", " ")
+                  .toLowerCase()
+                  .replace(/\b\w/g, (l) => l.toUpperCase()) || ""
+              }
               readOnly
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 cursor-not-allowed"
               placeholder="User role"
             />
-            <p className="text-xs text-gray-500 mt-1">Role is managed by administrators</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Role is managed by administrators
+            </p>
           </div>
 
           {/* Profile Image URL */}
           <div>
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="image"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Profile Image URL
             </label>
             <input
@@ -176,12 +197,15 @@ export default function ProfileSettingsForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Current Profile Image
               </label>
-              <img
+              <Image
                 src={profileData.image}
                 alt="Profile preview"
-                className="w-20 h-20 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
+                width={80}
+                height={80}
+                className="rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
+                onError={() => {
+                  // Handle error by hiding the image container
+                  setProfileData((prev) => ({ ...prev, image: "" }));
                 }}
               />
             </div>

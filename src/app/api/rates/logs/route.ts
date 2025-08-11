@@ -2,14 +2,13 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 import { format, subDays } from "date-fns";
 import { Prisma } from "@prisma/client";
-
-// Allowed roles for viewing rate logs
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR", "FRONT_DESK"];
 
 /**
  * GET /api/rates/logs - Fetch rate change audit logs
@@ -23,23 +22,19 @@ const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR", "FRONT_DESK"];
  * - offset?: number (default: 0)
  */
 export async function GET(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (FRONT_DESK and above can view rate logs)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.FRONT_DESK
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
+    const { propertyId } = validation;
     const { searchParams } = new URL(req.url);
     const roomTypeId = searchParams.get("roomTypeId");
     const startDateParam = searchParams.get("startDate");
@@ -58,62 +53,65 @@ export async function GET(req: NextRequest) {
     const limit = limitParam ? Math.min(parseInt(limitParam), 1000) : 100;
     const offset = offsetParam ? parseInt(offsetParam) : 0;
 
-    const { logs, totalCount } = await withTenantContext(orgId, async (tx) => {
-      // Build where clause
-      const whereClause: Prisma.RateChangeLogWhereInput = {
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        },
-        roomType: {
-          organizationId: orgId
-        }
-      };
-
-      if (roomTypeId) {
-        whereClause.roomTypeId = roomTypeId;
-      }
-
-      if (changeType) {
-        whereClause.changeType = changeType;
-      }
-
-      if (userId) {
-        whereClause.userId = userId;
-      }
-
-      // Get total count for pagination
-      const totalCount = await tx.rateChangeLog.count({
-        where: whereClause
-      });
-
-      // Fetch logs with pagination
-      const logs = await tx.rateChangeLog.findMany({
-        where: whereClause,
-        include: {
+    const { logs, totalCount } = await withPropertyContext(
+      propertyId!,
+      async (tx) => {
+        // Build where clause
+        const whereClause: Prisma.RateChangeLogWhereInput = {
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          },
           roomType: {
-            select: {
-              id: true,
-              name: true
+            propertyId: propertyId
+          }
+        };
+
+        if (roomTypeId) {
+          whereClause.roomTypeId = roomTypeId;
+        }
+
+        if (changeType) {
+          whereClause.changeType = changeType;
+        }
+
+        if (userId) {
+          whereClause.userId = userId;
+        }
+
+        // Get total count for pagination
+        const totalCount = await tx.rateChangeLog.count({
+          where: whereClause
+        });
+
+        // Fetch logs with pagination
+        const logs = await tx.rateChangeLog.findMany({
+          where: whereClause,
+          include: {
+            roomType: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
             }
           },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        },
-        take: limit,
-        skip: offset
-      });
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: limit,
+          skip: offset
+        });
 
-      return { logs, totalCount };
-    });
+        return { logs, totalCount };
+      }
+    );
 
     // Format the response
     const formattedLogs = logs.map((log) => ({
@@ -173,22 +171,19 @@ export async function GET(req: NextRequest) {
  * }
  */
 export async function POST(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (PROPERTY_MGR and above can create rate logs)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId, userId } = validation;
 
     const { roomTypeId, date, oldPrice, newPrice, changeType, reason } =
       await req.json();
@@ -201,17 +196,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const logEntry = await withTenantContext(orgId, async (tx) => {
-      // Verify room type exists and belongs to organization
+    const logEntry = await withPropertyContext(propertyId!, async (tx) => {
+      // Verify room type exists and belongs to property
       const roomType = await tx.roomType.findFirst({
         where: {
           id: roomTypeId,
-          organizationId: orgId
+          propertyId: propertyId
         }
       });
 
       if (!roomType) {
-        throw new Error("Room type not found");
+        throw new Error(
+          "Room type not found or doesn't belong to this property"
+        );
       }
 
       // Create the log entry
@@ -223,7 +220,7 @@ export async function POST(req: NextRequest) {
           newPrice,
           changeType,
           reason,
-          userId: session.user.email || "unknown"
+          userId: userId || "unknown"
         },
         include: {
           roomType: {
@@ -262,137 +259,6 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/rates/logs error:", error);
     return NextResponse.json(
       { error: "Failed to create rate log", details: (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * GET /api/rates/logs/summary - Get rate change summary statistics
- * Query params:
- * - startDate?: string (default: 30 days ago)
- * - endDate?: string (default: today)
- * - roomTypeId?: string (optional filter)
- */
-export async function GET_SUMMARY(req: NextRequest) {
-  // This would be a separate endpoint: /api/rates/logs/summary
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
-  try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
-    const roomTypeId = searchParams.get("roomTypeId");
-
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam
-      ? new Date(startDateParam)
-      : subDays(endDate, 30);
-
-    const summary = await withTenantContext(orgId, async (tx) => {
-      const whereClause: Prisma.RateChangeLogWhereInput = {
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        },
-        roomType: {
-          organizationId: orgId
-        }
-      };
-
-      if (roomTypeId) {
-        whereClause.roomTypeId = roomTypeId;
-      }
-
-      // Get total changes
-      const totalChanges = await tx.rateChangeLog.count({
-        where: whereClause
-      });
-
-      // Get changes by type
-      const changesByType = await tx.rateChangeLog.groupBy({
-        by: ["changeType"],
-        where: whereClause,
-        _count: {
-          changeType: true
-        }
-      });
-
-      // Get changes by user
-      const changesByUser = await tx.rateChangeLog.groupBy({
-        by: ["userId"],
-        where: whereClause,
-        _count: {
-          userId: true
-        },
-        orderBy: {
-          _count: {
-            userId: "desc"
-          }
-        },
-        take: 10
-      });
-
-      // Get user details for top changers
-      const userIds = changesByUser.map((c) => c.userId);
-      const users = await tx.user.findMany({
-        where: {
-          id: { in: userIds }
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      });
-
-      const userMap = users.reduce((acc, user) => {
-        acc[user.id] = user;
-        return acc;
-      }, {} as Record<string, { id: string; name: string | null; email: string }>);
-
-      return {
-        totalChanges,
-        changesByType: changesByType.map((c) => ({
-          type: c.changeType,
-          count: c._count.changeType
-        })),
-        topUsers: changesByUser.map((c) => ({
-          user: userMap[c.userId],
-          changeCount: c._count.userId
-        }))
-      };
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: summary,
-      period: {
-        startDate: format(startDate, "yyyy-MM-dd"),
-        endDate: format(endDate, "yyyy-MM-dd")
-      }
-    });
-  } catch (error) {
-    console.error("GET /api/rates/logs/summary error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to fetch rate logs summary",
-        details: (error as Error).message
-      },
       { status: 500 }
     );
   }

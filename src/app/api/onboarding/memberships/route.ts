@@ -1,9 +1,9 @@
 // File: src/app/api/onboarding/memberships/route.ts
 
 import { getServerSession } from "next-auth";
-import { authOptions }      from "@/app/api/auth/[...nextauth]/route";
-import prisma               from "@/lib/prisma";
-import { NextResponse }     from "next/server";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -13,17 +13,17 @@ export async function GET() {
 
   // Pull all org memberships for the logged-in user:
   const memberships = await prisma.userOrg.findMany({
-    where: { 
-      user: { 
-        email: session.user.email || "" 
-      } 
+    where: {
+      user: {
+        email: session.user.email || ""
+      }
     },
-    include: { organization: true },
+    include: { organization: true }
   });
 
   const data = memberships.map((m) => ({
-    organizationId:   m.organizationId,
-    organizationName: m.organization.name,
+    organizationId: m.organizationId,
+    organizationName: m.organization.name
   }));
 
   return NextResponse.json({ memberships: data });

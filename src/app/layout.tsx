@@ -2,9 +2,10 @@
 import "./globals.css";
 import { Metadata } from "next";
 import { cn } from "@/lib/utils";
-import { Header } from "@/components/Header";
+import { PropertyCookieManager } from "@/components/PropertyCookieManager";
 import Providers from "./providers";
 import ThemeProviderWrapper from "./theme-provider-wrapper";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "PMS App",
@@ -21,14 +22,13 @@ export default function RootLayout({
       <body className={cn("bg-background text-foreground font-sans")}>
         <ThemeProviderWrapper>
           <Providers>
-            {/* App header */}
-            <Header />
-            {children}
+            {/* Property cookie manager */}
+            <PropertyCookieManager />
+            {/* App shell with header + sidebar */}
+            <AppShell>{children}</AppShell>
           </Providers>
         </ThemeProviderWrapper>
       </body>
     </html>
   );
 }
-
-

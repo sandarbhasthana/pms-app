@@ -19,7 +19,7 @@ interface Membership {
 }
 
 export default function SelectOrganizationForm() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +29,8 @@ export default function SelectOrganizationForm() {
     if (status === "authenticated") {
       // Fetch both organization list and memberships
       Promise.all([
-        fetch("/api/orgs").then(res => res.json()),
-        fetch("/api/onboarding/memberships").then(res => res.json())
+        fetch("/api/orgs").then((res) => res.json()),
+        fetch("/api/onboarding/memberships").then((res) => res.json())
       ])
         .then(([orgsData, membershipsData]) => {
           setOrgs(orgsData);
@@ -47,12 +47,13 @@ export default function SelectOrganizationForm() {
   const handleSelectByDomain = (domain: string) => {
     const protocol = window.location.protocol;
     const port = window.location.port ? `:${window.location.port}` : "";
-    
+
     // Determine root domain (e.g. "pms-app.com")
-    const rawHost = typeof window !== "undefined" ? window.location.hostname : "";
+    const rawHost =
+      typeof window !== "undefined" ? window.location.hostname : "";
     const hostParts = rawHost.split(".");
     const rootDomain = hostParts.slice(-2).join(".");
-    
+
     window.location.href = `${protocol}//${domain}.${rootDomain}${port}`;
   };
 
@@ -61,7 +62,7 @@ export default function SelectOrganizationForm() {
       toast.error("Please select an organization");
       return;
     }
-    
+
     document.cookie = `orgId=${selectedOrg}; path=/`;
     window.location.href = "/dashboard";
   };
@@ -92,17 +93,25 @@ export default function SelectOrganizationForm() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Select an organization to switch to its subdomain. This will redirect you to the organization's specific URL.
+              Select an organization to switch to its subdomain. This will
+              redirect you to the organization&apos;s specific URL.
             </p>
             <div className="space-y-3">
               {orgs.map((org) => (
-                <div key={org.id} className="flex items-center justify-between p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:shadow-md transition-shadow">
+                <div
+                  key={org.id}
+                  className="flex items-center justify-between p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:shadow-md transition-shadow"
+                >
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100">{org.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Domain: {org.domain}</p>
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                      {org.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Domain: {org.domain}
+                    </p>
                   </div>
-                  <Button 
-                    onClick={() => handleSelectByDomain(org.domain)} 
+                  <Button
+                    onClick={() => handleSelectByDomain(org.domain)}
                     size="sm"
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
@@ -123,7 +132,8 @@ export default function SelectOrganizationForm() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Select an organization to work with. This will set your current organization context.
+              Select an organization to work with. This will set your current
+              organization context.
             </p>
             <div className="space-y-4">
               <select
@@ -156,7 +166,9 @@ export default function SelectOrganizationForm() {
       {orgs.length === 0 && memberships.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400">No organizations found.</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              No organizations found.
+            </p>
           </CardContent>
         </Card>
       )}

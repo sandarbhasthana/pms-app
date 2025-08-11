@@ -1,32 +1,38 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
-
-// Allowed roles for modifying room types
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
 
 export async function GET(req: NextRequest) {
   try {
-    // Determine organization ID from header, cookie, or query param
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const url = new URL(req.url);
-    const orgIdQuery = url.searchParams.get("orgId");
-    const orgId = orgIdHeader || orgIdCookie || orgIdQuery;
-
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
 
-    // Fetch room types scoped to this organization
-    const roomTypes = await withTenantContext(orgId, async (tx) => {
+    const { propertyId } = validation;
+    console.log("GET /api/room-types, resolved propertyId:", propertyId);
+
+    // Fetch room types scoped to this property
+    const roomTypes = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.roomType.findMany({
+        where: { propertyId: propertyId },
         orderBy: { name: "asc" },
         include: {
           rooms: {
+            where: { propertyId: propertyId },
             orderBy: { name: "asc" }
+          },
+          property: {
+            select: { id: true, name: true }
+          },
+          _count: {
+            select: { rooms: true }
           }
         }
       });
@@ -43,22 +49,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Access control: only Org Admin and Property Manager can create room types
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    // Determine organization ID from header or cookie
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const orgId = orgIdHeader || orgIdCookie;
-
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Validate property access with required role
+    const validation = await validatePropertyAccess(req, "PROPERTY_MGR");
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     // Parse and validate request body
     const {
@@ -100,11 +100,24 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Valid base price is required", { status: 400 });
     }
 
-    // Create new room type
-    const roomType = await withTenantContext(orgId, async (tx) => {
+    // Get property details for organizationId (still needed for backward compatibility)
+    const property = await withPropertyContext(propertyId!, async (tx) => {
+      return await tx.property.findUnique({
+        where: { id: propertyId },
+        select: { organizationId: true }
+      });
+    });
+
+    if (!property) {
+      return new NextResponse("Property not found", { status: 404 });
+    }
+
+    // Create new room type with property association
+    const roomType = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.roomType.create({
         data: {
-          organizationId: orgId,
+          organizationId: property.organizationId, // Keep for backward compatibility
+          propertyId: propertyId, // NEW: Associate with property
           name: name.trim(),
           abbreviation: abbreviation || null,
           privateOrDorm: privateOrDorm || "private",
@@ -123,7 +136,7 @@ export async function POST(req: NextRequest) {
           basePrice: basePrice || null,
           weekdayPrice: weekdayPrice || null,
           weekendPrice: weekendPrice || null,
-          currency: currency || "INR",
+          currency: currency || "USD",
           availability: availability || null,
           minLOS: minLOS || null,
           maxLOS: maxLOS || null,
@@ -142,8 +155,14 @@ export async function POST(req: NextRequest) {
       "code" in error &&
       error.code === "P2002"
     ) {
-      return new NextResponse("Room type name already exists", { status: 409 });
+      return NextResponse.json(
+        { error: "Room type name already exists in this property" },
+        { status: 409 }
+      );
     }
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }

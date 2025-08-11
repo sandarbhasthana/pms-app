@@ -15,6 +15,8 @@ async function main() {
   await prisma.roomPricing.deleteMany();
   await prisma.room.deleteMany();
   await prisma.roomType.deleteMany();
+  await prisma.userProperty.deleteMany(); // NEW: Clear property-level user access
+  await prisma.property.deleteMany(); // NEW: Clear properties
   await prisma.userOrg.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
@@ -30,6 +32,42 @@ async function main() {
   });
 
   console.log("✅ Organization created");
+
+  // Create Properties for the organization
+  const properties = await Promise.all([
+    // Main Property (Default)
+    prisma.property.create({
+      data: {
+        organizationId: organization.id,
+        name: "Grand Palace Hotel - Main Property",
+        address: "123 Main Street, Downtown",
+        phone: "+1-555-0123",
+        email: "main@grandpalace.com",
+        timezone: "America/New_York",
+        currency: "USD",
+        isActive: true,
+        isDefault: true // Mark as default property
+      }
+    }),
+    // Beach Resort Property
+    prisma.property.create({
+      data: {
+        organizationId: organization.id,
+        name: "Grand Palace Beach Resort",
+        address: "456 Ocean Drive, Beach City",
+        phone: "+1-555-0456",
+        email: "beach@grandpalace.com",
+        timezone: "America/New_York",
+        currency: "USD",
+        isActive: true,
+        isDefault: false
+      }
+    })
+  ]);
+
+  const [mainProperty, beachProperty] = properties;
+
+  console.log("✅ Properties created");
 
   // Create Users with all roles
   const users = await Promise.all([
@@ -154,14 +192,60 @@ async function main() {
 
   console.log("✅ Users with all roles created");
 
-  // Create Room Types with base pricing
-  const roomTypes = await Promise.all([
+  // Create property-level user assignments
+  const propertyUserAssignments = await Promise.all([
+    // Property Manager has access to main property
+    prisma.userProperty.create({
+      data: {
+        userId: users[2].id, // Property Manager
+        propertyId: mainProperty.id,
+        role: "PROPERTY_MGR"
+      }
+    }),
+    // Front Desk has access to main property
+    prisma.userProperty.create({
+      data: {
+        userId: users[3].id, // Front Desk
+        propertyId: mainProperty.id,
+        role: "FRONT_DESK"
+      }
+    }),
+    // Housekeeping has access to both properties
+    prisma.userProperty.create({
+      data: {
+        userId: users[4].id, // Housekeeping
+        propertyId: mainProperty.id,
+        role: "HOUSEKEEPING"
+      }
+    }),
+    prisma.userProperty.create({
+      data: {
+        userId: users[4].id, // Housekeeping
+        propertyId: beachProperty.id,
+        role: "HOUSEKEEPING"
+      }
+    }),
+    // Maintenance has access to beach property
+    prisma.userProperty.create({
+      data: {
+        userId: users[5].id, // Maintenance
+        propertyId: beachProperty.id,
+        role: "MAINTENANCE"
+      }
+    })
+  ]);
+
+  console.log("✅ Property-level user assignments created");
+
+  // Create Room Types with base pricing for Main Property
+  const mainPropertyRoomTypes = await Promise.all([
     prisma.roomType.create({
       data: {
         name: "Standard Room",
         description: "Comfortable standard room with city view",
         maxOccupancy: 2,
         organizationId: organization.id,
+        propertyId: mainProperty.id, // NEW: Associate with main property
         amenities: [],
         customAmenities: [],
         basePrice: 2500.0, // ₹2,500 base price
@@ -176,6 +260,7 @@ async function main() {
         description: "Spacious deluxe room with premium amenities",
         maxOccupancy: 2,
         organizationId: organization.id,
+        propertyId: mainProperty.id, // NEW: Associate with main property
         amenities: [],
         customAmenities: [],
         basePrice: 3500.0, // ₹3,500 base price
@@ -190,6 +275,7 @@ async function main() {
         description: "Luxury suite with separate living area",
         maxOccupancy: 2,
         organizationId: organization.id,
+        propertyId: mainProperty.id, // NEW: Associate with main property
         amenities: [],
         customAmenities: [],
         basePrice: 5500.0, // ₹5,500 base price
@@ -204,6 +290,7 @@ async function main() {
         description: "Ultimate luxury with panoramic views",
         maxOccupancy: 4,
         organizationId: organization.id,
+        propertyId: mainProperty.id, // NEW: Associate with main property
         amenities: [],
         customAmenities: [],
         basePrice: 12000.0, // ₹12,000 base price
@@ -214,29 +301,66 @@ async function main() {
     })
   ]);
 
+  // Create Room Types for Beach Property
+  const beachPropertyRoomTypes = await Promise.all([
+    prisma.roomType.create({
+      data: {
+        name: "Ocean View Room",
+        description: "Beautiful room with direct ocean views",
+        maxOccupancy: 2,
+        organizationId: organization.id,
+        propertyId: beachProperty.id, // NEW: Associate with beach property
+        amenities: [],
+        customAmenities: [],
+        basePrice: 3000.0,
+        weekdayPrice: 2700.0,
+        weekendPrice: 3300.0,
+        availability: 6
+      }
+    }),
+    prisma.roomType.create({
+      data: {
+        name: "Beach Villa",
+        description: "Luxury villa steps from the beach",
+        maxOccupancy: 4,
+        organizationId: organization.id,
+        propertyId: beachProperty.id, // NEW: Associate with beach property
+        amenities: [],
+        customAmenities: [],
+        basePrice: 8000.0,
+        weekdayPrice: 7000.0,
+        weekendPrice: 9000.0,
+        availability: 3
+      }
+    })
+  ]);
+
   // Extract room type IDs for later use
   const [
     standardRoomType,
     deluxeRoomType,
     suiteRoomType,
     presidentialRoomType
-  ] = roomTypes;
+  ] = mainPropertyRoomTypes;
+
+  const [oceanViewRoomType, beachVillaRoomType] = beachPropertyRoomTypes;
 
   console.log("✅ Room types created");
 
-  // Create Rooms
-  const rooms = [];
+  // Create Rooms for Main Property
+  const mainPropertyRooms = [];
 
   // Standard Rooms (101-110)
   for (let i = 101; i <= 110; i++) {
-    rooms.push(
+    mainPropertyRooms.push(
       prisma.room.create({
         data: {
           name: `Room ${i}`,
           type: "Standard",
           capacity: 2,
           roomTypeId: standardRoomType.id,
-          organizationId: organization.id
+          organizationId: organization.id,
+          propertyId: mainProperty.id // NEW: Associate with main property
         }
       })
     );
@@ -244,14 +368,15 @@ async function main() {
 
   // Deluxe Rooms (201-208)
   for (let i = 201; i <= 208; i++) {
-    rooms.push(
+    mainPropertyRooms.push(
       prisma.room.create({
         data: {
           name: `Room ${i}`,
           type: "Deluxe",
           capacity: 2,
           roomTypeId: deluxeRoomType.id,
-          organizationId: organization.id
+          organizationId: organization.id,
+          propertyId: mainProperty.id // NEW: Associate with main property
         }
       })
     );
@@ -259,14 +384,15 @@ async function main() {
 
   // Executive Suites (301-304)
   for (let i = 301; i <= 304; i++) {
-    rooms.push(
+    mainPropertyRooms.push(
       prisma.room.create({
         data: {
           name: `Suite ${i}`,
           type: "Suite",
           capacity: 2,
           roomTypeId: suiteRoomType.id,
-          organizationId: organization.id
+          organizationId: organization.id,
+          propertyId: mainProperty.id // NEW: Associate with main property
         }
       })
     );
@@ -274,20 +400,58 @@ async function main() {
 
   // Presidential Suites (401-402)
   for (let i = 401; i <= 402; i++) {
-    rooms.push(
+    mainPropertyRooms.push(
       prisma.room.create({
         data: {
           name: `Presidential Suite ${i}`,
           type: "Presidential",
           capacity: 4,
           roomTypeId: presidentialRoomType.id,
-          organizationId: organization.id
+          organizationId: organization.id,
+          propertyId: mainProperty.id // NEW: Associate with main property
         }
       })
     );
   }
 
-  const createdRooms = await Promise.all(rooms);
+  // Create Rooms for Beach Property
+  const beachPropertyRooms = [];
+
+  // Ocean View Rooms (501-506)
+  for (let i = 501; i <= 506; i++) {
+    beachPropertyRooms.push(
+      prisma.room.create({
+        data: {
+          name: `Ocean Room ${i}`,
+          type: "Ocean View",
+          capacity: 2,
+          roomTypeId: oceanViewRoomType.id,
+          organizationId: organization.id,
+          propertyId: beachProperty.id // NEW: Associate with beach property
+        }
+      })
+    );
+  }
+
+  // Beach Villas (601-603)
+  for (let i = 601; i <= 603; i++) {
+    beachPropertyRooms.push(
+      prisma.room.create({
+        data: {
+          name: `Beach Villa ${i}`,
+          type: "Villa",
+          capacity: 4,
+          roomTypeId: beachVillaRoomType.id,
+          organizationId: organization.id,
+          propertyId: beachProperty.id // NEW: Associate with beach property
+        }
+      })
+    );
+  }
+
+  const createdMainRooms = await Promise.all(mainPropertyRooms);
+  const createdBeachRooms = await Promise.all(beachPropertyRooms);
+  const createdRooms = [...createdMainRooms, ...createdBeachRooms];
   console.log("✅ Rooms created");
 
   console.log("✅ Room pricing skipped for simplicity");
@@ -411,11 +575,19 @@ async function main() {
 
   // Create reservations
   const reservations = await Promise.all(
-    reservationData.map((reservation) =>
-      prisma.reservation.create({
+    reservationData.map((reservation) => {
+      const room = createdRooms[reservation.roomIndex];
+      // Determine property based on room
+      const propertyId =
+        reservation.roomIndex < createdMainRooms.length
+          ? mainProperty.id
+          : beachProperty.id;
+
+      return prisma.reservation.create({
         data: {
           organizationId: organization.id,
-          roomId: createdRooms[reservation.roomIndex].id,
+          propertyId: propertyId, // NEW: Associate with appropriate property
+          roomId: room.id,
           checkIn: reservation.checkIn,
           checkOut: reservation.checkOut,
           source: "WEBSITE",
@@ -426,8 +598,8 @@ async function main() {
           email: "guest@example.com",
           phone: "+1-555-0199"
         }
-      })
-    )
+      });
+    })
   );
 
   console.log("✅ 15 Reservations created");

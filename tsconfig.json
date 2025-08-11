@@ -23,7 +23,15 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/components/bookings/CalendarViewFixed.tsx.bak",
+    "src/components/settings/general/GeneralSettingsFormMinimal.tsx.bak",
+    "src/app/settings/general-minimal/page.tsx.bak"
+, "src/lib/__tests__/property-access.test.ts.bak"  ],
   "exclude": [
     "node_modules",
     "**/*.tsx_NoUse",

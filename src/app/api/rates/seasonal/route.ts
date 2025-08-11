@@ -2,12 +2,11 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { withTenantContext } from "@/lib/tenant";
-
-// Allowed roles for managing seasonal rates
-const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
+import {
+  withPropertyContext,
+  validatePropertyAccess
+} from "@/lib/property-context";
+import { PropertyRole } from "@prisma/client";
 
 /**
  * GET /api/rates/seasonal - Fetch all seasonal rates
@@ -16,35 +15,35 @@ const ALLOWED_ROLES = ["ORG_ADMIN", "PROPERTY_MGR"];
  * - active?: boolean (default: true)
  */
 export async function GET(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access
+    const validation = await validatePropertyAccess(req);
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     const { searchParams } = new URL(req.url);
     const roomTypeId = searchParams.get("roomTypeId");
     const activeParam = searchParams.get("active");
     const isActive = activeParam !== null ? activeParam === "true" : true;
 
-    const seasonalRates = await withTenantContext(orgId, async (tx) => {
-      const whereClause: { isActive: boolean; roomTypeId?: string | null } = {
+    const seasonalRates = await withPropertyContext(propertyId!, async (tx) => {
+      const whereClause: {
+        isActive: boolean;
+        roomTypeId?: string | null;
+        roomType?: { propertyId: string } | null;
+      } = {
         isActive
       };
 
       if (roomTypeId) {
         whereClause.roomTypeId = roomTypeId;
+        // Ensure the room type belongs to this property
+        whereClause.roomType = { propertyId: propertyId! };
       } else {
         // For property-wide rates, roomTypeId should be null
         whereClause.roomTypeId = null;
@@ -56,7 +55,8 @@ export async function GET(req: NextRequest) {
           roomType: {
             select: {
               id: true,
-              name: true
+              name: true,
+              propertyId: true
             }
           }
         },
@@ -93,22 +93,19 @@ export async function GET(req: NextRequest) {
  * }
  */
 export async function POST(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (PROPERTY_MGR and above can create seasonal rates)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     const {
       name,
@@ -144,18 +141,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const seasonalRate = await withTenantContext(orgId, async (tx) => {
+    const seasonalRate = await withPropertyContext(propertyId!, async (tx) => {
       // Verify room type exists if provided
       if (roomTypeId) {
         const roomType = await tx.roomType.findFirst({
           where: {
             id: roomTypeId,
-            organizationId: orgId
+            propertyId: propertyId
           }
         });
 
         if (!roomType) {
-          throw new Error("Room type not found");
+          throw new Error(
+            "Room type not found or doesn't belong to this property"
+          );
         }
       }
 
@@ -235,22 +234,19 @@ export async function POST(req: NextRequest) {
  * }
  */
 export async function PUT(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (PROPERTY_MGR and above can update seasonal rates)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     const { id, name, startDate, endDate, multiplier, isActive } =
       await req.json();
@@ -269,70 +265,73 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const updatedSeasonalRate = await withTenantContext(orgId, async (tx) => {
-      // Verify seasonal rate exists
-      const existingRate = await tx.seasonalRate.findUnique({
-        where: { id },
-        include: {
-          roomType: {
-            select: {
-              organizationId: true
+    const updatedSeasonalRate = await withPropertyContext(
+      propertyId!,
+      async (tx) => {
+        // Verify seasonal rate exists
+        const existingRate = await tx.seasonalRate.findUnique({
+          where: { id },
+          include: {
+            roomType: {
+              select: {
+                propertyId: true
+              }
             }
           }
+        });
+
+        if (!existingRate) {
+          throw new Error("Seasonal rate not found");
         }
-      });
 
-      if (!existingRate) {
-        throw new Error("Seasonal rate not found");
-      }
-
-      // Verify ownership (either property-wide or belongs to this org)
-      if (
-        existingRate.roomType &&
-        existingRate.roomType.organizationId !== orgId
-      ) {
-        throw new Error("Unauthorized access to seasonal rate");
-      }
-
-      // Prepare update data
-      const updateData: {
-        updatedAt: Date;
-        name?: string;
-        startDate?: Date;
-        endDate?: Date;
-        multiplier?: number;
-        isActive?: boolean;
-      } = { updatedAt: new Date() };
-      if (name !== undefined) updateData.name = name;
-      if (startDate !== undefined) updateData.startDate = new Date(startDate);
-      if (endDate !== undefined) updateData.endDate = new Date(endDate);
-      if (multiplier !== undefined) updateData.multiplier = multiplier;
-      if (isActive !== undefined) updateData.isActive = isActive;
-
-      // Validate date range if dates are being updated
-      if (updateData.startDate || updateData.endDate) {
-        const finalStartDate = updateData.startDate || existingRate.startDate;
-        const finalEndDate = updateData.endDate || existingRate.endDate;
-
-        if (finalStartDate >= finalEndDate) {
-          throw new Error("End date must be after start date");
+        // Verify ownership (either property-wide or belongs to this property)
+        if (
+          existingRate.roomType &&
+          existingRate.roomType.propertyId !== propertyId
+        ) {
+          throw new Error("Unauthorized access to seasonal rate");
         }
-      }
 
-      // Update the seasonal rate
-      return await tx.seasonalRate.update({
-        where: { id },
-        data: updateData,
-        include: {
-          roomType: {
-            select: {
-              id: true,
-              name: true
-            }
+        // Prepare update data
+        const updateData: {
+          updatedAt: Date;
+          name?: string;
+          startDate?: Date;
+          endDate?: Date;
+          multiplier?: number;
+          isActive?: boolean;
+        } = { updatedAt: new Date() };
+        if (name !== undefined) updateData.name = name;
+        if (startDate !== undefined) updateData.startDate = new Date(startDate);
+        if (endDate !== undefined) updateData.endDate = new Date(endDate);
+        if (multiplier !== undefined) updateData.multiplier = multiplier;
+        if (isActive !== undefined) updateData.isActive = isActive;
+
+        // Validate date range if dates are being updated
+        if (updateData.startDate || updateData.endDate) {
+          const finalStartDate = updateData.startDate || existingRate.startDate;
+          const finalEndDate = updateData.endDate || existingRate.endDate;
+
+          if (finalStartDate >= finalEndDate) {
+            throw new Error("End date must be after start date");
           }
         }
-      });
-    });
+
+        // Update the seasonal rate
+        return await tx.seasonalRate.update({
+          where: { id },
+          data: updateData,
+          include: {
+            roomType: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+      }
+    );
 
     return NextResponse.json({
       success: true,
@@ -357,22 +356,19 @@ export async function PUT(req: NextRequest) {
  * - id: string (required)
  */
 export async function DELETE(req: NextRequest) {
-  // Authentication check
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role;
-  if (!session?.user || !ALLOWED_ROLES.includes(role as string)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   try {
-    const orgId =
-      req.headers.get("x-organization-id") || req.cookies.get("orgId")?.value;
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization context missing" },
-        { status: 400 }
-      );
+    // Validate property access (PROPERTY_MGR and above can delete seasonal rates)
+    const validation = await validatePropertyAccess(
+      req,
+      PropertyRole.PROPERTY_MGR
+    );
+    if (!validation.success) {
+      return new NextResponse(validation.error, {
+        status: validation.error === "Unauthorized" ? 401 : 403
+      });
     }
+
+    const { propertyId } = validation;
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -384,14 +380,14 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const deletedRate = await withTenantContext(orgId, async (tx) => {
+    const deletedRate = await withPropertyContext(propertyId!, async (tx) => {
       // Verify seasonal rate exists and ownership
       const existingRate = await tx.seasonalRate.findUnique({
         where: { id },
         include: {
           roomType: {
             select: {
-              organizationId: true,
+              propertyId: true,
               name: true
             }
           }
@@ -405,7 +401,7 @@ export async function DELETE(req: NextRequest) {
       // Verify ownership
       if (
         existingRate.roomType &&
-        existingRate.roomType.organizationId !== orgId
+        existingRate.roomType.propertyId !== propertyId
       ) {
         throw new Error("Unauthorized access to seasonal rate");
       }

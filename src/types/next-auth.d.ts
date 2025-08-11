@@ -2,6 +2,17 @@
 import type { DefaultSession, DefaultUser } from "next-auth";
 
 /**
+ * Property information for session
+ */
+interface PropertyInfo {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  isActive: boolean;
+  role?: string; // User's role for this specific property
+}
+
+/**
  * Module augmentation to extend NextAuth session and JWT types
  */
 declare module "next-auth" {
@@ -11,8 +22,14 @@ declare module "next-auth" {
       id: string;
       /** Organization ID set in JWT */
       orgId: string;
-      /** User role set in JWT */
+      /** User role set in JWT (organization-level) */
       role: string;
+      /** Current selected property ID */
+      currentPropertyId?: string;
+      /** List of properties user has access to */
+      availableProperties: PropertyInfo[];
+      /** Default property for this user */
+      defaultProperty?: PropertyInfo;
     };
   }
 
@@ -21,6 +38,12 @@ declare module "next-auth" {
     orgId: string;
     /** User role set in JWT */
     role: string;
+    /** Current selected property ID */
+    currentPropertyId?: string;
+    /** List of properties user has access to */
+    availableProperties?: PropertyInfo[];
+    /** Default property for this user */
+    defaultProperty?: PropertyInfo;
   }
 }
 
@@ -32,5 +55,11 @@ declare module "next-auth/jwt" {
     orgId?: string;
     /** User role stored in token */
     role?: string;
+    /** Current selected property ID */
+    currentPropertyId?: string;
+    /** List of properties user has access to */
+    availableProperties?: PropertyInfo[];
+    /** Default property for this user */
+    defaultProperty?: PropertyInfo;
   }
 }
