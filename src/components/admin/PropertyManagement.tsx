@@ -1,8 +1,8 @@
 // File: src/components/admin/PropertyManagement.tsx
 "use client";
 
-import { useState } from "react";
-import { PropertyList } from "./PropertyList";
+import { useState, useRef } from "react";
+import { PropertyList, PropertyListRef } from "./PropertyList";
 import { PropertyForm } from "./PropertyForm";
 
 interface Property {
@@ -50,6 +50,7 @@ export function PropertyManagement() {
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const propertyListRef = useRef<PropertyListRef>(null);
 
   const handleCreate = () => {
     setSelectedProperty(null);
@@ -84,11 +85,24 @@ export function PropertyManagement() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to save property");
+        let errorMessage = "Failed to save property";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text or default message
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      // Success - return to list view
+      // Success - refresh property list and return to list view
+      console.log("Property update successful, refreshing list...");
+      // Add a small delay to ensure database transaction is committed
+      setTimeout(async () => {
+        await propertyListRef.current?.refreshProperties();
+        console.log("Property list refreshed");
+      }, 100);
       setViewMode("list");
       setSelectedProperty(null);
     } catch (error) {
@@ -105,9 +119,19 @@ export function PropertyManagement() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to delete property");
+      let errorMessage = "Failed to delete property";
+      try {
+        const error = await response.json();
+        errorMessage = error.error || error.message || errorMessage;
+      } catch {
+        // If response is not JSON, use status text or default message
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
+
+    // Success - refresh property list
+    await propertyListRef.current?.refreshProperties();
   };
 
   // Render based on current view mode
@@ -135,6 +159,7 @@ export function PropertyManagement() {
     default:
       return (
         <PropertyList
+          ref={propertyListRef}
           onCreate={handleCreate}
           onEdit={handleEdit}
           onDelete={handleDelete}

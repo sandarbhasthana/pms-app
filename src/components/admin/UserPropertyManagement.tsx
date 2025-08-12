@@ -33,49 +33,60 @@ type UserPropertyFormData = {
   role: string;
 };
 
-type ViewMode = 'list' | 'create' | 'edit';
+type ViewMode = "list" | "create" | "edit";
 
 export function UserPropertyManagement() {
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedAssignment, setSelectedAssignment] = useState<UserPropertyAssignment | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectedAssignment, setSelectedAssignment] =
+    useState<UserPropertyAssignment | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreate = () => {
     setSelectedAssignment(null);
-    setViewMode('create');
+    setViewMode("create");
   };
 
   const handleEdit = (assignment: UserPropertyAssignment) => {
     setSelectedAssignment(assignment);
-    setViewMode('edit');
+    setViewMode("edit");
   };
 
   const handleCancel = () => {
     setSelectedAssignment(null);
-    setViewMode('list');
+    setViewMode("list");
   };
 
   const handleSubmit = async (data: UserPropertyFormData) => {
     setIsLoading(true);
     try {
-      const url = viewMode === 'create' ? '/api/user-properties' : `/api/user-properties/${selectedAssignment?.id}`;
-      const method = viewMode === 'create' ? 'POST' : 'PUT';
+      const url =
+        viewMode === "create"
+          ? "/api/user-properties"
+          : `/api/user-properties/${selectedAssignment?.id}`;
+      const method = viewMode === "create" ? "POST" : "PUT";
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save assignment');
+        let errorMessage = "Failed to save assignment";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text or default message
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       // Success - return to list view
-      setViewMode('list');
+      setViewMode("list");
       setSelectedAssignment(null);
     } catch (error) {
       // Re-throw error to be handled by the form
@@ -87,18 +98,25 @@ export function UserPropertyManagement() {
 
   const handleDelete = async (assignmentId: string) => {
     const response = await fetch(`/api/user-properties/${assignmentId}`, {
-      method: 'DELETE',
+      method: "DELETE"
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to delete assignment');
+      let errorMessage = "Failed to delete assignment";
+      try {
+        const error = await response.json();
+        errorMessage = error.error || error.message || errorMessage;
+      } catch {
+        // If response is not JSON, use status text or default message
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
   };
 
   // Render based on current view mode
   switch (viewMode) {
-    case 'create':
+    case "create":
       return (
         <UserPropertyForm
           onSubmit={handleSubmit}
@@ -107,7 +125,7 @@ export function UserPropertyManagement() {
         />
       );
 
-    case 'edit':
+    case "edit":
       return (
         <UserPropertyForm
           assignment={selectedAssignment!}
@@ -117,7 +135,7 @@ export function UserPropertyManagement() {
         />
       );
 
-    case 'list':
+    case "list":
     default:
       return (
         <UserPropertyList

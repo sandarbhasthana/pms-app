@@ -17,10 +17,22 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get user's accessible properties from session
+    // Get user's accessible properties from database (fresh data)
     const properties = await getUserAvailableProperties();
+    console.log(
+      "🔍 GET /api/properties - Fresh properties from DB:",
+      properties
+    );
 
-    return NextResponse.json(properties);
+    const response = NextResponse.json(properties);
+    // Add cache-busting headers to ensure fresh data
+    response.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   } catch (error) {
     console.error("GET /api/properties error:", error);
     return NextResponse.json(
@@ -68,7 +80,7 @@ export async function POST(req: NextRequest) {
       city,
       state,
       zipCode,
-      country,
+      country
       //website: _website, // Not stored in current schema
       //description: _description // Not stored in current schema
     } = body;

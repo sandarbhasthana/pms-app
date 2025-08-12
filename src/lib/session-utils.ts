@@ -73,16 +73,18 @@ export async function validateCurrentUserPropertyAccess(
 }
 
 /**
- * Get user's available properties from session
+ * Get user's available properties from database (fresh data)
  */
 export async function getUserAvailableProperties() {
   const session = await getSessionWithPropertyContext();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return [];
   }
 
-  return session.user.availableProperties || [];
+  // Fetch fresh data from database instead of using cached session data
+  const { getUserProperties } = await import("@/lib/property-context");
+  return await getUserProperties(session.user.id);
 }
 
 /**

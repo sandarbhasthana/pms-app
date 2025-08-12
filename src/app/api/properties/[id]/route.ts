@@ -76,18 +76,24 @@ export async function PUT(
     const session = await getServerSession(authOptions);
     const role = session?.user?.role;
     if (!session?.user || role !== "ORG_ADMIN") {
-      return new NextResponse("Forbidden - ORG_ADMIN required", {
-        status: 403
-      });
+      return NextResponse.json(
+        { error: "Forbidden - ORG_ADMIN required" },
+        { status: 403 }
+      );
     }
 
     // Check if user has access to this property
     const hasAccess = await hasPropertyAccess(session.user.id, propertyId);
     if (!hasAccess) {
-      return new NextResponse("Forbidden", { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden - You don't have access to this property" },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
+    console.log(`🔍 PUT /api/properties/${propertyId} - Request body:`, body);
+
     const {
       name,
       address,
@@ -104,6 +110,9 @@ export async function PUT(
       // website, // Not stored in current schema
       // description // Not stored in current schema
     } = body;
+
+    console.log(`🔍 Extracted name field: "${name}"`);
+    console.log(`🔍 Property ID to update: ${propertyId}`);
 
     // Validate required fields
     if (!name) {
@@ -144,20 +153,34 @@ export async function PUT(
       .filter(Boolean)
       .join(", ");
 
+    const updateData = {
+      name,
+      address: fullAddress || address || null,
+      phone: phone || null,
+      email: email || null,
+      timezone: timezone || "UTC",
+      currency: currency || "USD",
+      isActive: isActive !== undefined ? isActive : true
+    };
+
+    console.log(`🔍 Database update data:`, updateData);
+
     const updatedProperty = await prisma.property.update({
       where: { id: propertyId },
-      data: {
-        name,
-        address: fullAddress || address || null,
-        phone: phone || null,
-        email: email || null,
-        timezone: timezone || "UTC",
-        currency: currency || "USD",
-        isActive: isActive !== undefined ? isActive : true
-      }
+      data: updateData
     });
 
-    return NextResponse.json(updatedProperty);
+    console.log(`✅ Property updated in database:`, updatedProperty);
+
+    const response = NextResponse.json(updatedProperty);
+    // Add cache-busting headers to ensure fresh data
+    response.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   } catch (error) {
     console.error(`PUT /api/properties/${propertyId} error:`, error);
     return NextResponse.json(
@@ -182,15 +205,19 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     const role = session?.user?.role;
     if (!session?.user || role !== "ORG_ADMIN") {
-      return new NextResponse("Forbidden - ORG_ADMIN required", {
-        status: 403
-      });
+      return NextResponse.json(
+        { error: "Forbidden - ORG_ADMIN required" },
+        { status: 403 }
+      );
     }
 
     // Check if user has access to this property
     const hasAccess = await hasPropertyAccess(session.user.id, propertyId);
     if (!hasAccess) {
-      return new NextResponse("Forbidden", { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden - You don't have access to this property" },
+        { status: 403 }
+      );
     }
 
     // Get property details
