@@ -147,8 +147,9 @@ export default function SettingsTabs() {
                 className={cn(
                   "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-purple-600 text-white shadow-md"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    ? "bg-purple-600 shadow-md"
+                    : "bg-muted hover:bg-muted/80",
+                  isActive ? "text-white" : "text-foreground/70"
                 )}
               >
                 {tab.label}
