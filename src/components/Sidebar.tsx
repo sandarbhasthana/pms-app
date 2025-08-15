@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -14,14 +15,29 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface SidebarProps {
-  collapsed?: boolean;
+  open?: boolean;
+  onClose?: () => void;
 }
 
 const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN"]);
 
-export function Sidebar({ collapsed = false }: SidebarProps) {
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+
+  // Handle ESC key to close sidebar
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open && onClose) {
+        onClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
+    }
+  }, [open, onClose]);
 
   // Hide completely if not authenticated or role is below Property Manager
   if (status !== "authenticated" || !session?.user?.role) return null;
@@ -37,47 +53,60 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   ];
 
   return (
-    <aside
-      className={cn(
-        "hidden md:flex flex-col border-r bg-white dark:bg-gray-900 transition-all duration-200",
-        collapsed ? "w-16" : "w-56"
+    <>
+      {/* Backdrop overlay */}
+      {open && (
+        <div
+          className="fixed top-16 left-0 right-0 bottom-0 bg-black/50 z-40"
+          onClick={onClose}
+        />
       )}
-    >
-      <nav className="flex-1 p-2 space-y-1">
-        {nav.map((item) => {
-          const Icon = item.icon;
-          const active =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard" || pathname.startsWith("/dashboard/")
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800",
-                active && "bg-gray-100 dark:bg-gray-800 font-medium",
-                collapsed && "justify-center"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {!collapsed && <span className="ml-3">{item.label}</span>}
-            </Link>
-          );
-        })}
-      </nav>
 
-      {/* Footer area: Theme toggle */}
-      <div className={cn("p-2 border-t", collapsed ? "flex justify-center" : "px-2")}
+      {/* Sidebar overlay */}
+      <aside
+        className={cn(
+          "fixed top-16 left-0 h-[calc(100vh-4rem)] w-56 bg-white dark:bg-gray-900 border-r shadow-lg z-50 transform transition-transform duration-300 ease-in-out flex flex-col",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
       >
-        {/* Keep ThemeToggle small in sidebar */}
-        <div className={cn("flex items-center", collapsed ? "" : "space-x-2")}
-        >
-          <ThemeToggle />
-          {!collapsed && <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>}
+        <nav className="flex-1 p-2 space-y-1">
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const active =
+              item.href === "/dashboard"
+                ? pathname === "/dashboard" ||
+                  (pathname.startsWith("/dashboard/") &&
+                    pathname !== "/dashboard/bookings")
+                : pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800",
+                  active && "bg-gray-100 dark:bg-gray-800 font-medium"
+                )}
+                onClick={onClose} // Close sidebar when navigation item is clicked
+              >
+                <Icon className="h-5 w-5" />
+                <span className="ml-3">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer area: Theme toggle */}
+        <div className="p-2 border-t px-2">
+          {/* Keep ThemeToggle small in sidebar */}
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Theme
+            </span>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
-

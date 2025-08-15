@@ -5,5 +5,10 @@
   "hints": {
     "no-inline-styles": "off",
     "axe/forms": "off"
-  }
+  },
+  "browserslist": [
+    "defaults",
+    "not ie 11",
+    "not chrome <= 109"
+  ]
 }

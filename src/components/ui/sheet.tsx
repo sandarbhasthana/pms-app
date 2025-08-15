@@ -13,10 +13,7 @@ export const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Dialog.Overlay
     ref={ref}
-    className={cn(
-      "fixed inset-0 bg-gray-900/0",
-      className
-    )}
+    className={cn("fixed inset-0 bg-gray-900/50 z-[9998]", className)}
     {...props}
   />
 ));
@@ -31,7 +28,7 @@ export const SheetContent = React.forwardRef<
     <Dialog.Content
       ref={ref}
       className={cn(
-        "fixed bottom-0 left-0 right-0 h-[70%] w-full rounded-t-lg bg-white p-6 shadow-lg",
+        "fixed bottom-0 left-0 right-0 h-[70%] w-full rounded-t-lg bg-white p-6 shadow-lg z-[9999]",
         "dark:bg-gray-800 dark:border-gray-700",
         className
       )}
@@ -46,9 +43,7 @@ SheetContent.displayName = "SheetContent";
 export const SheetHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   className,
   ...props
-}) => (
-  <div className={cn("mb-4", className)} {...props} />
-);
+}) => <div className={cn("mb-4", className)} {...props} />;
 SheetHeader.displayName = "SheetHeader";
 
 export const SheetTitle = React.forwardRef<

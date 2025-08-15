@@ -89,10 +89,10 @@ export async function PATCH(
   const { id } = await context.params;
 
   try {
-    // Get reservation to determine property
+    // Get reservation to determine property and current room
     const reservation = await prisma.reservation.findUnique({
       where: { id },
-      select: { propertyId: true }
+      select: { propertyId: true, roomId: true }
     });
 
     if (!reservation || !reservation.propertyId) {
@@ -119,8 +119,28 @@ export async function PATCH(
       idType,
       idNumber,
       issuingCountry,
-      status
+      status,
+      roomId // ✅ ADD ROOM ID SUPPORT
     } = await req.json();
+
+    // If roomId is being updated, validate it belongs to the same property
+    if (roomId && roomId !== reservation.roomId) {
+      const newRoom = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { propertyId: true, name: true, type: true }
+      });
+
+      if (!newRoom) {
+        return NextResponse.json({ error: "Room not found" }, { status: 400 });
+      }
+
+      if (newRoom.propertyId !== reservation.propertyId) {
+        return NextResponse.json(
+          { error: "Room does not belong to the same property" },
+          { status: 400 }
+        );
+      }
+    }
 
     // If dates are being changed, check for conflicts
     if (checkIn || checkOut) {
@@ -206,7 +226,8 @@ export async function PATCH(
             idNumber: idNumber !== undefined ? idNumber : undefined,
             issuingCountry:
               issuingCountry !== undefined ? issuingCountry : undefined,
-            status: status !== undefined ? status : undefined
+            status: status !== undefined ? status : undefined,
+            roomId: roomId !== undefined ? roomId : undefined // ✅ ADD ROOM ID UPDATE
           },
           include: {
             room: {

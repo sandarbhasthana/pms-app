@@ -229,7 +229,10 @@ export function PropertySwitcher({
 
                 <div className="flex items-center space-x-2">
                   {property.isDefault && (
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="text-xs bg-purple-lightest text-purple-primary border-purple-primary/20 dark:bg-purple-darker/20 dark:text-purple-light dark:border-purple-light/30"
+                    >
                       Default
                     </Badge>
                   )}

@@ -215,7 +215,7 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
               .map((property) => (
                 <Card
                   key={property.id}
-                  className="hover:shadow-md transition-shadow"
+                  className="card-hover purple-accent-hover transition-shadow"
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -228,7 +228,7 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                       {property.isDefault && (
                         <Badge
                           variant="secondary"
-                          className="flex items-center space-x-1 bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                          className="flex items-center space-x-1 bg-purple-lightest text-purple-primary border-purple-primary/20 hover:bg-purple-lighter dark:bg-purple-darker/20 dark:text-purple-light dark:border-purple-light/30"
                         >
                           <Star className="h-3 w-3 fill-current" />
                           <span>Default</span>
@@ -277,6 +277,7 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                         variant="outline"
                         size="sm"
                         onClick={() => onEdit(property)}
+                        className="text-purple-primary border-purple-primary hover:bg-purple-primary hover:text-white"
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
@@ -285,7 +286,7 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteClick(property)}
-                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white hover:border-red-600"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete

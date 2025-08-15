@@ -23,9 +23,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
 import CalendarViewRowStyle from "@/components/bookings/CalendarViewRowStyle";
-import NewBookingModalFixed from "@/components/bookings/NewBookingModalFixed";
-import ViewDetailsModal from "@/components/bookings/ViewDetailsModal";
-import EditBookingModal from "@/components/bookings/EditBookingModal";
+import NewBookingModalFixed from "@/components/bookings/NewBookingSheet";
+import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
+import EditBookingSheet from "@/components/bookings/EditBookingSheet";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import LegendModal from "@/components/bookings/LegendModal";
@@ -350,7 +350,7 @@ export default function BookingsRowStylePage() {
   // ------------------------
   // Load reservations function
   // ------------------------
-  const loadReservations = useCallback(async () => {
+  const loadReservations = useCallback(async (showToast = false) => {
     try {
       const res = await fetch("/api/reservations", {
         credentials: "include"
@@ -361,7 +361,9 @@ export default function BookingsRowStylePage() {
         count: number;
       };
       setEvents(reservations);
-      toast.success(`Loaded ${count} reservation(s)`);
+      if (showToast) {
+        toast.success(`Loaded ${count} reservation(s)`);
+      }
     } catch (e) {
       console.error("Failed to load reservations:", e);
       toast.error(
@@ -376,7 +378,7 @@ export default function BookingsRowStylePage() {
   useEffect(() => {
     async function loadAll() {
       try {
-        await Promise.all([loadRooms(), loadReservations()]);
+        await Promise.all([loadRooms(), loadReservations(false)]); // Don't show toast on initial load
       } finally {
         setLoading(false);
       }
@@ -502,32 +504,56 @@ export default function BookingsRowStylePage() {
   // ------------------------
   // Date‐click handler opens New Booking dialog
   // ------------------------
-  const handleDateClick = useCallback((arg: DateClickArg) => {
-    arg.jsEvent.preventDefault();
-    arg.jsEvent.stopPropagation();
-    const roomId = arg.resource?.id;
-    const roomName = arg.resource?.title;
-    const dateTab = arg.date.toLocaleDateString("en-CA");
-    const zero = new Date();
-    zero.setHours(0, 0, 0, 0);
-    if (arg.date < zero) {
-      toast.error("Cannot create bookings in the past.");
-      return;
-    }
-    // Only allow booking on individual rooms (children), not room types (parents)
-    if (roomId && roomName && arg.resource?.getParent()) {
-      setSelectedSlot({ roomId, roomName, date: dateTab });
-      setAdults(1);
-      setChildren(0);
-      // ← NEW: reset customer fields
-      setFullName("");
-      setPhone("");
-      setEmail("");
-      setIdType("passport");
-      setIdNumber("");
-      setIssuingCountry("");
-    }
-  }, []);
+  const handleDateClick = useCallback(
+    (arg: DateClickArg) => {
+      arg.jsEvent.preventDefault();
+      arg.jsEvent.stopPropagation();
+      const roomId = arg.resource?.id;
+      const roomName = arg.resource?.title;
+      const dateTab = arg.date.toLocaleDateString("en-CA");
+      const zero = new Date();
+      zero.setHours(0, 0, 0, 0);
+
+      if (arg.date < zero) {
+        toast.error("Cannot create bookings in the past.");
+        return;
+      }
+
+      // Only allow booking on individual rooms (children), not room types (parents)
+      if (roomId && roomName && arg.resource?.getParent()) {
+        // Check if this date/room combination is already occupied
+        const clickedDate = new Date(dateTab);
+        const isOccupied = events.some((reservation) => {
+          if (reservation.roomId !== roomId) return false;
+
+          const checkIn = new Date(reservation.checkIn);
+          const checkOut = new Date(reservation.checkOut);
+
+          // Check if the clicked date falls within an existing reservation
+          return clickedDate >= checkIn && clickedDate < checkOut;
+        });
+
+        if (isOccupied) {
+          toast.error(
+            "This room is already booked for the selected date. Please choose a different date or room."
+          );
+          return;
+        }
+
+        setSelectedSlot({ roomId, roomName, date: dateTab });
+        setAdults(1);
+        setChildren(0);
+        // ← NEW: reset customer fields
+        setFullName("");
+        setPhone("");
+        setEmail("");
+        setIdType("passport");
+        setIdNumber("");
+        setIssuingCountry("");
+      }
+    },
+    [events]
+  );
 
   // ------------------------
   // Event‐click handler opens flyout menu
@@ -702,21 +728,21 @@ export default function BookingsRowStylePage() {
 
       {/* New Booking Dialog */}
       <NewBookingModalFixed
-        handleCreate={(e) => {
+        handleCreate={(bookingData) => {
           if (!selectedSlot) return;
           handleCreateBooking({
             selectedSlot,
             data: {
-              guestName: fullName,
-              phone,
-              email,
-              idType,
-              idNumber,
-              issuingCountry,
-              checkIn: e.currentTarget.checkIn.value,
-              checkOut: e.currentTarget.checkOut.value,
-              adults,
-              children: children
+              guestName: bookingData.guestName,
+              phone: bookingData.phone,
+              email: bookingData.email,
+              idType: bookingData.idType,
+              idNumber: bookingData.idNumber,
+              issuingCountry: bookingData.issuingCountry,
+              checkIn: bookingData.checkIn,
+              checkOut: bookingData.checkOut,
+              adults: bookingData.adults,
+              children: bookingData.children
             },
             reload,
             onClose: () => setSelectedSlot(null)
@@ -830,36 +856,60 @@ export default function BookingsRowStylePage() {
         />
       )}
 
-      {/* Edit/Delete Modal */}
-      <EditBookingModal
-        handleUpdate={(e) => {
-          if (!editingReservation?.id) return;
-          handleUpdateBooking({
-            reservationId: editingReservation.id,
+      {/* Edit Booking Sheet */}
+      <EditBookingSheet
+        editingReservation={editingReservation}
+        setEditingReservation={setEditingReservation}
+        availableRooms={resources.map((room, index) => {
+          // Extract room type and number from title (e.g., "Presidential Suite - 101")
+          const titleParts = room.title.split(" - ");
+          const roomType = titleParts.length > 1 ? titleParts[0] : room.title;
+          const roomNumber =
+            titleParts.length > 1 ? titleParts[1] : `${index + 101}`;
+
+          // Create proper room data
+          return {
+            id: room.id,
+            name: room.title,
+            number: roomNumber,
+            type: roomType.toLowerCase().replace(/\s+/g, "_"),
+            typeDisplayName: roomType,
+            capacity: 4, // Placeholder - should come from room data
+            basePrice: roomType.toLowerCase().includes("presidential")
+              ? 5000
+              : roomType.toLowerCase().includes("deluxe")
+              ? 3500
+              : roomType.toLowerCase().includes("suite")
+              ? 4000
+              : 2500,
+            available: true, // Will be updated by availability check
+            isCurrentRoom: editingReservation?.roomId === room.id
+          };
+        })}
+        onUpdate={async (reservationId, data) => {
+          await handleUpdateBooking({
+            reservationId,
             data: {
-              guestName: e.currentTarget.guestName.value,
-              checkIn: e.currentTarget.checkIn.value,
-              checkOut: e.currentTarget.checkOut.value,
-              adults,
-              children: children
+              guestName: data.guestName || "",
+              checkIn: data.checkIn || "",
+              checkOut: data.checkOut || "",
+              adults: data.adults || 1,
+              children: data.children || 0,
+              roomId: data.roomId, // ✅ ADD ROOM ID TO UPDATE
+              notes: data.notes || ""
             },
             reload,
             onClose: () => setEditingReservation(null)
           });
         }}
-        editingReservation={editingReservation}
-        setEditingReservation={setEditingReservation}
-        resources={resources}
-        adults={adults}
-        setAdults={setAdults}
-        childrenCount={children}
-        setChildren={setChildren}
-        handleDelete={(id) => handleDeleteBooking(id, reload)}
-        onPaymentAdded={reload}
+        onDelete={async (reservationId) => {
+          await handleDeleteBooking(reservationId, reload);
+          setEditingReservation(null);
+        }}
       />
 
-      {/* View Details Modal */}
-      <ViewDetailsModal
+      {/* View Booking Sheet */}
+      <ViewBookingSheet
         viewReservation={viewReservation}
         setViewReservation={setViewReservation}
       />

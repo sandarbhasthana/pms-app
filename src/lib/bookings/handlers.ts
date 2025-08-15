@@ -32,17 +32,42 @@ export async function handleCreateBooking({
   onClose: () => void;
 }) {
   try {
+    // Validate dates
+    const checkIn = new Date(data.checkIn);
+    const checkOut = new Date(data.checkOut);
+
+    if (checkOut <= checkIn) {
+      toast.error("Check-out date must be after check-in date");
+      return;
+    }
+
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...data, roomId: selectedSlot.roomId })
     });
-    if (!res.ok) throw new Error((await res.json()).error || "Error");
-    toast.success("Created!");
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Error creating reservation");
+    }
+
+    toast.success("Reservation created successfully!");
     onClose();
     await reload();
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : "Unknown error");
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+    // Handle specific error cases
+    if (errorMessage.includes("conflicting reservations")) {
+      toast.error(
+        "This room is already booked for the selected dates. Please choose different dates or another room."
+      );
+    } else if (errorMessage.includes("availability")) {
+      toast.error("Room is not available for the selected dates.");
+    } else {
+      toast.error(errorMessage);
+    }
   }
 }
 
@@ -59,6 +84,13 @@ export async function handleUpdateBooking({
     checkOut: string;
     adults: number;
     children: number;
+    roomId?: string; // ✅ ADD ROOM ID SUPPORT
+    notes?: string; // ✅ ADD NOTES SUPPORT
+    phone?: string;
+    email?: string;
+    idType?: string;
+    idNumber?: string;
+    issuingCountry?: string;
   };
   reload: () => Promise<void>;
   onClose: () => void;
@@ -69,8 +101,13 @@ export async function handleUpdateBooking({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error((await res.json()).error || "Error");
-    toast.success("Updated!");
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Error updating reservation");
+    }
+
+    toast.success("Reservation updated successfully!");
     onClose();
     await reload();
   } catch (err) {

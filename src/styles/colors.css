@@ -1,0 +1,459 @@
+/* Custom PMS Color System Utilities */
+
+/* Primary Color Variants */
+.bg-primary-50 {
+  background-color: oklch(0.95 0.05 280);
+}
+.bg-primary-100 {
+  background-color: oklch(0.9 0.08 280);
+}
+.bg-primary-200 {
+  background-color: oklch(0.8 0.12 280);
+}
+.bg-primary-300 {
+  background-color: oklch(0.7 0.15 280);
+}
+.bg-primary-400 {
+  background-color: oklch(0.6 0.18 280);
+}
+.bg-primary-500 {
+  background-color: oklch(0.5 0.2 280);
+}
+.bg-primary-600 {
+  background-color: #7210a2;
+} /* Main primary - your exact color */
+.bg-primary-700 {
+  background-color: oklch(0.3 0.18 280);
+}
+.bg-primary-800 {
+  background-color: oklch(0.25 0.15 280);
+}
+.bg-primary-900 {
+  background-color: oklch(0.2 0.12 280);
+}
+
+.text-primary-50 {
+  color: oklch(0.95 0.05 280);
+}
+.text-primary-100 {
+  color: oklch(0.9 0.08 280);
+}
+.text-primary-200 {
+  color: oklch(0.8 0.12 280);
+}
+.text-primary-300 {
+  color: oklch(0.7 0.15 280);
+}
+.text-primary-400 {
+  color: oklch(0.6 0.18 280);
+}
+.text-primary-500 {
+  color: oklch(0.5 0.2 280);
+}
+.text-primary-600 {
+  color: #7210a2;
+} /* Main primary - your exact color */
+.text-primary-700 {
+  color: oklch(0.3 0.18 280);
+}
+.text-primary-800 {
+  color: oklch(0.25 0.15 280);
+}
+.text-primary-900 {
+  color: oklch(0.2 0.12 280);
+}
+
+/* Gray Scale (from your palette) */
+.bg-gray-50 {
+  background-color: oklch(0.98 0.002 240);
+}
+.bg-gray-100 {
+  background-color: oklch(0.95 0.005 240);
+}
+.bg-gray-200 {
+  background-color: oklch(0.9 0.008 240);
+}
+.bg-gray-300 {
+  background-color: oklch(0.85 0.01 240);
+}
+.bg-gray-400 {
+  background-color: oklch(0.737 0 0);
+} /* #bcbcbc */
+.bg-gray-500 {
+  background-color: oklch(0.6 0 0);
+}
+.bg-gray-600 {
+  background-color: oklch(0.337 0 0);
+} /* #565656 */
+.bg-gray-700 {
+  background-color: oklch(0.25 0 0);
+}
+.bg-gray-800 {
+  background-color: oklch(0.2 0 0);
+}
+.bg-gray-900 {
+  background-color: oklch(0.157 0 0);
+} /* #282828 */
+
+.text-gray-50 {
+  color: oklch(0.98 0.002 240);
+}
+.text-gray-100 {
+  color: oklch(0.95 0.005 240);
+}
+.text-gray-200 {
+  color: oklch(0.9 0.008 240);
+}
+.text-gray-300 {
+  color: oklch(0.85 0.01 240);
+}
+.text-gray-400 {
+  color: oklch(0.737 0 0);
+} /* #bcbcbc */
+.text-gray-500 {
+  color: oklch(0.6 0 0);
+}
+.text-gray-600 {
+  color: oklch(0.337 0 0);
+} /* #565656 */
+.text-gray-700 {
+  color: oklch(0.25 0 0);
+}
+.text-gray-800 {
+  color: oklch(0.2 0 0);
+}
+.text-gray-900 {
+  color: oklch(0.157 0 0);
+} /* #282828 */
+
+/* Semantic Colors */
+.bg-success {
+  background-color: oklch(var(--success));
+}
+.text-success {
+  color: oklch(var(--success));
+}
+.bg-success-foreground {
+  background-color: oklch(var(--success-foreground));
+}
+.text-success-foreground {
+  color: oklch(var(--success-foreground));
+}
+
+.bg-warning {
+  background-color: oklch(var(--warning));
+}
+.text-warning {
+  color: oklch(var(--warning));
+}
+.bg-warning-foreground {
+  background-color: oklch(var(--warning-foreground));
+}
+.text-warning-foreground {
+  color: oklch(var(--warning-foreground));
+}
+
+.bg-info {
+  background-color: oklch(var(--info));
+}
+.text-info {
+  color: oklch(var(--info));
+}
+.bg-info-foreground {
+  background-color: oklch(var(--info-foreground));
+}
+.text-info-foreground {
+  color: oklch(var(--info-foreground));
+}
+
+.bg-destructive {
+  background-color: oklch(var(--destructive));
+}
+.text-destructive {
+  color: oklch(var(--destructive));
+}
+.bg-destructive-foreground {
+  background-color: oklch(var(--destructive-foreground));
+}
+.text-destructive-foreground {
+  color: oklch(var(--destructive-foreground));
+}
+
+/* Border Colors */
+.border-primary {
+  border-color: oklch(0.35 0.2 280);
+}
+.border-success {
+  border-color: oklch(var(--success));
+}
+.border-warning {
+  border-color: oklch(var(--warning));
+}
+.border-info {
+  border-color: oklch(var(--info));
+}
+.border-destructive {
+  border-color: oklch(var(--destructive));
+}
+
+/* Status Badge Styles */
+.badge-success {
+  background-color: oklch(0.9 0.05 145);
+  color: oklch(0.3 0.15 145);
+  border: 1px solid oklch(0.8 0.08 145);
+}
+
+.badge-warning {
+  background-color: oklch(0.95 0.05 85);
+  color: oklch(0.4 0.15 85);
+  border: 1px solid oklch(0.85 0.08 85);
+}
+
+.badge-info {
+  background-color: oklch(0.9 0.05 220);
+  color: oklch(0.3 0.15 220);
+  border: 1px solid oklch(0.8 0.08 220);
+}
+
+.badge-destructive {
+  background-color: oklch(0.95 0.05 27);
+  color: oklch(0.4 0.2 27);
+  border: 1px solid oklch(0.85 0.1 27);
+}
+
+.badge-primary {
+  background-color: oklch(0.9 0.05 280);
+  color: oklch(0.3 0.18 280);
+  border: 1px solid oklch(0.8 0.08 280);
+}
+
+/* Dark mode badge adjustments */
+.dark .badge-success {
+  background-color: oklch(0.2 0.05 145);
+  color: oklch(0.8 0.12 145);
+  border: 1px solid oklch(0.3 0.08 145);
+}
+
+.dark .badge-warning {
+  background-color: oklch(0.2 0.05 85);
+  color: oklch(0.85 0.12 85);
+  border: 1px solid oklch(0.3 0.08 85);
+}
+
+.dark .badge-info {
+  background-color: oklch(0.2 0.05 220);
+  color: oklch(0.8 0.12 220);
+  border: 1px solid oklch(0.3 0.08 220);
+}
+
+.dark .badge-destructive {
+  background-color: oklch(0.2 0.05 27);
+  color: oklch(0.85 0.15 27);
+  border: 1px solid oklch(0.3 0.1 27);
+}
+
+.dark .badge-primary {
+  background-color: oklch(0.2 0.05 280);
+  color: oklch(0.8 0.15 280);
+  border: 1px solid oklch(0.3 0.1 280);
+}
+
+/* Property Status Colors (keeping existing functionality) */
+.property-default {
+  background-color: oklch(0.9 0.05 280);
+  color: oklch(0.3 0.18 280);
+  border: 1px solid oklch(0.8 0.08 280);
+}
+
+.property-active {
+  background-color: oklch(0.9 0.05 145);
+  color: oklch(0.3 0.15 145);
+  border: 1px solid oklch(0.8 0.08 145);
+}
+
+.property-inactive {
+  background-color: oklch(0.9 0.005 0);
+  color: oklch(0.4 0 0);
+  border: 1px solid oklch(0.8 0.005 0);
+}
+
+/* Shift Colors (keeping existing functionality) */
+.shift-morning {
+  background-color: oklch(0.95 0.05 85);
+  color: oklch(0.4 0.15 85);
+  border: 1px solid oklch(0.85 0.08 85);
+}
+
+.shift-evening {
+  background-color: oklch(0.9 0.05 220);
+  color: oklch(0.3 0.15 220);
+  border: 1px solid oklch(0.8 0.08 220);
+}
+
+.shift-night {
+  background-color: oklch(0.9 0.05 280);
+  color: oklch(0.3 0.18 280);
+  border: 1px solid oklch(0.8 0.08 280);
+}
+
+/* Dark mode adjustments for property and shift colors */
+.dark .property-default {
+  background-color: oklch(0.2 0.05 280);
+  color: oklch(0.8 0.15 280);
+  border: 1px solid oklch(0.3 0.1 280);
+}
+
+.dark .property-active {
+  background-color: oklch(0.2 0.05 145);
+  color: oklch(0.8 0.12 145);
+  border: 1px solid oklch(0.3 0.08 145);
+}
+
+.dark .property-inactive {
+  background-color: oklch(0.25 0.005 0);
+  color: oklch(0.7 0 0);
+  border: 1px solid oklch(0.35 0.005 0);
+}
+
+.dark .shift-morning {
+  background-color: oklch(0.2 0.05 85);
+  color: oklch(0.85 0.12 85);
+  border: 1px solid oklch(0.3 0.08 85);
+}
+
+.dark .shift-evening {
+  background-color: oklch(0.2 0.05 220);
+  color: oklch(0.8 0.12 220);
+  border: 1px solid oklch(0.3 0.08 220);
+}
+
+.dark .shift-night {
+  background-color: oklch(0.2 0.05 280);
+  color: oklch(0.8 0.15 280);
+  border: 1px solid oklch(0.3 0.1 280);
+}
+
+/* Hover states */
+.hover\:bg-primary:hover {
+  background-color: oklch(0.4 0.22 280);
+}
+.hover\:bg-success:hover {
+  background-color: oklch(0.55 0.17 145);
+}
+.hover\:bg-warning:hover {
+  background-color: oklch(0.65 0.17 85);
+}
+.hover\:bg-info:hover {
+  background-color: oklch(0.55 0.17 220);
+}
+.hover\:bg-destructive:hover {
+  background-color: oklch(0.52 0.25 27);
+}
+
+/* Focus states */
+.focus\:ring-primary:focus {
+  --tw-ring-color: oklch(0.35 0.2 280);
+}
+.focus\:ring-success:focus {
+  --tw-ring-color: oklch(0.6 0.15 145);
+}
+.focus\:ring-warning:focus {
+  --tw-ring-color: oklch(0.7 0.15 85);
+}
+.focus\:ring-info:focus {
+  --tw-ring-color: oklch(0.6 0.15 220);
+}
+.focus\:ring-destructive:focus {
+  --tw-ring-color: oklch(0.577 0.245 27);
+}
+
+/* Additional Purple Utilities - Using Your Exact Color #7210a2 */
+.bg-purple-primary {
+  background-color: #7210a2;
+} /* Your exact purple */
+.bg-purple-light {
+  background-color: #8b4aff;
+} /* Lighter shade */
+.bg-purple-lighter {
+  background-color: #a876ff;
+} /* Even lighter */
+.bg-purple-lightest {
+  background-color: #dcc9ff;
+} /* Very light */
+.bg-purple-dark {
+  background-color: #5f0d87;
+} /* Darker shade */
+.bg-purple-darker {
+  background-color: #4d0a6c;
+} /* Even darker */
+
+.text-purple-primary {
+  color: #7210a2;
+} /* Your exact purple */
+.text-purple-light {
+  color: #8b4aff;
+} /* Lighter shade */
+.text-purple-lighter {
+  color: #a876ff;
+} /* Even lighter */
+.text-purple-lightest {
+  color: #dcc9ff;
+} /* Very light */
+.text-purple-dark {
+  color: #5f0d87;
+} /* Darker shade */
+.text-purple-darker {
+  color: #4d0a6c;
+} /* Even darker */
+
+.border-purple-primary {
+  border-color: #7210a2;
+} /* Your exact purple */
+
+/* Button Variants with Your Purple */
+.btn-purple-primary {
+  background-color: #7210a2;
+  color: white;
+  border: 1px solid #7210a2;
+}
+
+.btn-purple-primary:hover {
+  background-color: #5f0d87;
+  border-color: #5f0d87;
+}
+
+.btn-purple-outline {
+  background-color: transparent;
+  color: #7210a2;
+  border: 1px solid #7210a2;
+}
+
+.btn-purple-outline:hover {
+  background-color: #7210a2;
+  color: white;
+}
+
+/* Card hover effects with purple accent - No layout shift */
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(114, 16, 162, 0.15), inset 3px 0 0 #7210a2,
+    0 0 0 1px rgba(114, 16, 162, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Number hover effects */
+.number-hover:hover {
+  color: #5f0d87; /* Darker purple on hover */
+  transition: color 0.2s ease;
+}
+
+/* Purple accent hover - NO background color change */
+.purple-accent-hover:hover {
+  /* No background changes - only shadow effects */
+}
+
+/* Alternative: Scale effect without layout shift */
+.card-scale-hover:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(114, 16, 162, 0.12);
+  transition: all 0.2s ease;
+}

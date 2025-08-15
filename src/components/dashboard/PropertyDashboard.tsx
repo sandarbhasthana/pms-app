@@ -92,11 +92,11 @@ export function PropertyDashboard() {
       <div className="p-8">
         <Card>
           <CardContent className="p-12 text-center">
-            <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               No Property Selected
             </h3>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Please select a property to view the dashboard.
             </p>
           </CardContent>
@@ -133,14 +133,15 @@ export function PropertyDashboard() {
       <div className="p-8">
         <Card>
           <CardContent className="p-12 text-center">
-            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Error Loading Dashboard
             </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-muted-foreground mb-4">{error}</p>
             <button
+              type="button"
               onClick={loadDashboardData}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="btn-purple-primary px-4 py-2 rounded"
             >
               Try Again
             </button>
@@ -162,11 +163,11 @@ export function PropertyDashboard() {
       {/* Property Header */}
       <div className="space-y-2">
         <div className="flex items-center space-x-3">
-          <Building2 className="h-8 w-8 text-blue-600" />
+          <Building2 className="h-8 w-8 text-muted-foreground" />
           <div>
             <h1 className="text-3xl font-bold">{currentProperty.name}</h1>
             {propertyInfo && (
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 {propertyInfo.address}, {propertyInfo.city},{" "}
                 {propertyInfo.state}
               </p>
@@ -186,18 +187,20 @@ export function PropertyDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Room Stats */}
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
             <Bed className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalRooms || 0}</div>
+            <div className="text-2xl font-bold text-purple-primary number-hover cursor-pointer">
+              {stats?.totalRooms || 0}
+            </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <span className="text-green-600">
+              <span className="text-success">
                 Available: {stats?.availableRooms || 0}
               </span>
-              <span className="text-red-600">
+              <span className="text-destructive">
                 Occupied: {stats?.occupiedRooms || 0}
               </span>
             </div>
@@ -205,7 +208,7 @@ export function PropertyDashboard() {
         </Card>
 
         {/* Occupancy Rate */}
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Occupancy Rate
@@ -213,7 +216,7 @@ export function PropertyDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-primary number-hover cursor-pointer">
               {stats?.occupancyRate || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -224,7 +227,7 @@ export function PropertyDashboard() {
         </Card>
 
         {/* Today's Check-ins */}
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Today&apos;s Check-ins
@@ -232,7 +235,7 @@ export function PropertyDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-primary number-hover cursor-pointer">
               {stats?.todayCheckIns || 0}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -242,7 +245,7 @@ export function PropertyDashboard() {
         </Card>
 
         {/* Revenue */}
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Monthly Revenue
@@ -250,12 +253,12 @@ export function PropertyDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-primary number-hover cursor-pointer">
               ${stats?.revenue.thisMonth?.toLocaleString() || "0"}
             </div>
             <p
               className={`text-xs ${
-                revenueGrowth >= 0 ? "text-green-600" : "text-red-600"
+                revenueGrowth >= 0 ? "text-success" : "text-destructive"
               }`}
             >
               {revenueGrowth >= 0 ? "+" : ""}
@@ -267,7 +270,7 @@ export function PropertyDashboard() {
 
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Calendar className="h-5 w-5" />
@@ -276,21 +279,23 @@ export function PropertyDashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Total Active</span>
-              <span className="font-medium">
+              <span className="text-sm text-muted-foreground">
+                Total Active
+              </span>
+              <span className="font-medium text-purple-primary">
                 {stats?.totalReservations || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Pending</span>
-              <span className="font-medium text-yellow-600">
+              <span className="text-sm text-muted-foreground">Pending</span>
+              <span className="font-medium text-warning">
                 {stats?.pendingReservations || 0}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Bed className="h-5 w-5" />
@@ -299,21 +304,21 @@ export function PropertyDashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Available</span>
-              <span className="font-medium text-green-600">
+              <span className="text-sm text-muted-foreground">Available</span>
+              <span className="font-medium text-purple-primary">
                 {stats?.availableRooms || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Maintenance</span>
-              <span className="font-medium text-orange-600">
+              <span className="text-sm text-muted-foreground">Maintenance</span>
+              <span className="font-medium text-purple-primary">
                 {stats?.maintenanceRooms || 0}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover purple-accent-hover">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <DollarSign className="h-5 w-5" />
@@ -321,7 +326,7 @@ export function PropertyDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-primary number-hover cursor-pointer">
               ${stats?.revenue.today?.toLocaleString() || "0"}
             </div>
             <p className="text-xs text-muted-foreground">

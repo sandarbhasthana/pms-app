@@ -73,6 +73,7 @@ export function UserMenu() {
               name={user.name}
               src={user.image}
               size="md"
+              className="border border-solid border-[#7210A2] dark:border-[#B23CEC]"
             />
           </Button>
         </DropdownMenuTrigger>

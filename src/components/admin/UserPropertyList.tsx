@@ -2,7 +2,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Building2, Edit, Trash2, Plus, UserCheck, Mail } from "lucide-react";
+import {
+  Users,
+  Building2,
+  Edit,
+  Trash2,
+  Plus,
+  UserCheck,
+  Mail
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,14 +19,14 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
@@ -50,13 +58,18 @@ interface UserPropertyListProps {
   onCreate: () => void;
 }
 
-export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyListProps) {
+export function UserPropertyList({
+  onEdit,
+  onDelete,
+  onCreate
+}: UserPropertyListProps) {
   const [assignments, setAssignments] = useState<UserPropertyAssignment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [assignmentToDelete, setAssignmentToDelete] = useState<UserPropertyAssignment | null>(null);
+  const [assignmentToDelete, setAssignmentToDelete] =
+    useState<UserPropertyAssignment | null>(null);
   const [filterProperty, setFilterProperty] = useState<string>("all");
 
   // Load assignments and properties
@@ -68,16 +81,16 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const [assignmentsResponse, propertiesResponse] = await Promise.all([
-        fetch('/api/user-properties'),
-        fetch('/api/properties')
+        fetch("/api/user-properties"),
+        fetch("/api/properties")
       ]);
 
       if (!assignmentsResponse.ok || !propertiesResponse.ok) {
-        throw new Error('Failed to load data');
+        throw new Error("Failed to load data");
       }
-      
+
       const [assignmentsData, propertiesData] = await Promise.all([
         assignmentsResponse.json(),
         propertiesResponse.json()
@@ -86,7 +99,7 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
       setAssignments(assignmentsData);
       setProperties(propertiesData);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -102,37 +115,41 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
 
     try {
       await onDelete(assignmentToDelete.id);
-      setAssignments(assignments.filter(a => a.id !== assignmentToDelete.id));
+      setAssignments(assignments.filter((a) => a.id !== assignmentToDelete.id));
       setDeleteDialogOpen(false);
       setAssignmentToDelete(null);
     } catch (error) {
-      console.error('Error deleting assignment:', error);
+      console.error("Error deleting assignment:", error);
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'PROPERTY_MGR':
-        return 'default';
-      case 'FRONT_DESK':
-        return 'secondary';
-      case 'HOUSEKEEPING':
-        return 'outline';
-      case 'MAINTENANCE':
-        return 'outline';
+      case "PROPERTY_MGR":
+        return "default";
+      case "FRONT_DESK":
+        return "secondary";
+      case "HOUSEKEEPING":
+        return "outline";
+      case "MAINTENANCE":
+        return "outline";
       default:
-        return 'secondary';
+        return "secondary";
     }
   };
 
   const formatRole = (role: string) => {
-    return role.toLowerCase().replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return role
+      .toLowerCase()
+      .replace("_", " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Filter assignments by property
-  const filteredAssignments = filterProperty === "all" 
-    ? assignments 
-    : assignments.filter(a => a.propertyId === filterProperty);
+  const filteredAssignments =
+    filterProperty === "all"
+      ? assignments
+      : assignments.filter((a) => a.propertyId === filterProperty);
 
   if (isLoading) {
     return (
@@ -217,7 +234,8 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
           </Select>
         </div>
         <div className="text-sm text-gray-500">
-          {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''}
+          {filteredAssignments.length} assignment
+          {filteredAssignments.length !== 1 ? "s" : ""}
         </div>
       </div>
 
@@ -226,12 +244,13 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
         <Card>
           <CardContent className="p-12 text-center">
             <UserCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No assignments found
+            </h3>
             <p className="text-gray-600 mb-4">
-              {filterProperty === "all" 
+              {filterProperty === "all"
                 ? "Get started by assigning users to properties."
-                : "No users assigned to the selected property."
-              }
+                : "No users assigned to the selected property."}
             </p>
             <Button onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />
@@ -242,7 +261,10 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
       ) : (
         <div className="space-y-4">
           {filteredAssignments.map((assignment) => (
-            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={assignment.id}
+              className="card-hover purple-accent-hover transition-shadow"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -265,7 +287,9 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
                       <div className="h-8 w-px bg-gray-200"></div>
                       <div className="flex items-center space-x-2">
                         <Building2 className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium">{assignment.property.name}</span>
+                        <span className="text-sm font-medium">
+                          {assignment.property.name}
+                        </span>
                       </div>
                     </div>
 
@@ -281,6 +305,7 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
                       variant="outline"
                       size="sm"
                       onClick={() => onEdit(assignment)}
+                      className="text-purple-primary border-purple-primary hover:bg-purple-primary hover:text-white"
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
@@ -289,7 +314,7 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteClick(assignment)}
-                      className="text-red-600 hover:text-red-700 hover:border-red-300"
+                      className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white hover:border-red-600"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
                       Remove
@@ -308,8 +333,9 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
           <DialogHeader>
             <DialogTitle>Remove User Assignment</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {assignmentToDelete?.user.name} from {assignmentToDelete?.property.name}? 
-              This will revoke their access to this property.
+              Are you sure you want to remove {assignmentToDelete?.user.name}{" "}
+              from {assignmentToDelete?.property.name}? This will revoke their
+              access to this property.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">
@@ -319,10 +345,7 @@ export function UserPropertyList({ onEdit, onDelete, onCreate }: UserPropertyLis
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-            >
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
               Remove Assignment
             </Button>
           </div>

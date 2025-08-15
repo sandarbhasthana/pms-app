@@ -6,21 +6,21 @@ import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header stays at top */}
-      <Header onToggleSidebar={() => setCollapsed((c) => !c)} sidebarCollapsed={collapsed} />
+      <Header
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        sidebarOpen={sidebarOpen}
+      />
 
-      <div className="flex flex-1">
-        {/* Left Sidebar for PM and above */}
-        <Sidebar collapsed={collapsed} />
+      {/* Hamburger menu sidebar overlay */}
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Main content area */}
-        <main className="flex-1 p-4">{children}</main>
-      </div>
+      {/* Main content area - now takes full width */}
+      <main className="flex-1 p-4">{children}</main>
     </div>
   );
 }
-
