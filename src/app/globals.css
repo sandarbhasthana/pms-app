@@ -177,6 +177,15 @@
     border-radius: var(--radius) !important;
   }
 
+  /* Override for sharp corners - highest specificity */
+  button.rounded-0,
+  .rounded-0.bg-purple-500,
+  .rounded-0 {
+    -webkit-border-radius: 0 !important;
+    -moz-border-radius: 0 !important;
+    border-radius: 0 !important;
+  }
+
   /* Preserve monospace for code elements */
   code,
   pre,

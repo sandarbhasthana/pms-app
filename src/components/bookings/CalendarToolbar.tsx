@@ -45,7 +45,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         </div>
         <button
           onClick={handleToday}
-          className="px-2 py-1 bg-purple-500 h-[50px] text-white hover:text-gray-900 cursor-pointer"
+          className="px-2 py-1 rounded-0 bg-purple-500 h-[50px] text-white hover:text-gray-900 cursor-pointer"
         >
           Today
         </button>

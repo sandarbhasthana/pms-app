@@ -451,6 +451,15 @@
   /* No background changes - only shadow effects */
 }
 
+/* Sharp corners utility - for specific elements that need no border-radius */
+.rounded-0,
+button.rounded-0,
+.rounded-0.bg-purple-500 {
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  -moz-border-radius: 0 !important;
+}
+
 /* Alternative: Scale effect without layout shift */
 .card-scale-hover:hover {
   transform: scale(1.02);
