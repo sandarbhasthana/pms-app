@@ -5,8 +5,16 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+type TestResult = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  config?: Record<string, unknown>;
+  [key: string]: unknown;
+} | null;
+
 export default function TestEmailPage() {
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TestResult>(null);
   const [loading, setLoading] = useState(false);
 
   const testConfig = async () => {
@@ -20,7 +28,10 @@ export default function TestEmailPage() {
       const data = await response.json();
       setResult(data);
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred"
+      });
     } finally {
       setLoading(false);
     }
@@ -40,7 +51,10 @@ export default function TestEmailPage() {
       const data = await response.json();
       setResult(data);
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred"
+      });
     } finally {
       setLoading(false);
     }
@@ -61,7 +75,7 @@ export default function TestEmailPage() {
               Send Test Email
             </Button>
           </div>
-          
+
           {result && (
             <div className="mt-4 p-4 bg-gray-100 rounded">
               <pre>{JSON.stringify(result, null, 2)}</pre>

@@ -4,17 +4,16 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { BookingTabProps } from "./types";
+import { BookingTabProps, BookingFormData } from "./types";
 
 interface BookingPaymentTabProps extends BookingTabProps {
-  handleCreate: (formData: any) => void;
+  handleCreate: (formData: BookingFormData) => void;
   checkInDate: string;
   checkOutDate: string;
 }
 
 export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   formData,
-  updateFormData,
   selectedSlot,
   onPrevious,
   handleCreate,
@@ -59,23 +58,8 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Prepare the booking data using form data dates (user-modified)
-    const bookingData = {
-      guestName: formData.fullName,
-      phone: formData.phone,
-      email: formData.email,
-      idType: formData.idType,
-      idNumber: formData.idNumber,
-      issuingCountry: formData.issuingCountry,
-      checkIn: formData.checkIn,
-      checkOut: formData.checkOut,
-      adults: formData.adults,
-      children: formData.childrenCount,
-      addons: formData.addons,
-      payment: formData.payment
-    };
-
-    handleCreate(bookingData);
+    // Pass the form data directly since handleCreate expects BookingFormData
+    handleCreate(formData);
   };
 
   return (

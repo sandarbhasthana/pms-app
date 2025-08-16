@@ -733,7 +733,7 @@ export default function BookingsRowStylePage() {
           handleCreateBooking({
             selectedSlot,
             data: {
-              guestName: bookingData.guestName,
+              guestName: bookingData.fullName,
               phone: bookingData.phone,
               email: bookingData.email,
               idType: bookingData.idType,
@@ -742,7 +742,7 @@ export default function BookingsRowStylePage() {
               checkIn: bookingData.checkIn,
               checkOut: bookingData.checkOut,
               adults: bookingData.adults,
-              children: bookingData.children
+              children: bookingData.childrenCount
             },
             reload,
             onClose: () => setSelectedSlot(null)

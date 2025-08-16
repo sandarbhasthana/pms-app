@@ -18,10 +18,12 @@ export async function GET(req: NextRequest) {
     const role = session?.user?.role;
 
     // Check if user has permission to manage users
-    if (
-      !session?.user ||
-      !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)
-    ) {
+    const allowedRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN,
+      UserRole.PROPERTY_MGR
+    ];
+    if (!session?.user || !role || !allowedRoles.includes(role as UserRole)) {
       return new NextResponse("Forbidden - Admin access required", {
         status: 403
       });
@@ -45,13 +47,10 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build where clause for filtering
-    const whereClause: any = {
-      organizationId: orgId
+    const whereClause = {
+      organizationId: orgId,
+      ...(roleFilter && { role: roleFilter as UserRole })
     };
-
-    if (roleFilter) {
-      whereClause.role = roleFilter;
-    }
 
     // Get users with their organization membership and property assignments
     const users = await prisma.userOrg.findMany({
@@ -99,6 +98,14 @@ export async function GET(req: NextRequest) {
     });
 
     // Group property assignments by user
+    interface PropertyAssignment {
+      propertyId: string;
+      propertyName: string;
+      role: PropertyRole;
+      shift: string | null;
+      createdAt: Date;
+    }
+
     const propertyAssignmentsByUser = propertyAssignments.reduce(
       (acc, assignment) => {
         if (!acc[assignment.userId]) {
@@ -113,7 +120,7 @@ export async function GET(req: NextRequest) {
         });
         return acc;
       },
-      {} as Record<string, any[]>
+      {} as Record<string, PropertyAssignment[]>
     );
 
     // Format response
@@ -164,7 +171,15 @@ export async function POST(req: NextRequest) {
     const role = session?.user?.role;
 
     // Only SUPER_ADMIN and ORG_ADMIN can create users directly
-    if (!session?.user || !["SUPER_ADMIN", "ORG_ADMIN"].includes(role)) {
+    const allowedCreateRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN
+    ];
+    if (
+      !session?.user ||
+      !role ||
+      !allowedCreateRoles.includes(role as UserRole)
+    ) {
       return new NextResponse("Forbidden - Admin access required", {
         status: 403
       });
@@ -257,8 +272,14 @@ export async function POST(req: NextRequest) {
 
     // Create property assignments if provided
     if (propertyAssignments.length > 0) {
+      interface PropertyAssignmentInput {
+        propertyId: string;
+        role: PropertyRole;
+        shift?: string | null;
+      }
+
       const propertyAssignmentData = propertyAssignments.map(
-        (assignment: any) => ({
+        (assignment: PropertyAssignmentInput) => ({
           userId: user.id,
           propertyId: assignment.propertyId,
           role: assignment.role,

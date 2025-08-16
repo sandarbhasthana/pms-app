@@ -61,7 +61,7 @@ export interface BookingFormData {
 export interface NewBookingSheetProps {
   selectedSlot: SelectedSlot | null;
   setSelectedSlot: (slot: SelectedSlot | null) => void;
-  handleCreate: (bookingData: any) => void;
+  handleCreate: (bookingData: BookingFormData) => void;
   fullName: string;
   setFullName: (v: string) => void;
   phone: string;

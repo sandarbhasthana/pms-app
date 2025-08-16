@@ -18,11 +18,16 @@ export async function GET(
 ) {
   try {
     const { id: userId } = await context.params;
-    
+
     const session = await getServerSession(authOptions);
     const role = session?.user?.role;
-    
-    if (!session?.user || !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)) {
+
+    const allowedRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN,
+      UserRole.PROPERTY_MGR
+    ];
+    if (!session?.user || !role || !allowedRoles.includes(role as UserRole)) {
       return new NextResponse("Forbidden - Admin access required", {
         status: 403
       });
@@ -67,7 +72,9 @@ export async function GET(
     });
 
     if (!userOrg) {
-      return new NextResponse("User not found in organization", { status: 404 });
+      return new NextResponse("User not found in organization", {
+        status: 404
+      });
     }
 
     // Get property assignments
@@ -88,7 +95,7 @@ export async function GET(
 
     // Filter property assignments to only include properties in the current organization
     const orgPropertyAssignments = propertyAssignments.filter(
-      assignment => assignment.property.organizationId === orgId
+      (assignment) => assignment.property.organizationId === orgId
     );
 
     const formattedUser = {
@@ -98,7 +105,7 @@ export async function GET(
       phone: userOrg.user.phone,
       image: userOrg.user.image,
       organizationRole: userOrg.role,
-      propertyAssignments: orgPropertyAssignments.map(assignment => ({
+      propertyAssignments: orgPropertyAssignments.map((assignment) => ({
         propertyId: assignment.propertyId,
         propertyName: assignment.property.name,
         role: assignment.role,
@@ -111,7 +118,6 @@ export async function GET(
     };
 
     return NextResponse.json(formattedUser);
-
   } catch (error) {
     console.error("Error fetching user:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
@@ -129,11 +135,20 @@ export async function PATCH(
 ) {
   try {
     const { id: userId } = await context.params;
-    
+
     const session = await getServerSession(authOptions);
     const userRole = session?.user?.role;
-    
-    if (!session?.user || !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(userRole)) {
+
+    const allowedUpdateRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN,
+      UserRole.PROPERTY_MGR
+    ];
+    if (
+      !session?.user ||
+      !userRole ||
+      !allowedUpdateRoles.includes(userRole as UserRole)
+    ) {
       return new NextResponse("Forbidden - Admin access required", {
         status: 403
       });
@@ -148,11 +163,11 @@ export async function PATCH(
       return new NextResponse("Organization context missing", { status: 400 });
     }
 
-    const { 
-      name, 
-      phone, 
-      organizationRole, 
-      propertyAssignments = [] 
+    const {
+      name,
+      phone,
+      organizationRole,
+      propertyAssignments = []
     } = await req.json();
 
     // Verify user exists in organization
@@ -166,26 +181,31 @@ export async function PATCH(
     });
 
     if (!existingUserOrg) {
-      return new NextResponse("User not found in organization", { status: 404 });
+      return new NextResponse("User not found in organization", {
+        status: 404
+      });
     }
 
     // Role hierarchy validation if organizationRole is being updated
     if (organizationRole) {
       const roleHierarchy = {
-        "SUPER_ADMIN": 5,
-        "ORG_ADMIN": 4,
-        "PROPERTY_MGR": 3,
-        "FRONT_DESK": 2,
-        "HOUSEKEEPING": 1,
-        "MAINTENANCE": 1,
-        "ACCOUNTANT": 2,
-        "OWNER": 4,
-        "IT_SUPPORT": 2
+        SUPER_ADMIN: 5,
+        ORG_ADMIN: 4,
+        PROPERTY_MGR: 3,
+        FRONT_DESK: 2,
+        HOUSEKEEPING: 1,
+        MAINTENANCE: 1,
+        ACCOUNTANT: 2,
+        OWNER: 4,
+        IT_SUPPORT: 2
       };
 
-      const updaterLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
-      const newRoleLevel = roleHierarchy[organizationRole as keyof typeof roleHierarchy] || 0;
-      const currentRoleLevel = roleHierarchy[existingUserOrg.role as keyof typeof roleHierarchy] || 0;
+      const updaterLevel =
+        roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
+      const newRoleLevel =
+        roleHierarchy[organizationRole as keyof typeof roleHierarchy] || 0;
+      const currentRoleLevel =
+        roleHierarchy[existingUserOrg.role as keyof typeof roleHierarchy] || 0;
 
       // Check if updater can assign the new role
       if (updaterLevel < newRoleLevel) {
@@ -198,7 +218,10 @@ export async function PATCH(
       // Check if updater can modify the current user's role
       if (updaterLevel < currentRoleLevel) {
         return NextResponse.json(
-          { error: "You cannot modify users with higher privileges than your own" },
+          {
+            error:
+              "You cannot modify users with higher privileges than your own"
+          },
           { status: 403 }
         );
       }
@@ -207,14 +230,21 @@ export async function PATCH(
       const validOrgRoles = Object.values(UserRole);
       if (!validOrgRoles.includes(organizationRole)) {
         return NextResponse.json(
-          { error: `Invalid organization role. Must be one of: ${validOrgRoles.join(", ")}` },
+          {
+            error: `Invalid organization role. Must be one of: ${validOrgRoles.join(
+              ", "
+            )}`
+          },
           { status: 400 }
         );
       }
     }
 
     // Update user basic info
-    const updateData: any = {};
+    const updateData: {
+      name?: string;
+      phone?: string;
+    } = {};
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
 
@@ -247,9 +277,9 @@ export async function PATCH(
         where: { organizationId: orgId },
         select: { id: true }
       });
-      
-      const orgPropertyIds = orgProperties.map(p => p.id);
-      
+
+      const orgPropertyIds = orgProperties.map((p) => p.id);
+
       await prisma.userProperty.deleteMany({
         where: {
           userId,
@@ -260,7 +290,7 @@ export async function PATCH(
       // Create new property assignments
       if (propertyAssignments.length > 0) {
         const validAssignments = [];
-        
+
         for (const assignment of propertyAssignments) {
           // Validate property exists in organization
           const property = await prisma.property.findFirst({
@@ -272,7 +302,9 @@ export async function PATCH(
 
           if (!property) {
             return NextResponse.json(
-              { error: `Property ${assignment.propertyId} not found or not accessible` },
+              {
+                error: `Property ${assignment.propertyId} not found or not accessible`
+              },
               { status: 400 }
             );
           }
@@ -317,7 +349,6 @@ export async function PATCH(
     return NextResponse.json({
       message: "User updated successfully"
     });
-
   } catch (error) {
     console.error("Error updating user:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
@@ -335,12 +366,20 @@ export async function DELETE(
 ) {
   try {
     const { id: userId } = await context.params;
-    
+
     const session = await getServerSession(authOptions);
     const userRole = session?.user?.role;
-    
+
     // Only SUPER_ADMIN and ORG_ADMIN can remove users
-    if (!session?.user || !["SUPER_ADMIN", "ORG_ADMIN"].includes(userRole)) {
+    const allowedDeleteRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN
+    ];
+    if (
+      !session?.user ||
+      !userRole ||
+      !allowedDeleteRoles.includes(userRole as UserRole)
+    ) {
       return new NextResponse("Forbidden - Admin access required", {
         status: 403
       });
@@ -366,7 +405,9 @@ export async function DELETE(
     });
 
     if (!userOrg) {
-      return new NextResponse("User not found in organization", { status: 404 });
+      return new NextResponse("User not found in organization", {
+        status: 404
+      });
     }
 
     // Prevent self-deletion
@@ -379,19 +420,21 @@ export async function DELETE(
 
     // Role hierarchy check - can't remove users with higher or equal privileges
     const roleHierarchy = {
-      "SUPER_ADMIN": 5,
-      "ORG_ADMIN": 4,
-      "PROPERTY_MGR": 3,
-      "FRONT_DESK": 2,
-      "HOUSEKEEPING": 1,
-      "MAINTENANCE": 1,
-      "ACCOUNTANT": 2,
-      "OWNER": 4,
-      "IT_SUPPORT": 2
+      SUPER_ADMIN: 5,
+      ORG_ADMIN: 4,
+      PROPERTY_MGR: 3,
+      FRONT_DESK: 2,
+      HOUSEKEEPING: 1,
+      MAINTENANCE: 1,
+      ACCOUNTANT: 2,
+      OWNER: 4,
+      IT_SUPPORT: 2
     };
 
-    const removerLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
-    const targetLevel = roleHierarchy[userOrg.role as keyof typeof roleHierarchy] || 0;
+    const removerLevel =
+      roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
+    const targetLevel =
+      roleHierarchy[userOrg.role as keyof typeof roleHierarchy] || 0;
 
     if (removerLevel <= targetLevel && userRole !== "SUPER_ADMIN") {
       return NextResponse.json(
@@ -405,9 +448,9 @@ export async function DELETE(
       where: { organizationId: orgId },
       select: { id: true }
     });
-    
-    const orgPropertyIds = orgProperties.map(p => p.id);
-    
+
+    const orgPropertyIds = orgProperties.map((p) => p.id);
+
     await prisma.userProperty.deleteMany({
       where: {
         userId,
@@ -428,7 +471,6 @@ export async function DELETE(
     return NextResponse.json({
       message: "User removed from organization successfully"
     });
-
   } catch (error) {
     console.error("Error removing user:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

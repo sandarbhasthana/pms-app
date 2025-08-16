@@ -5,8 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   UserIcon,
   PlusCircleIcon,
-  CreditCardIcon,
-  CheckCircleIcon
+  CreditCardIcon
 } from "@heroicons/react/24/outline";
 import { ViewTabNavigationProps, ViewBookingTab } from "./types";
 

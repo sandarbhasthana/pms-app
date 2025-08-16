@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { EditTabProps, GroupedRooms } from "./types";
+import React, { useState, useEffect, useCallback } from "react";
+import { EditTabProps, GroupedRooms, AvailableRoom } from "./types";
 import {
   CalendarIcon,
   UserIcon,
@@ -14,9 +14,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel
+  SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -68,60 +66,72 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
   };
 
   // Check room availability when dates change
-  const checkRoomAvailability = async (checkIn: string, checkOut: string) => {
-    if (!checkIn || !checkOut) return;
+  const checkRoomAvailability = useCallback(
+    async (checkIn: string, checkOut: string) => {
+      if (!checkIn || !checkOut) return;
 
-    setIsCheckingAvailability(true);
-    setAvailabilityError(null);
+      setIsCheckingAvailability(true);
+      setAvailabilityError(null);
 
-    try {
-      // Call your actual room availability API
-      const response = await fetch(
-        `/api/rooms/availability?checkIn=${checkIn}&checkOut=${checkOut}&excludeReservation=${reservationData.id}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include"
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to check room availability: ${response.status}`
+      try {
+        // Call your actual room availability API
+        const response = await fetch(
+          `/api/rooms/availability?checkIn=${checkIn}&checkOut=${checkOut}&excludeReservation=${reservationData.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            credentials: "include"
+          }
         );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to check room availability: ${response.status}`
+          );
+        }
+
+        const availableRoomsFromAPI = await response.json();
+
+        // Update available rooms based on API response
+        // Mark current room as available even if API says it's not (since we're editing this reservation)
+        const updatedRooms = availableRoomsFromAPI.map(
+          (room: AvailableRoom) => ({
+            ...room,
+            isCurrentRoom: room.id === reservationData.roomId,
+            available: room.available || room.id === reservationData.roomId // Current room is always "available" for editing
+          })
+        );
+
+        setAvailableRooms(updatedRooms);
+      } catch (error) {
+        console.error("❌ Error checking availability:", error);
+        setAvailabilityError(
+          "Failed to check room availability. Please try again."
+        );
+
+        // Fall back to initial rooms but mark unavailable ones
+        const fallbackRooms = initialAvailableRooms.map((room) => ({
+          ...room,
+          available: room.id === reservationData.roomId, // Only current room available in fallback
+          isCurrentRoom: room.id === reservationData.roomId
+        }));
+
+        setAvailableRooms(fallbackRooms);
+      } finally {
+        setIsCheckingAvailability(false);
       }
-
-      const availableRoomsFromAPI = await response.json();
-
-      // Update available rooms based on API response
-      // Mark current room as available even if API says it's not (since we're editing this reservation)
-      const updatedRooms = availableRoomsFromAPI.map((room: any) => ({
-        ...room,
-        isCurrentRoom: room.id === reservationData.roomId,
-        available: room.available || room.id === reservationData.roomId // Current room is always "available" for editing
-      }));
-
-      setAvailableRooms(updatedRooms);
-    } catch (error) {
-      console.error("❌ Error checking availability:", error);
-      setAvailabilityError(
-        "Failed to check room availability. Please try again."
-      );
-
-      // Fall back to initial rooms but mark unavailable ones
-      const fallbackRooms = initialAvailableRooms.map((room) => ({
-        ...room,
-        available: room.id === reservationData.roomId, // Only current room available in fallback
-        isCurrentRoom: room.id === reservationData.roomId
-      }));
-
-      setAvailableRooms(fallbackRooms);
-    } finally {
-      setIsCheckingAvailability(false);
-    }
-  };
+    },
+    [
+      reservationData.id,
+      reservationData.roomId,
+      setIsCheckingAvailability,
+      setAvailabilityError,
+      setAvailableRooms,
+      initialAvailableRooms
+    ]
+  );
 
   // Effect to update available rooms when initial prop changes
   useEffect(() => {
@@ -133,14 +143,14 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
     if (formData.checkIn && formData.checkOut) {
       checkRoomAvailability(formData.checkIn, formData.checkOut);
     }
-  }, [formData.checkIn, formData.checkOut]);
+  }, [formData.checkIn, formData.checkOut, checkRoomAvailability]);
 
   // Effect to check availability when component first loads (if dates are already set)
   useEffect(() => {
     if (formData.checkIn && formData.checkOut) {
       checkRoomAvailability(formData.checkIn, formData.checkOut);
     }
-  }, []); // Run once on mount
+  }, [formData.checkIn, formData.checkOut, checkRoomAvailability]); // Run when initial form data is available
 
   const formatDateForInput = (dateString: string) => {
     return new Date(dateString).toISOString().split("T")[0];
@@ -355,7 +365,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   <SelectContent>
                     <SelectItem value="passport">Passport</SelectItem>
                     <SelectItem value="drivers_license">
-                      Driver's License
+                      Driver&apos;s License
                     </SelectItem>
                     <SelectItem value="national_id">National ID</SelectItem>
                     <SelectItem value="other">Other</SelectItem>

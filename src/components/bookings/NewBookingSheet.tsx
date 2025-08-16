@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ChevronLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { BookingTabNavigation } from "./booking-tabs/BookingTabNavigation";
-import { BookingDetailsTabTemp } from "./booking-tabs/BookingDetailsTabTemp";
+import { BookingDetailsTab } from "./booking-tabs/BookingDetailsTab";
 import { BookingAddonsTab } from "./booking-tabs/BookingAddonsTab";
 import { BookingPaymentTab } from "./booking-tabs/BookingPaymentTab";
 import {
@@ -237,7 +237,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
             />
 
             <TabsContent value="details" className="mt-0">
-              <BookingDetailsTabTemp
+              <BookingDetailsTab
                 formData={formData}
                 updateFormData={updateFormData}
                 selectedSlot={selectedSlot}

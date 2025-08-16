@@ -12,7 +12,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Users, UserPlus, Clock, Settings } from "lucide-react";
+import { Users, UserPlus, Clock, Settings } from "lucide-react";
 import { StaffList } from "./StaffList";
 import { InviteUserModal } from "./InviteUserModal";
 import { InvitationsList } from "./InvitationsList";

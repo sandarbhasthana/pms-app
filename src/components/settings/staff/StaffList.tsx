@@ -238,7 +238,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 <TableCell>
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={staff.image} alt={staff.name} />
+                      <AvatarImage src={staff.image || ""} alt={staff.name} />
                       <AvatarFallback>
                         {getInitials(staff.name || staff.email)}
                       </AvatarFallback>

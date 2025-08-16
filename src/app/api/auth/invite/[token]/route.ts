@@ -46,17 +46,23 @@ export async function GET(
     // Validate invitation
     if (!invitation) {
       console.log(`❌ Invalid invitation token: ${token}`);
-      return redirect("/auth/signin?error=InvalidInvitation&message=Invitation not found");
+      return redirect(
+        "/auth/signin?error=InvalidInvitation&message=Invitation not found"
+      );
     }
 
     if (invitation.used) {
       console.log(`❌ Invitation already used: ${token}`);
-      return redirect("/auth/signin?error=InvalidInvitation&message=Invitation has already been used");
+      return redirect(
+        "/auth/signin?error=InvalidInvitation&message=Invitation has already been used"
+      );
     }
 
     if (invitation.expiresAt < new Date()) {
       console.log(`❌ Invitation expired: ${token}`);
-      return redirect("/auth/signin?error=InvalidInvitation&message=Invitation has expired");
+      return redirect(
+        "/auth/signin?error=InvalidInvitation&message=Invitation has expired"
+      );
     }
 
     // Check if user already exists in this organization
@@ -70,8 +76,12 @@ export async function GET(
     });
 
     if (existingUser && existingUser.memberships.length > 0) {
-      console.log(`❌ User already exists in organization: ${invitation.email}`);
-      return redirect("/auth/signin?error=InvalidInvitation&message=User is already a member of this organization");
+      console.log(
+        `❌ User already exists in organization: ${invitation.email}`
+      );
+      return redirect(
+        "/auth/signin?error=InvalidInvitation&message=User is already a member of this organization"
+      );
     }
 
     // Create or update user
@@ -89,50 +99,78 @@ export async function GET(
 
     console.log(`✅ User created/updated: ${user.email} (ID: ${user.id})`);
 
-    // Create organization membership
-    const userOrg = await prisma.userOrg.create({
-      data: {
+    // Create organization membership (use upsert to handle potential duplicates)
+    await prisma.userOrg.upsert({
+      where: {
+        userId_organizationId: {
+          userId: user.id,
+          organizationId: invitation.organizationId
+        }
+      },
+      create: {
         userId: user.id,
         organizationId: invitation.organizationId,
         role: invitation.role
+      },
+      update: {
+        role: invitation.role // Update role if membership already exists
       }
     });
 
-    console.log(`✅ Organization membership created: ${user.email} -> ${invitation.organization.name} (Role: ${invitation.role})`);
+    console.log(
+      `✅ Organization membership created: ${user.email} -> ${invitation.organization.name} (Role: ${invitation.role})`
+    );
 
     // Create property assignment if specified
     if (invitation.propertyId && invitation.propertyRole) {
-      await prisma.userProperty.create({
-        data: {
+      await prisma.userProperty.upsert({
+        where: {
+          userId_propertyId: {
+            userId: user.id,
+            propertyId: invitation.propertyId
+          }
+        },
+        create: {
           userId: user.id,
           propertyId: invitation.propertyId,
+          role: invitation.propertyRole,
+          shift: invitation.shift
+        },
+        update: {
           role: invitation.propertyRole,
           shift: invitation.shift
         }
       });
 
-      console.log(`✅ Property assignment created: ${user.email} -> ${invitation.property?.name} (Role: ${invitation.propertyRole}, Shift: ${invitation.shift})`);
+      console.log(
+        `✅ Property assignment created: ${user.email} -> ${invitation.property?.name} (Role: ${invitation.propertyRole}, Shift: ${invitation.shift})`
+      );
     }
 
     // Mark invitation as used
     await prisma.invitationToken.update({
       where: { id: invitation.id },
-      data: { 
-        used: true, 
-        usedAt: new Date() 
+      data: {
+        used: true,
+        usedAt: new Date()
       }
     });
 
     console.log(`✅ Invitation marked as used: ${token}`);
 
     // Redirect to onboarding/signin with success message
-    const redirectUrl = `/auth/signin?email=${encodeURIComponent(invitation.email)}&invitation=accepted&org=${encodeURIComponent(invitation.organization.name)}`;
-    
-    return redirect(redirectUrl);
+    const redirectUrl = `/auth/signin?email=${encodeURIComponent(
+      invitation.email
+    )}&invitation=accepted&org=${encodeURIComponent(
+      invitation.organization.name
+    )}`;
 
+    return redirect(redirectUrl);
   } catch (error) {
     console.error("Error processing invitation:", error);
-    return redirect("/auth/signin?error=InvitationProcessingError&message=An error occurred while processing your invitation");
+    return redirect(
+      "/auth/signin?error=InvitationProcessingError&message=An error occurred while processing your invitation"
+    );
   }
 }
 
@@ -212,10 +250,7 @@ export async function POST(
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Update user with name and password
@@ -239,7 +274,6 @@ export async function POST(
         organizationName: invitation.organization.name
       }
     });
-
   } catch (error) {
     console.error("Error completing onboarding:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

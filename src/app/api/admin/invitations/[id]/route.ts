@@ -25,6 +25,7 @@ export async function GET(
 
     if (
       !session?.user ||
+      !role ||
       !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)
     ) {
       return new NextResponse("Forbidden - Admin access required", {
@@ -115,6 +116,7 @@ export async function PATCH(
 
     if (
       !session?.user ||
+      !role ||
       !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)
     ) {
       return new NextResponse("Forbidden - Admin access required", {
@@ -287,6 +289,7 @@ export async function DELETE(
 
     if (
       !session?.user ||
+      !role ||
       !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)
     ) {
       return new NextResponse("Forbidden - Admin access required", {

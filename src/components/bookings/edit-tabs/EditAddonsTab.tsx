@@ -427,6 +427,63 @@ export const EditAddonsTab: React.FC<EditTabProps> = ({
         )}
       </div>
 
+      {/* Existing Add-ons from Reservation */}
+      {reservationData.addons && reservationData.addons.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-4">
+            <StarIcon className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold">
+              Current Reservation Add-ons
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {reservationData.addons.map((addon) => (
+              <div
+                key={addon.id}
+                className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-600"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                    <StarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                      {addon.name}
+                    </h4>
+                    {addon.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {addon.description}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                      ₹{addon.price} × {addon.quantity}
+                      {addon.nights && ` × ${addon.nights} nights`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    ₹{addon.totalAmount.toLocaleString()}
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Original
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-600">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Note:</strong> These are the add-ons currently saved with
+              this reservation. Use the sections above to modify or add new
+              services.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Add-ons Summary */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-semibold mb-4">Add-ons Summary</h3>

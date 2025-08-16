@@ -115,14 +115,30 @@ Avatar.displayName = "Avatar";
 // Compatibility components for shadcn/ui pattern
 export const AvatarImage = React.forwardRef<
   HTMLImageElement,
-  React.ImgHTMLAttributes<HTMLImageElement>
->(({ className, ...props }, ref) => (
-  <img
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
-));
+  Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> & {
+    src: string;
+    alt: string;
+    width?: number;
+    height?: number;
+  }
+>(({ className, alt, width = 40, height = 40, src, ...props }, ref) => {
+  // Ensure src is defined for Next.js Image component
+  if (!src) {
+    return null;
+  }
+
+  return (
+    <Image
+      ref={ref}
+      className={cn("aspect-square h-full w-full object-cover", className)}
+      alt={alt}
+      width={width}
+      height={height}
+      src={src}
+      {...props}
+    />
+  );
+});
 AvatarImage.displayName = "AvatarImage";
 
 export const AvatarFallback = React.forwardRef<

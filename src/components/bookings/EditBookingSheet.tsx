@@ -18,8 +18,7 @@ import { EditPaymentTab } from "./edit-tabs/EditPaymentTab";
 import {
   EditBookingSheetProps,
   EditBookingTab,
-  EditBookingFormData,
-  AvailableRoom
+  EditBookingFormData
 } from "./edit-tabs/types";
 
 const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
@@ -80,7 +79,14 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
           extraBedQuantity: 1,
           breakfast: false,
           breakfastQuantity: 1,
-          customAddons: editingReservation.addons || []
+          customAddons: (editingReservation.addons || []).map((addon) => ({
+            id: addon.id,
+            name: addon.name,
+            description: addon.description,
+            price: addon.price,
+            quantity: addon.quantity,
+            perNight: addon.nights ? addon.nights > 1 : false // Convert nights to perNight boolean
+          }))
         },
         payment: {
           totalAmount: editingReservation.totalAmount || 0,

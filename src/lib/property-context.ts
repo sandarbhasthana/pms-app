@@ -12,6 +12,8 @@ const PROPERTY_ROLE_HIERARCHY: Record<PropertyRole, number> = {
   SECURITY: 2,
   MAINTENANCE: 3,
   HOUSEKEEPING: 4,
+  IT_SUPPORT: 4,
+  ACCOUNTANT: 5,
   FRONT_DESK: 5,
   PROPERTY_MGR: 6
 };

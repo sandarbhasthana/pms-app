@@ -261,7 +261,7 @@ export function EditStaffModal({
       ...prev,
       propertyAssignments: [
         ...prev.propertyAssignments,
-        { propertyId: undefined, role: undefined, shift: undefined }
+        { propertyId: "", role: "", shift: "" }
       ]
     }));
   };
@@ -404,7 +404,7 @@ export function EditStaffModal({
             <CardContent className="space-y-4">
               {formData.propertyAssignments.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No property assignments. Click "Add Assignment" to assign this
+                  No property assignments. Click &quot;Add Assignment&quot; to assign this
                   staff member to a property.
                 </p>
               ) : (

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { UserRole, PropertyRole, ShiftType } from "@prisma/client";
+import { UserRole, PropertyRole, ShiftType, Prisma } from "@prisma/client";
 import { sendInvitationEmail } from "@/lib/email";
 import crypto from "crypto";
 
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     // Check if user has permission to invite users
     if (
       !session?.user ||
+      !userRole ||
       !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(userRole)
     ) {
       return new NextResponse("Forbidden - Admin access required", {
@@ -282,6 +283,7 @@ export async function GET(req: NextRequest) {
 
     if (
       !session?.user ||
+      !role ||
       !["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(role)
     ) {
       return new NextResponse("Forbidden - Admin access required", {
@@ -306,7 +308,7 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build where clause
-    const whereClause: any = {
+    const whereClause: Prisma.InvitationTokenWhereInput = {
       organizationId: orgId
     };
 

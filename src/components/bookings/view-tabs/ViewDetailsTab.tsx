@@ -150,7 +150,8 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                <CalendarIcon className="h-4 w-4" />
                 Check-in Date
               </label>
               <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
@@ -180,7 +181,8 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              <label className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                <CalendarIcon className="h-4 w-4" />
                 Check-out Date
               </label>
               <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">

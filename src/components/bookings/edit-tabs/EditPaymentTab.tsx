@@ -47,7 +47,9 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
 
   const calculateTotals = () => {
     const nights = calculateNights();
-    const basePrice = 2500 * nights; // Placeholder - will be dynamic
+    // Use room's base price from reservationData if available, otherwise fallback to 2500
+    const roomBasePrice = reservationData.roomName ? 2500 : 2500; // TODO: Get actual room price from API
+    const basePrice = roomBasePrice * nights;
 
     let addonsTotal = 0;
     if (formData.addons.extraBed) {
@@ -232,7 +234,13 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
           {/* Room Rate */}
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-600 dark:text-gray-400">
-              Room Rate ({totals.nights} night{totals.nights > 1 ? "s" : ""})
+              {reservationData.roomName || reservationData.roomNumber
+                ? `${reservationData.roomName || "Room"} ${
+                    reservationData.roomNumber || ""
+                  } (${totals.nights} night${totals.nights > 1 ? "s" : ""})`
+                : `Room Rate (${totals.nights} night${
+                    totals.nights > 1 ? "s" : ""
+                  })`}
             </span>
             <span className="font-medium">
               ₹{totals.basePrice.toLocaleString()}
