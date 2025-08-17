@@ -1,4 +1,4 @@
-import GeneralSettingsForm from "@/components/settings/general/GeneralSettingsFormFixed";
+import GeneralSettingsForm from "@/components/settings/general/GeneralSettingsFormFixedS3";
 
 export default function GeneralSettingsPage() {
   return (

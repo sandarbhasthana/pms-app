@@ -8,11 +8,7 @@
     ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
     ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
   ],
-  "tailwindCSS.classAttributes": [
-    "class",
-    "className",
-    "ngClass"
-  ],
+  "tailwindCSS.classAttributes": ["class", "className", "ngClass"],
   "css.validate": false,
   "scss.validate": false,
   "less.validate": false,
