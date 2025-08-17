@@ -14,7 +14,8 @@ export function middleware(req: NextRequest) {
 
   if (
     ["localhost", "www", "pms-app"].includes(subdomain) ||
-    host.includes("localhost:")
+    host.includes("localhost:") ||
+    host.includes("vercel.app") // Allow all Vercel deployment URLs
   ) {
     return NextResponse.next();
   }
