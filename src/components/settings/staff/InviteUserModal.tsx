@@ -13,17 +13,25 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Phone, User, Building, MapPin, Clock } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  Phone,
+  User,
+  Building,
+  MapPin,
+  Clock
+} from "lucide-react";
 
 interface Property {
   id: string;
@@ -36,7 +44,11 @@ interface InviteUserModalProps {
   onInvitationSent: () => void;
 }
 
-export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUserModalProps) {
+export function InviteUserModal({
+  isOpen,
+  onClose,
+  onInvitationSent
+}: InviteUserModalProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -68,20 +80,21 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
     ];
 
     const roleHierarchy = {
-      "SUPER_ADMIN": 5,
-      "ORG_ADMIN": 4,
-      "PROPERTY_MGR": 3,
-      "FRONT_DESK": 2,
-      "HOUSEKEEPING": 1,
-      "MAINTENANCE": 1,
-      "ACCOUNTANT": 2,
-      "OWNER": 4,
-      "IT_SUPPORT": 2
+      SUPER_ADMIN: 5,
+      ORG_ADMIN: 4,
+      PROPERTY_MGR: 3,
+      FRONT_DESK: 2,
+      HOUSEKEEPING: 1,
+      MAINTENANCE: 1,
+      ACCOUNTANT: 2,
+      OWNER: 4,
+      IT_SUPPORT: 2
     };
 
-    const currentUserLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
-    
-    return allRoles.filter(role => role.level <= currentUserLevel);
+    const currentUserLevel =
+      roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
+
+    return allRoles.filter((role) => role.level <= currentUserLevel);
   };
 
   const propertyRoleOptions = [
@@ -121,12 +134,12 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.phone || !formData.organizationRole) {
       toast({
         title: "Validation Error",
         description: "Email, phone, and organization role are required.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -137,7 +150,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
       toast({
         title: "Validation Error",
         description: "Please enter a valid email address.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -148,7 +161,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
       toast({
         title: "Validation Error",
         description: "Please enter a valid phone number.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -169,9 +182,9 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
       const response = await fetch("/api/admin/users/invite", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(invitationData),
+        body: JSON.stringify(invitationData)
       });
 
       const data = await response.json();
@@ -179,9 +192,9 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
       if (response.ok) {
         toast({
           title: "Invitation Sent",
-          description: `Invitation sent successfully to ${formData.email}`,
+          description: `Invitation sent successfully to ${formData.email}`
         });
-        
+
         // Reset form
         setFormData({
           email: "",
@@ -192,13 +205,13 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
           shift: "",
           message: ""
         });
-        
+
         onInvitationSent();
       } else {
         toast({
           title: "Error",
           description: data.error || "Failed to send invitation",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } catch (error) {
@@ -206,7 +219,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
       toast({
         title: "Error",
         description: "An unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -214,7 +227,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -223,7 +236,8 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
         <DialogHeader>
           <DialogTitle>Invite Staff Member</DialogTitle>
           <DialogDescription>
-            Send an invitation to a new team member. They will receive an email with a link to join your organization.
+            Send an invitation to a new team member. They will receive an email
+            with a link to join your organization.
           </DialogDescription>
         </DialogHeader>
 
@@ -265,7 +279,12 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
           {/* Organization Role */}
           <div className="space-y-2">
             <Label htmlFor="organizationRole">Organization Role *</Label>
-            <Select value={formData.organizationRole} onValueChange={(value) => handleInputChange("organizationRole", value)}>
+            <Select
+              value={formData.organizationRole}
+              onValueChange={(value) =>
+                handleInputChange("organizationRole", value)
+              }
+            >
               <SelectTrigger>
                 <div className="flex items-center">
                   <User className="mr-2 h-4 w-4 text-gray-400" />
@@ -285,7 +304,10 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
           {/* Property Assignment (Optional) */}
           <div className="space-y-2">
             <Label htmlFor="propertyId">Property Assignment (Optional)</Label>
-            <Select value={formData.propertyId} onValueChange={(value) => handleInputChange("propertyId", value)}>
+            <Select
+              value={formData.propertyId}
+              onValueChange={(value) => handleInputChange("propertyId", value)}
+            >
               <SelectTrigger>
                 <div className="flex items-center">
                   <Building className="mr-2 h-4 w-4 text-gray-400" />
@@ -293,7 +315,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No specific property</SelectItem>
+                <SelectItem value="none">No specific property</SelectItem>
                 {properties.map((property) => (
                   <SelectItem key={property.id} value={property.id}>
                     {property.name}
@@ -304,10 +326,15 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
           </div>
 
           {/* Property Role (Only if property is selected) */}
-          {formData.propertyId && (
+          {formData.propertyId && formData.propertyId !== "none" && (
             <div className="space-y-2">
               <Label htmlFor="propertyRole">Property Role</Label>
-              <Select value={formData.propertyRole} onValueChange={(value) => handleInputChange("propertyRole", value)}>
+              <Select
+                value={formData.propertyRole}
+                onValueChange={(value) =>
+                  handleInputChange("propertyRole", value)
+                }
+              >
                 <SelectTrigger>
                   <div className="flex items-center">
                     <MapPin className="mr-2 h-4 w-4 text-gray-400" />
@@ -326,10 +353,13 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
           )}
 
           {/* Shift (Only if property role is selected) */}
-          {formData.propertyRole && (
+          {formData.propertyRole && formData.propertyRole !== "none" && (
             <div className="space-y-2">
               <Label htmlFor="shift">Shift Assignment (Optional)</Label>
-              <Select value={formData.shift} onValueChange={(value) => handleInputChange("shift", value)}>
+              <Select
+                value={formData.shift}
+                onValueChange={(value) => handleInputChange("shift", value)}
+              >
                 <SelectTrigger>
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-gray-400" />
@@ -337,7 +367,7 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No specific shift</SelectItem>
+                  <SelectItem value="none">No specific shift</SelectItem>
                   {shiftOptions.map((shift) => (
                     <SelectItem key={shift.value} value={shift.value}>
                       {shift.label}
@@ -360,11 +390,20 @@ export function InviteUserModal({ isOpen, onClose, onInvitationSent }: InviteUse
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="flex flex-row justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="h-10 border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 bg-purple-primary text-white hover:bg-purple-dark border-purple-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Send Invitation
             </Button>

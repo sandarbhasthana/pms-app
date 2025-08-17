@@ -433,10 +433,29 @@
   color: white;
 }
 
-/* Card hover effects with purple accent - No layout shift */
+/* Card normal state with inset shadow */
+.card-hover {
+  box-shadow: inset 3px 0 0 #7210a2;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Dark mode card normal state with lighter purple inset shadow */
+.dark .card-hover {
+  box-shadow: inset 3px 0 0 #ab2aea;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Card hover effects with purple outline - No layout shift */
 .card-hover:hover {
-  box-shadow: 0 4px 12px rgba(114, 16, 162, 0.15), inset 3px 0 0 #7210a2,
-    0 0 0 1px rgba(114, 16, 162, 0.1);
+  box-shadow: 0 4px 12px rgba(171, 42, 234, 0.15), inset 3px 0 0 #ab2aea,
+    0 0 0 1px #7210a2;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Dark mode card hover with lighter purple outline */
+.dark .card-hover:hover {
+  box-shadow: 0 4px 12px rgba(171, 42, 234, 0.15), inset 3px 0 0 #ab2aea,
+    0 0 0 1px #ab2aea;
   transition: box-shadow 0.2s ease;
 }
 
@@ -458,6 +477,316 @@ button.rounded-0,
   border-radius: 0 !important;
   -webkit-border-radius: 0 !important;
   -moz-border-radius: 0 !important;
+}
+
+/* Site-wide Edit Button Hover - Purple Fill */
+.btn-edit,
+[data-edit-button],
+button[title*="Edit"] {
+  border: 1px solid #7210a2 !important;
+  color: #7210a2 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-edit:hover,
+[data-edit-button]:hover,
+button[title*="Edit"]:hover {
+  background-color: #7210a2 !important;
+  border-color: #7210a2 !important;
+  color: white !important;
+}
+
+/* Site-wide Delete Button Hover - Red Fill */
+.btn-delete,
+[data-delete-button],
+button[title*="Delete"] {
+  border: 1px solid #dc2626 !important;
+  color: #dc2626 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-delete:hover,
+[data-delete-button]:hover,
+button[title*="Delete"]:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Dark mode - lighter purple styling */
+.dark .btn-edit:hover,
+.dark [data-edit-button]:hover,
+.dark button[title*="Edit"]:hover {
+  background-color: #ab2aea !important;
+  border-color: #ab2aea !important;
+  color: white !important;
+}
+
+.dark .btn-delete:hover,
+.dark [data-delete-button]:hover,
+.dark button[title*="Delete"]:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Additional specific selectors for common button patterns */
+/* Edit buttons with purple outline - targeting existing classes */
+button.text-purple-primary,
+button[class*="text-purple-primary"],
+button[class*="border-purple-primary"] {
+  border: 1px solid #7210a2 !important;
+  color: #7210a2 !important;
+  transition: all 0.2s ease !important;
+}
+
+button.text-purple-primary:hover,
+button[class*="text-purple-primary"]:hover,
+button[class*="border-purple-primary"]:hover {
+  background-color: #7210a2 !important;
+  border-color: #7210a2 !important;
+  color: white !important;
+}
+
+/* Delete buttons with red outline - targeting existing classes */
+button.text-red-600,
+button[class*="text-red-600"],
+button[class*="border-red-600"] {
+  border: 1px solid #dc2626 !important;
+  color: #dc2626 !important;
+  transition: all 0.2s ease !important;
+}
+
+button.text-red-600:hover,
+button[class*="text-red-600"]:hover,
+button[class*="border-red-600"]:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Dark mode versions - lighter purple */
+.dark button.text-purple-primary:hover,
+.dark button[class*="text-purple-primary"]:hover,
+.dark button[class*="border-purple-primary"]:hover {
+  background-color: #ab2aea !important;
+  border-color: #ab2aea !important;
+  color: white !important;
+}
+
+.dark button.text-red-600:hover,
+.dark button[class*="text-red-600"]:hover,
+.dark button[class*="border-red-600"]:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Save Changes and Update buttons - Purple outline style */
+button[data-slot="button"][class*="border-purple-600"],
+button[data-slot="button"][class*="text-purple-600"],
+button[data-slot="button"].border-purple-600,
+button[data-slot="button"].text-purple-600,
+button[title*="Save"],
+button[title*="Update"],
+.btn-save,
+[data-save-button] {
+  border: 1px solid #7210a2 !important;
+  color: #7210a2 !important;
+  background-color: transparent !important;
+  transition: all 0.2s ease !important;
+}
+
+button[data-slot="button"][class*="border-purple-600"]:hover,
+button[data-slot="button"][class*="text-purple-600"]:hover,
+button[data-slot="button"].border-purple-600:hover,
+button[data-slot="button"].text-purple-600:hover,
+button[title*="Save"]:hover,
+button[title*="Update"]:hover,
+.btn-save:hover,
+[data-save-button]:hover {
+  background-color: #7210a2 !important;
+  border-color: #7210a2 !important;
+  color: white !important;
+}
+
+/* Dark mode versions for Save buttons - lighter purple */
+.dark button[data-slot="button"][class*="border-purple-600"]:hover,
+.dark button[data-slot="button"][class*="text-purple-600"]:hover,
+.dark button[data-slot="button"].border-purple-600:hover,
+.dark button[data-slot="button"].text-purple-600:hover,
+.dark button[title*="Save"]:hover,
+.dark button[title*="Update"]:hover,
+.dark .btn-save:hover,
+.dark [data-save-button]:hover {
+  background-color: #ab2aea !important;
+  border-color: #ab2aea !important;
+  color: white !important;
+}
+
+/* Add Property and similar action buttons - Purple outline style */
+/* Override default button variant styling with maximum specificity - ENABLED buttons only */
+html
+  body
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):not([class*="outline"]):not(
+    [class*="ghost"]
+  ):not([class*="secondary"]):not([class*="link"]),
+html
+  body
+  .inline-flex.items-center.justify-center[data-slot="button"]:not(
+    [disabled]
+  ):not([class*="border-red"]):not([class*="text-red"]):not(
+    [class*="destructive"]
+  ):not([class*="outline"]):not([class*="ghost"]):not([class*="secondary"]):not(
+    [class*="link"]
+  ) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid #7210a2 !important;
+  color: #7210a2 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+html
+  body
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):not([class*="outline"]):not(
+    [class*="ghost"]
+  ):not([class*="secondary"]):not([class*="link"]):hover,
+html
+  body
+  .inline-flex.items-center.justify-center[data-slot="button"]:not(
+    [disabled]
+  ):not([class*="border-red"]):not([class*="text-red"]):not(
+    [class*="destructive"]
+  ):not([class*="outline"]):not([class*="ghost"]):not([class*="secondary"]):not(
+    [class*="link"]
+  ):hover {
+  background-color: #7210a2 !important;
+  background-image: none !important;
+  border-color: #7210a2 !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Dark mode for Add buttons - ENABLED buttons only - lighter purple */
+.dark
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):not([class*="outline"]):not(
+    [class*="ghost"]
+  ):not([class*="secondary"]):not([class*="link"]) {
+  background-color: transparent !important;
+  border: 1px solid #ab2aea !important;
+  color: #ab2aea !important;
+  box-shadow: none !important;
+}
+
+.dark
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):not([class*="outline"]):not(
+    [class*="ghost"]
+  ):not([class*="secondary"]):not([class*="link"]):hover {
+  background-color: #ab2aea !important;
+  border-color: #ab2aea !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Ultra-specific selector for Add Property button - EXCLUDE red/delete buttons */
+html
+  body
+  div
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid #7210a2 !important;
+  color: #7210a2 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+html
+  body
+  div
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):hover {
+  background-color: #7210a2 !important;
+  background-image: none !important;
+  border-color: #7210a2 !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Dark mode ultra-specific - lighter purple - EXCLUDE red/delete buttons */
+.dark
+  html
+  body
+  div
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid #ab2aea !important;
+  color: #ab2aea !important;
+  box-shadow: none !important;
+}
+
+.dark
+  html
+  body
+  div
+  button[data-slot="button"]:not([disabled]):not([class*="border-red"]):not(
+    [class*="text-red"]
+  ):not([class*="destructive"]):hover {
+  background-color: #ab2aea !important;
+  background-image: none !important;
+  border-color: #ab2aea !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Checkbox hover state - show muted check mark */
+[data-slot="checkbox"]:hover:not([data-state="checked"])
+  [data-slot="checkbox-indicator"] {
+  opacity: 0.4;
+}
+
+/* Checkbox checked state - show primary color check mark */
+[data-slot="checkbox"][data-state="checked"] [data-slot="checkbox-indicator"] {
+  opacity: 1;
+  color: #7210a2;
+}
+
+/* Dark mode checkbox checked state */
+.dark
+  [data-slot="checkbox"][data-state="checked"]
+  [data-slot="checkbox-indicator"] {
+  color: #ab2aea;
+}
+
+/* Force checkbox to be square with rounded corners */
+[data-slot="checkbox"] {
+  border-radius: 6px !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+}
+
+/* Ensure checkbox indicator is properly sized */
+[data-slot="checkbox-indicator"] {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Alternative: Scale effect without layout shift */

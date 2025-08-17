@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, MapPin, Phone, Mail, Globe } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, ArrowLeft } from "lucide-react";
 
 const propertySchema = z.object({
   name: z
@@ -92,10 +92,21 @@ export function PropertyForm({
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Building2 className="h-5 w-5" />
-          <span>{property ? "Edit Property" : "Create New Property"}</span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center space-x-2">
+            <Building2 className="h-5 w-5" />
+            <span>{property ? "Edit Property" : "Create New Property"}</span>
+          </CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="flex items-center space-x-1 border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -312,24 +323,32 @@ export function PropertyForm({
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-start space-x-3">
               <Checkbox
                 id="isActive"
                 checked={watch("isActive")}
                 onCheckedChange={(checked) => setValue("isActive", !!checked)}
+                className="mt-0.5"
               />
-              <Label htmlFor="isActive" className="text-sm">
+              <Label
+                htmlFor="isActive"
+                className="text-sm font-medium leading-5 cursor-pointer"
+              >
                 Property is active
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-start space-x-3">
               <Checkbox
                 id="isDefault"
                 checked={isDefaultValue}
                 onCheckedChange={(checked) => setValue("isDefault", !!checked)}
+                className="mt-0.5"
               />
-              <Label htmlFor="isDefault" className="text-sm">
+              <Label
+                htmlFor="isDefault"
+                className="text-sm font-medium leading-5 cursor-pointer"
+              >
                 Set as default property for new users
               </Label>
             </div>
@@ -349,10 +368,16 @@ export function PropertyForm({
               variant="outline"
               onClick={onCancel}
               disabled={isSubmitting || isLoading}
+              className="flex items-center space-x-1 border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white"
             >
-              Cancel
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to List</span>
             </Button>
-            <Button type="submit" disabled={isSubmitting || isLoading}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isLoading}
+              className="bg-purple-primary text-white hover:bg-purple-dark border-purple-primary"
+            >
               {isSubmitting || isLoading
                 ? "Saving..."
                 : property

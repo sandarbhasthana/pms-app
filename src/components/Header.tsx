@@ -31,7 +31,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className={cn("mr-1 md:mr-2")}
+            className={cn("ml-[-0.75rem] mr-1 md:mr-2 px-3")}
             title={sidebarOpen ? "Close menu" : "Open menu"}
           >
             {sidebarOpen ? (

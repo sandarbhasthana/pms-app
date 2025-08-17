@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Users, Building2, UserCheck } from "lucide-react";
+import { Users, Building2, UserCheck, ArrowLeft } from "lucide-react";
 
 const userPropertySchema = z.object({
   userId: z.string().min(1, "User is required"),
@@ -114,7 +114,8 @@ export function UserPropertyForm({
         propertiesResponse.json()
       ]);
 
-      setUsers(usersData);
+      // Extract users array from the response object
+      setUsers(usersData.users || []);
       setProperties(propertiesData);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -183,12 +184,23 @@ export function UserPropertyForm({
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <UserCheck className="h-5 w-5" />
-          <span>
-            {assignment ? "Edit User Assignment" : "Assign User to Property"}
-          </span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center space-x-2">
+            <UserCheck className="h-5 w-5" />
+            <span>
+              {assignment ? "Edit User Assignment" : "Assign User to Property"}
+            </span>
+          </CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="flex items-center space-x-1 border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -298,10 +310,16 @@ export function UserPropertyForm({
               variant="outline"
               onClick={onCancel}
               disabled={isSubmitting || isLoading}
+              className="flex items-center space-x-1 border-purple-primary text-purple-primary hover:bg-purple-primary hover:text-white"
             >
-              Cancel
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to List</span>
             </Button>
-            <Button type="submit" disabled={isSubmitting || isLoading}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isLoading}
+              className="bg-purple-primary text-white hover:bg-purple-dark border-purple-primary"
+            >
               {isSubmitting || isLoading
                 ? "Saving..."
                 : assignment

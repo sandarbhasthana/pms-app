@@ -150,7 +150,11 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Properties</h2>
-            <Button onClick={onCreate}>
+            <Button
+              onClick={onCreate}
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground dark:border-[#ab2aea] dark:text-[#ab2aea] dark:hover:bg-[#ab2aea] dark:hover:text-white"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Property
             </Button>
@@ -179,7 +183,11 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
               Manage your organization&apos;s properties
             </p>
           </div>
-          <Button onClick={onCreate}>
+          <Button
+            onClick={onCreate}
+            variant="outline"
+            className="!border-[#ab2aea] !text-[#ab2aea] hover:!bg-[#ab2aea] hover:!text-white !transition-all !duration-200"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Property
           </Button>

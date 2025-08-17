@@ -101,17 +101,17 @@
 
 .dark {
   --background: oklch(0.145 0 0);
-  --foreground: 0 0% 98%; /* Light text for dark mode */
+  --foreground: #f0f8ff; /* Alice Blue text for dark mode */
   --card: oklch(0.205 0 0);
-  --card-foreground: 0 0% 98%; /* Light text on cards */
+  --card-foreground: #f0f8ff; /* Alice Blue text on cards */
   --popover: oklch(0.205 0 0);
-  --popover-foreground: 0 0% 98%; /* Light text in dropdowns */
+  --popover-foreground: #f0f8ff; /* Alice Blue text in dropdowns */
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
-  --secondary-foreground: 0 0% 98%; /* Light text on secondary elements */
+  --secondary-foreground: #f0f8ff; /* Alice Blue text on secondary elements */
   --muted: oklch(0.269 0 0);
-  --muted-foreground: 0 0% 70%; /* Lighter gray for muted text */
+  --muted-foreground: #bcbcbc; /* Light gray for muted text */
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
@@ -184,6 +184,29 @@
     -webkit-border-radius: 0 !important;
     -moz-border-radius: 0 !important;
     border-radius: 0 !important;
+  }
+
+  /* Force dark mode text colors with your exact hex values */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6,
+  .dark p,
+  .dark span,
+  .dark div,
+  .dark button,
+  .dark a,
+  .dark label {
+    color: #f0f8ff !important; /* Alice Blue text */
+  }
+
+  /* Muted text in dark mode */
+  .dark .text-muted-foreground,
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: #bcbcbc !important; /* Light gray for muted text */
   }
 
   /* Preserve monospace for code elements */

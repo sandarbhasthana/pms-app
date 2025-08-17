@@ -209,7 +209,10 @@ export function UserPropertyList({
           <h2 className="text-2xl font-bold">User Property Assignments</h2>
           <p className="text-gray-600">Manage user access to properties</p>
         </div>
-        <Button onClick={onCreate}>
+        <Button
+          onClick={onCreate}
+          className="bg-purple-primary text-white hover:bg-purple-dark border-purple-primary"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Assign User
         </Button>
@@ -252,7 +255,10 @@ export function UserPropertyList({
                 ? "Get started by assigning users to properties."
                 : "No users assigned to the selected property."}
             </p>
-            <Button onClick={onCreate}>
+            <Button
+              onClick={onCreate}
+              className="bg-purple-primary text-white hover:bg-purple-dark border-purple-primary"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Assign User
             </Button>
