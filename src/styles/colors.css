@@ -196,7 +196,95 @@
   border-color: oklch(var(--destructive));
 }
 
-/* Status Badge Styles */
+/* Enhanced Role & Status Tag System - Pastel Colors */
+
+/* Organization Roles */
+.role-super-admin {
+  background-color: #fef3e2; /* Warm orange pastel */
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+  font-weight: 600;
+}
+
+.role-org-admin {
+  background-color: #f0f9ff; /* Sky blue pastel */
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  font-weight: 600;
+}
+
+.role-property-mgr {
+  background-color: #f3e8ff; /* Purple pastel */
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  font-weight: 600;
+}
+
+.role-front-desk {
+  background-color: #ecfdf5; /* Green pastel */
+  color: #059669;
+  border: 1px solid #bbf7d0;
+  font-weight: 500;
+}
+
+.role-housekeeping {
+  background-color: #fef7ff; /* Pink pastel */
+  color: #c026d3;
+  border: 1px solid #f5d0fe;
+  font-weight: 500;
+}
+
+.role-maintenance {
+  background-color: #fffbeb; /* Amber pastel */
+  color: #d97706;
+  border: 1px solid #fde68a;
+  font-weight: 500;
+}
+
+.role-accountant {
+  background-color: #f0fdf4; /* Emerald pastel */
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  font-weight: 500;
+}
+
+.role-owner {
+  background-color: #fdf4ff; /* Fuchsia pastel */
+  color: #a21caf;
+  border: 1px solid #f0abfc;
+  font-weight: 600;
+}
+
+.role-it-support {
+  background-color: #f1f5f9; /* Slate pastel */
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  font-weight: 500;
+}
+
+/* Property Status Tags */
+.property-default-tag {
+  background-color: #f3e8ff; /* Purple pastel */
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  font-weight: 600;
+}
+
+.property-active-tag {
+  background-color: #ecfdf5; /* Green pastel */
+  color: #059669;
+  border: 1px solid #bbf7d0;
+  font-weight: 500;
+}
+
+.property-inactive-tag {
+  background-color: #fef2f2; /* Red pastel */
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-weight: 500;
+}
+
+/* Status Badge Styles (keeping existing) */
 .badge-success {
   background-color: oklch(0.9 0.05 145);
   color: oklch(0.3 0.15 145);
@@ -227,7 +315,83 @@
   border: 1px solid oklch(0.8 0.08 280);
 }
 
-/* Dark mode badge adjustments */
+/* Dark Mode Role & Status Tags */
+
+/* Organization Roles - Dark Mode */
+.dark .role-super-admin {
+  background-color: #431407; /* Dark orange */
+  color: #fed7aa;
+  border: 1px solid #9a3412;
+}
+
+.dark .role-org-admin {
+  background-color: #0c4a6e; /* Dark sky blue */
+  color: #bae6fd;
+  border: 1px solid #0369a1;
+}
+
+.dark .role-property-mgr {
+  background-color: #581c87; /* Dark purple */
+  color: #ddd6fe;
+  border: 1px solid #7c3aed;
+}
+
+.dark .role-front-desk {
+  background-color: #064e3b; /* Dark green */
+  color: #bbf7d0;
+  border: 1px solid #059669;
+}
+
+.dark .role-housekeeping {
+  background-color: #701a75; /* Dark pink */
+  color: #f5d0fe;
+  border: 1px solid #c026d3;
+}
+
+.dark .role-maintenance {
+  background-color: #78350f; /* Dark amber */
+  color: #fde68a;
+  border: 1px solid #d97706;
+}
+
+.dark .role-accountant {
+  background-color: #14532d; /* Dark emerald */
+  color: #bbf7d0;
+  border: 1px solid #16a34a;
+}
+
+.dark .role-owner {
+  background-color: #86198f; /* Dark fuchsia */
+  color: #f0abfc;
+  border: 1px solid #a21caf;
+}
+
+.dark .role-it-support {
+  background-color: #334155; /* Dark slate */
+  color: #cbd5e1;
+  border: 1px solid #475569;
+}
+
+/* Property Status Tags - Dark Mode */
+.dark .property-default-tag {
+  background-color: #581c87; /* Dark purple */
+  color: #ddd6fe;
+  border: 1px solid #7c3aed;
+}
+
+.dark .property-active-tag {
+  background-color: #064e3b; /* Dark green */
+  color: #bbf7d0;
+  border: 1px solid #059669;
+}
+
+.dark .property-inactive-tag {
+  background-color: #7f1d1d; /* Dark red */
+  color: #fecaca;
+  border: 1px solid #dc2626;
+}
+
+/* Dark mode badge adjustments (keeping existing) */
 .dark .badge-success {
   background-color: oklch(0.2 0.05 145);
   color: oklch(0.8 0.12 145);
@@ -433,30 +597,38 @@
   color: white;
 }
 
-/* Card normal state with inset shadow */
+/* Card normal state with inset shadow and professional base shadow */
 .card-hover {
-  box-shadow: inset 3px 0 0 #7210a2;
-  transition: box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06),
+    inset 3px 0 0 #7210a2;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transform: translateY(0);
 }
 
-/* Dark mode card normal state with lighter purple inset shadow */
+/* Dark mode card normal state with enhanced shadows */
 .dark .card-hover {
-  box-shadow: inset 3px 0 0 #ab2aea;
-  transition: box-shadow 0.2s ease;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.6), 0 2px 4px 0 rgba(0, 0, 0, 0.4),
+    0 1px 2px 0 rgba(0, 0, 0, 0.3), inset 3px 0 0 #ab2aea;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transform: translateY(0);
 }
 
-/* Card hover effects with purple outline - No layout shift */
+/* Card hover effects with enhanced professional shadows - no outline */
 .card-hover:hover {
-  box-shadow: 0 4px 12px rgba(171, 42, 234, 0.15), inset 3px 0 0 #ab2aea,
-    0 0 0 1px #7210a2;
-  transition: box-shadow 0.2s ease;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15),
+    0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 6px 16px rgba(171, 42, 234, 0.2),
+    inset 3px 0 0 #ab2aea;
+  transition: box-shadow 0.3s ease;
+  transform: translateY(-2px);
 }
 
-/* Dark mode card hover with lighter purple outline */
+/* Dark mode card hover with enhanced shadows - no outline */
 .dark .card-hover:hover {
-  box-shadow: 0 4px 12px rgba(171, 42, 234, 0.15), inset 3px 0 0 #ab2aea,
-    0 0 0 1px #ab2aea;
-  transition: box-shadow 0.2s ease;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6),
+    0 10px 20px -5px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(171, 42, 234, 0.3),
+    inset 3px 0 0 #ab2aea;
+  transition: box-shadow 0.3s ease;
+  transform: translateY(-2px);
 }
 
 /* Number hover effects */

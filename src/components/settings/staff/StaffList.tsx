@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RoleTag } from "@/components/ui/role-tag";
 import {
   Table,
   TableBody,
@@ -253,18 +254,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 </TableCell>
 
                 <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      roleHierarchy[
-                        staff.organizationRole as keyof typeof roleHierarchy
-                      ]?.color || "bg-gray-100 text-gray-800"
-                    }
-                  >
-                    {roleHierarchy[
-                      staff.organizationRole as keyof typeof roleHierarchy
-                    ]?.label || staff.organizationRole}
-                  </Badge>
+                  <RoleTag role={staff.organizationRole as any} />
                 </TableCell>
 
                 <TableCell>

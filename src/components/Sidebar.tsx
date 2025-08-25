@@ -65,7 +65,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       {/* Sidebar overlay */}
       <aside
         className={cn(
-          "fixed top-16 left-0 h-[calc(100vh-4rem)] w-56 bg-white dark:bg-gray-900 border-r shadow-lg z-50 transform transition-transform duration-300 ease-in-out flex flex-col",
+          "fixed top-16 left-0 h-[calc(100vh-4rem)] w-56 bg-white dark:bg-gray-900 border-r border-border shadow-lg z-50 transform transition-transform duration-300 ease-in-out flex flex-col",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -84,8 +84,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800",
-                  active && "bg-gray-100 dark:bg-gray-800 font-medium"
+                  "flex items-center rounded-md px-3 py-2 text-sm text-foreground/70 transition-colors",
+                  active
+                    ? "bg-purple-100 dark:bg-purple-900/20 font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/20"
+                    : "hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-foreground"
                 )}
                 onClick={onClose} // Close sidebar when navigation item is clicked
               >
@@ -97,13 +99,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer area: Theme toggle */}
-        <div className="p-2 border-t px-2">
+        <div className="p-2 border-t border-border">
           {/* Keep ThemeToggle small in sidebar */}
           <div className="flex items-center space-x-2">
             <ThemeToggle />
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Theme
-            </span>
+            <span className="text-sm text-muted-foreground">Theme</span>
           </div>
         </div>
       </aside>

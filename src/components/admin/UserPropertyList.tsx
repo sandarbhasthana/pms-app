@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RoleTag } from "@/components/ui/role-tag";
 import {
   Dialog,
   DialogContent,
@@ -300,9 +301,7 @@ export function UserPropertyList({
                     </div>
 
                     {/* Role Badge */}
-                    <Badge variant={getRoleBadgeVariant(assignment.role)}>
-                      {formatRole(assignment.role)}
-                    </Badge>
+                    <RoleTag role={assignment.role as any} />
                   </div>
 
                   {/* Actions */}

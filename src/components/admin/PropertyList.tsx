@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PropertyStatusTag } from "@/components/ui/role-tag";
 import {
   Dialog,
   DialogContent,
@@ -234,13 +235,13 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                         </CardTitle>
                       </div>
                       {property.isDefault && (
-                        <Badge
-                          variant="secondary"
-                          className="flex items-center space-x-1 bg-purple-lightest text-purple-primary border-purple-primary/20 hover:bg-purple-lighter dark:bg-purple-darker/20 dark:text-purple-light dark:border-purple-light/30"
+                        <PropertyStatusTag
+                          status="DEFAULT"
+                          className="flex items-center space-x-1"
                         >
-                          <Star className="h-3 w-3 fill-current" />
-                          <span>Default</span>
-                        </Badge>
+                          <Star className="h-3 w-3 fill-current mr-1" />
+                          Default Property
+                        </PropertyStatusTag>
                       )}
                     </div>
                     {property.description && (

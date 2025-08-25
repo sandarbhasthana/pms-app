@@ -58,7 +58,7 @@
   --font-raleway: "Raleway", system-ui, sans-serif;
 
   /* Custom PMS Color Palette - Light Mode */
-  --background: 240 100% 97.6%; /* #f0f8ff - Your exact Alice Blue color */
+  --background: #f2f3f4; /* Light gray background */
   --foreground: 0 0% 15.7%; /* #282828 - Dark Gray */
   --card: 0 0% 100%; /* White cards */
   --card-foreground: 0 0% 15.7%;
@@ -100,20 +100,20 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: #121212;
   --foreground: #f0f8ff; /* Alice Blue text for dark mode */
-  --card: oklch(0.205 0 0);
+  --card: #1e1e1e; /* Slightly lighter than background */
   --card-foreground: #f0f8ff; /* Alice Blue text on cards */
-  --popover: oklch(0.205 0 0);
+  --popover: #1e1e1e;
   --popover-foreground: #f0f8ff; /* Alice Blue text in dropdowns */
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: #7c3aed; /* Purple for primary elements */
+  --primary-foreground: #ffffff; /* White text on purple */
+  --secondary: #2a2a2a; /* Lighter gray for secondary */
   --secondary-foreground: #f0f8ff; /* Alice Blue text on secondary elements */
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: #bcbcbc; /* Light gray for muted text */
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --muted: #2a2a2a; /* Muted background */
+  --muted-foreground: #9ca3af; /* Gray for muted text */
+  --accent: #7c3aed; /* Purple accent */
+  --accent-foreground: #ffffff; /* White text on accent */
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -165,9 +165,37 @@
   .card,
   [data-card],
   .bg-card {
-    background-color: hsl(var(--card)) !important;
+    background-color: #ffffff !important;
     border-radius: var(--radius) !important;
     border: 1px solid hsl(var(--border)) !important;
+  }
+
+  /* Dark mode cards keep original background */
+  .dark .card,
+  .dark [data-card],
+  .dark .bg-card {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  /* Professional card shadows for light mode */
+  [data-slot="card"] {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  [data-slot="card"]:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Professional card shadows for dark mode */
+  .dark [data-slot="card"] {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.5), 0 2px 4px 0 rgba(0, 0, 0, 0.3),
+      0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .dark [data-slot="card"]:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4),
+      0 4px 6px -2px rgba(0, 0, 0, 0.25);
   }
 
   /* Prevent flash of unstyled content for all interactive elements */

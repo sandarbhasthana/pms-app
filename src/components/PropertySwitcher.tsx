@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  PropertyStatusTag,
+  RoleTag,
+  formatRoleDisplayName
+} from "@/components/ui/role-tag";
 
 // Use the PropertyInfo type from NextAuth types
 interface PropertyInfo {
@@ -220,21 +225,25 @@ export function PropertySwitcher({
                   <Building2 className="h-4 w-4 text-gray-400" />
                   <div className="flex flex-col">
                     <span className="font-medium">{property.name}</span>
-                    <span className="text-xs text-gray-500 capitalize">
-                      {property.role?.toLowerCase().replace("_", " ") ||
-                        "Member"}
-                    </span>
+                    <div className="flex items-center space-x-1 mt-1">
+                      {property.role && (
+                        <RoleTag
+                          role={property.role as any}
+                          variant="compact"
+                          className="text-xs"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   {property.isDefault && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs bg-purple-lightest text-purple-primary border-purple-primary/20 dark:bg-purple-darker/20 dark:text-purple-light dark:border-purple-light/30"
-                    >
-                      Default
-                    </Badge>
+                    <PropertyStatusTag
+                      status="DEFAULT"
+                      variant="compact"
+                      className="text-xs"
+                    />
                   )}
                   {property.id === currentProperty?.id && (
                     <Check className="h-4 w-4 text-green-600" />

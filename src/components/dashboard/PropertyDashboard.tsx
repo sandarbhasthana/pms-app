@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PropertyStatusTag, RoleTag } from "@/components/ui/role-tag";
 
 interface DashboardStats {
   totalRooms: number;
@@ -175,12 +176,10 @@ export function PropertyDashboard() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant="secondary">
-            {currentProperty.role?.toLowerCase().replace("_", " ") || "No Role"}
-          </Badge>
-          {currentProperty.isDefault && (
-            <Badge variant="outline">Default Property</Badge>
+          {currentProperty.role && (
+            <RoleTag role={currentProperty.role as any} />
           )}
+          {currentProperty.isDefault && <PropertyStatusTag status="DEFAULT" />}
         </div>
       </div>
 
