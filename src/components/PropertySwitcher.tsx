@@ -13,11 +13,10 @@ import {
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   PropertyStatusTag,
   RoleTag,
-  formatRoleDisplayName
+  OrganizationRole
 } from "@/components/ui/role-tag";
 
 // Use the PropertyInfo type from NextAuth types
@@ -228,7 +227,7 @@ export function PropertySwitcher({
                     <div className="flex items-center space-x-1 mt-1">
                       {property.role && (
                         <RoleTag
-                          role={property.role as any}
+                          role={property.role as OrganizationRole}
                           variant="compact"
                           className="text-xs"
                         />

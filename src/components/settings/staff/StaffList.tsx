@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RoleTag } from "@/components/ui/role-tag";
+import { OrganizationRole, RoleTag } from "@/components/ui/role-tag";
 import {
   Table,
   TableBody,
@@ -254,7 +254,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 </TableCell>
 
                 <TableCell>
-                  <RoleTag role={staff.organizationRole as any} />
+                  <RoleTag role={staff.organizationRole as OrganizationRole} />
                 </TableCell>
 
                 <TableCell>

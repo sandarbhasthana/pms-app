@@ -47,6 +47,7 @@ model Property {
   reservations   Reservation[]
   userProperties UserProperty[] // Property-level user access
   invitations    InvitationToken[] // NEW: Property-specific invitations
+  settings       PropertySettings? // Property-specific settings
 
   @@index([organizationId])
   @@index([organizationId, isDefault]) // NEW: Index for finding default properties
@@ -254,10 +255,11 @@ model Reservation {
   @@index([channelId])
 }
 
-/// Property settings scoped to a tenant
+/// Property settings scoped to a tenant or specific property
 model PropertySettings {
   id                      String   @id @default(cuid())
-  orgId                   String   @unique
+  orgId                   String?  // Organization-level settings (optional)
+  propertyId              String?  // Property-level settings (optional)
   propertyType            String
   propertyName            String
   propertyPhone           String
@@ -280,6 +282,14 @@ model PropertySettings {
   description             Json
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+  // Relationships
+  property                Property? @relation(fields: [propertyId], references: [id])
+
+  @@unique([orgId])
+  @@unique([propertyId])
+  @@index([orgId])
+  @@index([propertyId])
 }
 
 /// OTA or channel integration for external bookings

@@ -14,10 +14,11 @@ const fetcher = async (url: string) => {
   return data;
 };
 
-export function useGeneralSettings(orgId?: string) {
-  const shouldFetch = !!orgId;
+export function useGeneralSettings(id?: string, isPropertyId = false) {
+  const shouldFetch = !!id;
+  const queryParam = isPropertyId ? `propertyId=${id}` : `orgId=${id}`;
   const { data, error, isLoading, mutate } = useSWR(
-    shouldFetch ? `/api/settings/general?orgId=${orgId}` : null,
+    shouldFetch ? `/api/settings/general?${queryParam}` : null,
     fetcher,
     {
       revalidateOnFocus: false,

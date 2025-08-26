@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PropertyStatusTag } from "@/components/ui/role-tag";
 import {
   Dialog,
@@ -237,10 +236,10 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                       {property.isDefault && (
                         <PropertyStatusTag
                           status="DEFAULT"
-                          className="flex items-center space-x-1"
+                          className="flex items-center space-x-1 whitespace-nowrap"
                         >
                           <Star className="h-3 w-3 fill-current mr-1" />
-                          Default Property
+                          Default
                         </PropertyStatusTag>
                       )}
                     </div>

@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { RoleTag } from "@/components/ui/role-tag";
+import { RoleTag, OrganizationRole } from "@/components/ui/role-tag";
 import {
   Dialog,
   DialogContent,
@@ -122,28 +121,6 @@ export function UserPropertyList({
     } catch (error) {
       console.error("Error deleting assignment:", error);
     }
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case "PROPERTY_MGR":
-        return "default";
-      case "FRONT_DESK":
-        return "secondary";
-      case "HOUSEKEEPING":
-        return "outline";
-      case "MAINTENANCE":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
-  const formatRole = (role: string) => {
-    return role
-      .toLowerCase()
-      .replace("_", " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Filter assignments by property
@@ -301,7 +278,7 @@ export function UserPropertyList({
                     </div>
 
                     {/* Role Badge */}
-                    <RoleTag role={assignment.role as any} />
+                    <RoleTag role={assignment.role as OrganizationRole} />
                   </div>
 
                   {/* Actions */}

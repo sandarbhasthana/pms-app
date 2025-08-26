@@ -13,8 +13,11 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PropertyStatusTag, RoleTag } from "@/components/ui/role-tag";
+import {
+  PropertyStatusTag,
+  RoleTag,
+  OrganizationRole
+} from "@/components/ui/role-tag";
 
 interface DashboardStats {
   totalRooms: number;
@@ -177,7 +180,7 @@ export function PropertyDashboard() {
         </div>
         <div className="flex items-center space-x-2">
           {currentProperty.role && (
-            <RoleTag role={currentProperty.role as any} />
+            <RoleTag role={currentProperty.role as OrganizationRole} />
           )}
           {currentProperty.isDefault && <PropertyStatusTag status="DEFAULT" />}
         </div>
