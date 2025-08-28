@@ -517,16 +517,7 @@ export default function GeneralSettingsFormFixed({
         const propertyData = {
           name: data.propertyName,
           description: data.description || "",
-          address: [
-            data.street,
-            data.suite,
-            data.city,
-            data.state,
-            data.zip,
-            data.country
-          ]
-            .filter(Boolean)
-            .join(", "),
+          address: [data.street, data.suite].filter(Boolean).join(", "),
           city: data.city,
           state: data.state,
           zipCode: data.zip,
@@ -569,16 +560,7 @@ export default function GeneralSettingsFormFixed({
           name: data.propertyName,
           phone: data.propertyPhone,
           email: data.propertyEmail,
-          address: [
-            data.street,
-            data.suite,
-            data.city,
-            data.state,
-            data.zip,
-            data.country
-          ]
-            .filter(Boolean)
-            .join(", "),
+          address: [data.street, data.suite].filter(Boolean).join(", "),
           city: data.city,
           state: data.state,
           zipCode: data.zip,

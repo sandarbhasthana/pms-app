@@ -724,6 +724,7 @@ export default function BookingsRowStylePage() {
         holidays={holidays}
         isToday={isToday}
         setSelectedResource={setSelectedResource}
+        events={events}
       />
 
       {/* New Booking Dialog */}

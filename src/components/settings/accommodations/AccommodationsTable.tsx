@@ -20,7 +20,8 @@ import { toast } from "sonner";
 import {
   TrashIcon,
   ChevronLeftIcon,
-  XMarkIcon
+  XMarkIcon,
+  PlusIcon
 } from "@heroicons/react/24/outline";
 import {
   Sheet,
@@ -262,8 +263,10 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
           onClick={onAddRoom}
           type="button"
           title="Add Room Type"
-          className="flex items-center rounded-sm bg-purple-500 hover:bg-purple-600 text-white"
+          variant="outline"
+          className="!border-[#ab2aea] cursor-pointer !text-[#ab2aea] hover:!bg-[#ab2aea] hover:!text-white !transition-all !duration-200"
         >
+          <PlusIcon className="h-4 w-4 mr-2 text-[#121212] dark:text-[#f0f8ff]" />
           Add Room Type
         </Button>
       </div>
@@ -274,28 +277,28 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
           onDragEnd={handleDragEnd}
         >
           <table className="min-w-full table-fixed divide-y border-0">
-            <thead className="bg-purple-50 dark:bg-purple-700 text-center">
+            <thead className="bg-gray-50 dark:bg-gray-700 text-center">
               <tr className="h-14">
-                <th className="w-[2%] px-1.5 py-3"></th>
+                <th className="w-[2%] px-1.5 py-3 dark:bg-gray-700"></th>
                 <th
-                  className="w-[16%] px-4 py-3 text-center border-r border-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
                   title="Type of room available"
                 >
                   ROOM TYPES
                 </th>
-                <th className="w-[12%] px-4 py-3 text-center border-r border-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800">
+                <th className="w-[12%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
                   CALL SIGN
                 </th>
-                <th className="w-[16%] px-4 py-3 text-center border-r border-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800">
+                <th className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
                   ON-PREM/OFF-PREM
                 </th>
-                <th className="w-[12%] px-4 py-3 text-center border-r border-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800">
+                <th className="w-[12%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
                   COUNT
                 </th>
-                <th className="w-[16%] px-4 py-3 text-center border-r border-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800">
+                <th className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
                   TOTAL COUNT
                 </th>
-                <th className="w-[5%] px-4 py-3 text-center last:border-r-0 hover:bg-purple-200 dark:hover:bg-purple-800">
+                <th className="w-[5%] px-4 py-3 text-center last:border-r-0 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
                   ACTIONS
                 </th>
               </tr>
@@ -330,27 +333,29 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
                       <button
                         type="button"
                         onClick={() => onDelete(group.rooms[0].id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="p-1.5 rounded border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
                         title="Delete"
                       >
-                        <TrashIcon className="h-5 w-5 inline" />
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </td>
                   </SortableItem>
                 ))}
 
-                <tr className="font-semibold border-t bg-purple-200 dark:bg-purple-900 dark:border-gray-700 h-12">
-                  <td className="w-[2%] px-0.5 py-3"></td>
-                  <td className="w-[16%] px-4 py-3 text-center">TOTAL</td>
-                  <td className="w-[12%] px-4 py-3"></td>
-                  <td className="w-[16%] px-4 py-3"></td>
-                  <td className="w-[12%] px-4 py-3 text-center">
+                <tr className="font-semibold border-t bg-gray-100 border-gray-300 dark:border-gray-600 dark:bg-gray-700 h-12">
+                  <td className="w-[2%] px-0.5 py-3 dark:bg-gray-700"></td>
+                  <td className="w-[16%] px-4 py-3 text-center dark:bg-gray-700">
+                    TOTAL
+                  </td>
+                  <td className="w-[12%] px-4 py-3 dark:bg-gray-700"></td>
+                  <td className="w-[16%] px-4 py-3 dark:bg-gray-700"></td>
+                  <td className="w-[12%] px-4 py-3 text-center dark:bg-gray-700">
                     {totalRooms}
                   </td>
-                  <td className="w-[16%] px-4 py-3 text-center">
+                  <td className="w-[16%] px-4 py-3 text-center dark:bg-gray-700">
                     {totalRooms}
                   </td>
-                  <td className="w-[5%] px-4 py-3"></td>
+                  <td className="w-[5%] px-4 py-3 dark:bg-gray-700"></td>
                 </tr>
               </tbody>
             </SortableContext>

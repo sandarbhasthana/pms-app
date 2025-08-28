@@ -214,42 +214,56 @@ export function StaffManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Total Staff
+            </CardTitle>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{staffMembers.length}</div>
-            <p className="text-xs text-muted-foreground">Active team members</p>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              {staffMembers.length}
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Active team members
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Pending Invitations
             </CardTitle>
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {invitations.filter((inv) => inv.status === "pending").length}
             </div>
-            <p className="text-xs text-muted-foreground">Awaiting acceptance</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Awaiting acceptance
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Recent Activity
             </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {
                 invitations.filter((inv) => {
                   const createdAt = new Date(inv.createdAt);
@@ -258,7 +272,7 @@ export function StaffManagement() {
                 }).length
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Invitations sent today
             </p>
           </CardContent>
@@ -269,11 +283,19 @@ export function StaffManagement() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="space-y-4"
+        className="space-y-6"
       >
-        <TabsList>
-          <TabsTrigger value="staff">Staff Members</TabsTrigger>
-          <TabsTrigger value="invitations">
+        <TabsList className="bg-gray-100 dark:!bg-transparent">
+          <TabsTrigger
+            value="staff"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+          >
+            Staff Members
+          </TabsTrigger>
+          <TabsTrigger
+            value="invitations"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+          >
             Invitations (
             {invitations.filter((inv) => inv.status === "pending").length})
           </TabsTrigger>

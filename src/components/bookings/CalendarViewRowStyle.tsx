@@ -20,6 +20,17 @@ interface CalendarResource {
   children?: CalendarResource[];
 }
 
+interface Reservation {
+  id: string;
+  roomId: string;
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  status?: string;
+}
+
 interface CalendarViewRowStyleProps {
   calendarRef: React.RefObject<FullCalendar | null>;
   resources: CalendarResource[];
@@ -32,6 +43,7 @@ interface CalendarViewRowStyleProps {
   holidays: Record<string, string>;
   isToday: (date: Date) => boolean;
   setSelectedResource: (id: string) => void;
+  events: Reservation[];
 }
 
 export default function CalendarViewRowStyle({
@@ -45,7 +57,8 @@ export default function CalendarViewRowStyle({
   selectedResource,
   holidays,
   isToday,
-  setSelectedResource
+  setSelectedResource,
+  events
 }: CalendarViewRowStyleProps) {
   // State to track calendar view changes
   const [calendarStartDate, setCalendarStartDate] = React.useState(
@@ -108,6 +121,46 @@ export default function CalendarViewRowStyle({
 
     return lookup;
   }, [ratesData, roomTypeMapping]);
+
+  // Calculate room occupancy for each room type and date
+  const calculateOccupancy = useMemo(() => {
+    return (
+      roomType: string,
+      date: Date
+    ): { occupied: number; total: number } => {
+      const dateStr = format(date, "yyyy-MM-dd");
+
+      // Find the resource group for this room type
+      const resourceGroup = resources.find((r) => r.title === roomType);
+      const totalRooms = resourceGroup?.children?.length || 0;
+
+      // Count occupied rooms for this room type on this date
+      const occupiedRooms = events.filter((event) => {
+        // Check if this reservation overlaps with the given date
+        const checkIn = new Date(event.checkIn);
+        const checkOut = new Date(event.checkOut);
+        const targetDate = new Date(dateStr);
+
+        // Check if the room belongs to this room type
+        const roomBelongsToType = resourceGroup?.children?.some(
+          (child) => child.id === event.roomId
+        );
+
+        // Check if the date falls within the reservation period
+        const dateInRange = targetDate >= checkIn && targetDate < checkOut;
+
+        return (
+          roomBelongsToType &&
+          dateInRange &&
+          (event.status === "CONFIRMED" ||
+            event.status === "CHECKED_IN" ||
+            !event.status)
+        );
+      }).length;
+
+      return { occupied: occupiedRooms, total: totalRooms };
+    };
+  }, [resources, events]);
 
   return (
     <FullCalendar
@@ -194,7 +247,7 @@ export default function CalendarViewRowStyle({
                     const dateStr = format(currentDate, "yyyy-MM-dd");
                     const price = roomTypeRates[dateStr];
                     displayPrice =
-                      price !== undefined ? `₹${Math.round(price)}` : "--";
+                      price !== undefined ? `₹${price.toFixed(2)}` : "--";
                   } else {
                     // Fallback to test values for demonstration
                     const basePrice =
@@ -207,22 +260,36 @@ export default function CalendarViewRowStyle({
                         : calendarRoomType === "Presidential"
                         ? 12000
                         : 1000;
-                    displayPrice = `₹${basePrice + i * 100}`;
+                    displayPrice = `₹${(basePrice + i * 100).toFixed(2)}`;
                   }
+
+                  // Calculate occupancy for this room type and date
+                  const currentDate = addDays(calendarStartDate, i);
+                  const occupancy = calculateOccupancy(
+                    calendarRoomType,
+                    currentDate
+                  );
 
                   return (
                     <div
                       key={i}
-                      className="flex-1 h-full flex items-center justify-center border-r border-gray-200 dark:border-gray-600"
+                      className="flex-1 h-full flex flex-col items-center justify-center border-r border-gray-200 dark:border-gray-600"
                     >
                       {ratesLoading ? (
                         <div className="text-blue-500 dark:text-blue-400 font-bold text-sm">
                           ...
                         </div>
                       ) : (
-                        <div className="text-green-600 dark:text-green-400 font-bold text-lg">
-                          {displayPrice}
-                        </div>
+                        <>
+                          {/* Room count display */}
+                          <div className="text-gray-600 dark:text-gray-400 text-xs font-medium">
+                            {occupancy.occupied}/{occupancy.total}
+                          </div>
+                          {/* Price display */}
+                          <div className="text-green-600 dark:text-green-400 font-bold text-sm">
+                            {displayPrice}
+                          </div>
+                        </>
                       )}
                     </div>
                   );

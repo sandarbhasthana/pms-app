@@ -255,11 +255,17 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                     <div className="flex items-start space-x-2 text-sm">
                       <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p>{property.address}</p>
-                        <p className="text-gray-600">
-                          {property.city}, {property.state} {property.zipCode}
+                        <p>
+                          {[
+                            property.address,
+                            property.city,
+                            property.state,
+                            property.zipCode,
+                            property.country
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
                         </p>
-                        <p className="text-gray-600">{property.country}</p>
                       </div>
                     </div>
 
@@ -325,7 +331,12 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
               >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirm}>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white hover:border-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
                 Delete Property
               </Button>
             </div>

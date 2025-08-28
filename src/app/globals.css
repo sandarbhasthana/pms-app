@@ -986,3 +986,34 @@ select:focus-visible {
 [data-sonner-toaster] [data-toast]:hover::after {
   animation-play-state: paused;
 }
+
+/* Fix toast close button visibility in dark mode */
+[data-sonner-toaster] [data-close-button] {
+  background-color: #ab2aea !important;
+  color: white !important;
+  border: 1px solid #ab2aea !important;
+  opacity: 0.9 !important;
+  transition: all 0.2s ease !important;
+  border-radius: 4px !important;
+  padding: 4px !important;
+}
+
+[data-sonner-toaster] [data-close-button]:hover {
+  background-color: #9333ea !important;
+  color: white !important;
+  opacity: 1 !important;
+  border-color: #9333ea !important;
+}
+
+/* Dark mode specific toast close button */
+.dark [data-sonner-toaster] [data-close-button] {
+  background-color: #ab2aea !important;
+  color: white !important;
+  border: 1px solid #ab2aea !important;
+}
+
+.dark [data-sonner-toaster] [data-close-button]:hover {
+  background-color: #9333ea !important;
+  color: white !important;
+  border-color: #9333ea !important;
+}
