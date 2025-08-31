@@ -7,7 +7,7 @@ interface TestResult {
   test: string;
   status: "PASS" | "FAIL" | "WARNING";
   message: string;
-  details?: any;
+  details?: Error | Record<string, unknown> | Array<unknown> | string | number;
 }
 
 class DatabaseMigrationTester {
@@ -17,7 +17,7 @@ class DatabaseMigrationTester {
     test: string,
     status: "PASS" | "FAIL" | "WARNING",
     message: string,
-    details?: any
+    details?: Error | Record<string, unknown> | Array<unknown> | string | number
   ) {
     this.results.push({ test, status, message, details });
     const emoji = status === "PASS" ? "✅" : status === "FAIL" ? "❌" : "⚠️";
@@ -46,7 +46,8 @@ class DatabaseMigrationTester {
       this.addResult(
         "Property Table Structure",
         "PASS",
-        "Property table exists with all required relationships"
+        `Property table exists with all required relationships. Found ${properties.length} records.`,
+        properties.length > 0 ? properties[0] : undefined
       );
 
       // Test isDefault field
@@ -64,7 +65,7 @@ class DatabaseMigrationTester {
         "Property Table Structure",
         "FAIL",
         "Property table structure test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -84,7 +85,8 @@ class DatabaseMigrationTester {
       this.addResult(
         "UserProperty Table Structure",
         "PASS",
-        "UserProperty table exists with all required relationships"
+        `UserProperty table exists with all required relationships. Found ${userProperties.length} records.`,
+        userProperties.length > 0 ? userProperties[0] : undefined
       );
 
       // Test role enum values
@@ -104,7 +106,7 @@ class DatabaseMigrationTester {
         "UserProperty Table Structure",
         "FAIL",
         "UserProperty table structure test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -115,7 +117,7 @@ class DatabaseMigrationTester {
     try {
       // Test that all room types have propertyId
       const roomTypesWithoutProperty = await prisma.roomType.count({
-        where: { propertyId: null }
+        where: { propertyId: "" }
       });
 
       this.addResult(
@@ -126,7 +128,7 @@ class DatabaseMigrationTester {
 
       // Test that all rooms have propertyId
       const roomsWithoutProperty = await prisma.room.count({
-        where: { propertyId: null }
+        where: { propertyId: "" }
       });
 
       this.addResult(
@@ -137,7 +139,7 @@ class DatabaseMigrationTester {
 
       // Test that all reservations have propertyId
       const reservationsWithoutProperty = await prisma.reservation.count({
-        where: { propertyId: null }
+        where: { propertyId: "" }
       });
 
       this.addResult(
@@ -150,7 +152,7 @@ class DatabaseMigrationTester {
         "Data Migration Integrity",
         "FAIL",
         "Data migration integrity test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -168,9 +170,11 @@ class DatabaseMigrationTester {
 
       this.addResult(
         "Property-Organization FK",
-        (propertiesWithInvalidOrg as any)[0].count === "0" ? "PASS" : "FAIL",
+        (propertiesWithInvalidOrg as { count: string }[])[0].count === "0"
+          ? "PASS"
+          : "FAIL",
         `${
-          (propertiesWithInvalidOrg as any)[0].count
+          (propertiesWithInvalidOrg as { count: string }[])[0].count
         } properties with invalid organizationId`
       );
 
@@ -183,11 +187,11 @@ class DatabaseMigrationTester {
 
       this.addResult(
         "RoomType-Property FK",
-        (roomTypesWithInvalidProperty as any)[0].count === "0"
+        (roomTypesWithInvalidProperty as { count: string }[])[0].count === "0"
           ? "PASS"
           : "FAIL",
         `${
-          (roomTypesWithInvalidProperty as any)[0].count
+          (roomTypesWithInvalidProperty as { count: string }[])[0].count
         } room types with invalid propertyId`
       );
 
@@ -200,9 +204,11 @@ class DatabaseMigrationTester {
 
       this.addResult(
         "Room-Property FK",
-        (roomsWithInvalidProperty as any)[0].count === "0" ? "PASS" : "FAIL",
+        (roomsWithInvalidProperty as { count: string }[])[0].count === "0"
+          ? "PASS"
+          : "FAIL",
         `${
-          (roomsWithInvalidProperty as any)[0].count
+          (roomsWithInvalidProperty as { count: string }[])[0].count
         } rooms with invalid propertyId`
       );
     } catch (error) {
@@ -210,7 +216,7 @@ class DatabaseMigrationTester {
         "Foreign Key Constraints",
         "FAIL",
         "Foreign key constraint test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -245,11 +251,13 @@ class DatabaseMigrationTester {
 
       this.addResult(
         "Default Property Uniqueness",
-        (orgsWithMultipleDefaults as any[]).length === 0 ? "PASS" : "WARNING",
+        (orgsWithMultipleDefaults as Array<unknown>).length === 0
+          ? "PASS"
+          : "WARNING",
         `${
-          (orgsWithMultipleDefaults as any[]).length
+          (orgsWithMultipleDefaults as Array<unknown>).length
         } organizations with incorrect default property count`,
-        orgsWithMultipleDefaults
+        orgsWithMultipleDefaults as Array<unknown>
       );
 
       // Test property-level data isolation
@@ -261,9 +269,11 @@ class DatabaseMigrationTester {
 
       this.addResult(
         "Property Data Isolation",
-        (crossPropertyData as any)[0].count === "0" ? "PASS" : "FAIL",
+        (crossPropertyData as Array<{ count: string }>)[0].count === "0"
+          ? "PASS"
+          : "FAIL",
         `${
-          (crossPropertyData as any)[0].count
+          (crossPropertyData as Array<{ count: string }>)[0].count
         } rooms with mismatched property relationships`
       );
     } catch (error) {
@@ -271,7 +281,7 @@ class DatabaseMigrationTester {
         "Data Consistency",
         "FAIL",
         "Data consistency test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -306,7 +316,7 @@ class DatabaseMigrationTester {
         "Property Access Control",
         "FAIL",
         "Property access control test failed",
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }

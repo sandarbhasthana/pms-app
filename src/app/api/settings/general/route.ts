@@ -61,29 +61,68 @@ export async function POST(req: NextRequest) {
     // 4. Upsert in one call - handle both orgId and propertyId
     let saved;
     if (data.propertyId) {
-      // Property-specific settings - exclude orgId
-      const { orgId, ...propertyData } = data;
-      const record = {
-        ...propertyData,
+      // Property-specific settings - create record without orgId
+      const propertyRecord = {
+        propertyId: data.propertyId,
+        propertyType: data.propertyType,
+        propertyName: data.propertyName,
+        propertyPhone: data.propertyPhone,
+        propertyEmail: data.propertyEmail,
+        propertyWebsite: data.propertyWebsite,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        country: data.country,
+        street: data.street,
+        suite: data.suite,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        isManuallyPositioned: data.isManuallyPositioned,
+        photos: data.photos,
+        printHeaderImage: data.printHeaderImage,
         description: data.description || defaultDescription
       };
       saved = await prisma.propertySettings.upsert({
         where: { propertyId: data.propertyId },
-        create: record,
-        update: record
+        create: propertyRecord,
+        update: propertyRecord
       });
-    } else {
-      // Organization-level settings - exclude propertyId
-      const { propertyId, ...orgData } = data;
-      const record = {
-        ...orgData,
+    } else if (data.orgId) {
+      // Organization-level settings - create record without propertyId
+      const orgRecord = {
+        orgId: data.orgId,
+        propertyType: data.propertyType,
+        propertyName: data.propertyName,
+        propertyPhone: data.propertyPhone,
+        propertyEmail: data.propertyEmail,
+        propertyWebsite: data.propertyWebsite,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        country: data.country,
+        street: data.street,
+        suite: data.suite,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        isManuallyPositioned: data.isManuallyPositioned,
+        photos: data.photos,
+        printHeaderImage: data.printHeaderImage,
         description: data.description || defaultDescription
       };
       saved = await prisma.propertySettings.upsert({
-        where: { orgId: data.orgId! },
-        create: record,
-        update: record
+        where: { orgId: data.orgId },
+        create: orgRecord,
+        update: orgRecord
       });
+    } else {
+      return NextResponse.json(
+        { error: "Either orgId or propertyId must be provided" },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json(saved, { status: 200 });

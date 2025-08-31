@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       return await tx.roomType.create({
         data: {
           organizationId: property.organizationId, // Keep for backward compatibility
-          propertyId: propertyId, // NEW: Associate with property
+          propertyId: propertyId!, // NEW: Associate with property
           name: name.trim(),
           abbreviation: abbreviation || null,
           privateOrDorm: privateOrDorm || "private",

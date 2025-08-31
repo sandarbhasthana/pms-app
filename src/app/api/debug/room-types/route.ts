@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         ? await tx.roomType.findMany({
             where: {
               organizationId: property.organizationId,
-              propertyId: null // Old room types without property association
+              propertyId: "" // Old room types without property association
             },
             select: {
               id: true,

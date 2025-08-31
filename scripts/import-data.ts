@@ -1,35 +1,35 @@
 #!/usr/bin/env ts-node
 // File: scripts/import-data.ts
-import { PrismaClient } from '@prisma/client';
-import { readFileSync } from 'fs';
-import path from 'path';
+import { PrismaClient } from "@prisma/client";
+import { readFileSync } from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 
 async function importData(backupFile: string) {
   console.log(`🔄 Importing data from: ${backupFile}`);
-  
+
   try {
     // Read backup file
-    const filepath = path.isAbsolute(backupFile) 
-      ? backupFile 
-      : path.join(process.cwd(), 'backups', backupFile);
-    
-    const data = JSON.parse(readFileSync(filepath, 'utf8'));
-    
-    console.log('📊 Data to import:');
+    const filepath = path.isAbsolute(backupFile)
+      ? backupFile
+      : path.join(process.cwd(), "backups", backupFile);
+
+    const data = JSON.parse(readFileSync(filepath, "utf8"));
+
+    console.log("📊 Data to import:");
     console.log(`   Organizations: ${data.organizations?.length || 0}`);
     console.log(`   Properties: ${data.properties?.length || 0}`);
     console.log(`   Users: ${data.users?.length || 0}`);
     console.log(`   Reservations: ${data.reservations?.length || 0}`);
     console.log(`   Room Types: ${data.roomTypes?.length || 0}`);
     console.log(`   Rooms: ${data.rooms?.length || 0}`);
-    
+
     // Import in dependency order
-    
+
     // 1. Organizations
     if (data.organizations?.length > 0) {
-      console.log('📥 Importing organizations...');
+      console.log("📥 Importing organizations...");
       for (const org of data.organizations) {
         await prisma.organization.upsert({
           where: { id: org.id },
@@ -39,10 +39,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.organizations.length} organizations`);
     }
-    
+
     // 2. Properties
     if (data.properties?.length > 0) {
-      console.log('📥 Importing properties...');
+      console.log("📥 Importing properties...");
       for (const property of data.properties) {
         await prisma.property.upsert({
           where: { id: property.id },
@@ -52,10 +52,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.properties.length} properties`);
     }
-    
+
     // 3. Users
     if (data.users?.length > 0) {
-      console.log('📥 Importing users...');
+      console.log("📥 Importing users...");
       for (const user of data.users) {
         await prisma.user.upsert({
           where: { id: user.id },
@@ -65,10 +65,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.users.length} users`);
     }
-    
+
     // 4. User Organizations
     if (data.userOrgs?.length > 0) {
-      console.log('📥 Importing user organizations...');
+      console.log("📥 Importing user organizations...");
       for (const userOrg of data.userOrgs) {
         await prisma.userOrg.upsert({
           where: { id: userOrg.id },
@@ -78,10 +78,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.userOrgs.length} user organizations`);
     }
-    
+
     // 5. User Properties
     if (data.userProperties?.length > 0) {
-      console.log('📥 Importing user properties...');
+      console.log("📥 Importing user properties...");
       for (const userProperty of data.userProperties) {
         await prisma.userProperty.upsert({
           where: { id: userProperty.id },
@@ -91,10 +91,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.userProperties.length} user properties`);
     }
-    
+
     // 6. Invitation Tokens
     if (data.invitationTokens?.length > 0) {
-      console.log('📥 Importing invitation tokens...');
+      console.log("📥 Importing invitation tokens...");
       for (const token of data.invitationTokens) {
         await prisma.invitationToken.upsert({
           where: { id: token.id },
@@ -102,12 +102,14 @@ async function importData(backupFile: string) {
           create: token
         });
       }
-      console.log(`✅ Imported ${data.invitationTokens.length} invitation tokens`);
+      console.log(
+        `✅ Imported ${data.invitationTokens.length} invitation tokens`
+      );
     }
-    
+
     // 7. Room Types
     if (data.roomTypes?.length > 0) {
-      console.log('📥 Importing room types...');
+      console.log("📥 Importing room types...");
       for (const roomType of data.roomTypes) {
         await prisma.roomType.upsert({
           where: { id: roomType.id },
@@ -117,10 +119,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.roomTypes.length} room types`);
     }
-    
+
     // 8. Rooms
     if (data.rooms?.length > 0) {
-      console.log('📥 Importing rooms...');
+      console.log("📥 Importing rooms...");
       for (const room of data.rooms) {
         await prisma.room.upsert({
           where: { id: room.id },
@@ -130,10 +132,10 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.rooms.length} rooms`);
     }
-    
+
     // 9. Reservations
     if (data.reservations?.length > 0) {
-      console.log('📥 Importing reservations...');
+      console.log("📥 Importing reservations...");
       for (const reservation of data.reservations) {
         await prisma.reservation.upsert({
           where: { id: reservation.id },
@@ -143,35 +145,106 @@ async function importData(backupFile: string) {
       }
       console.log(`✅ Imported ${data.reservations.length} reservations`);
     }
-    
+
     // 10. Other tables (if they exist)
     const otherTables = [
-      'channels', 'propertySettings', 'roomPricing', 'dailyRates', 
-      'seasonalRates', 'rateChangeLogs', 'amenities', 'roomImages', 'favorites'
-    ];
-    
+      "channels",
+      "propertySettings",
+      "roomPricing",
+      "dailyRates",
+      "seasonalRates",
+      "rateChangeLogs",
+      "amenities",
+      "roomImages",
+      "favorites"
+    ] as const;
+
     for (const tableName of otherTables) {
       if (data[tableName]?.length > 0) {
         console.log(`📥 Importing ${tableName}...`);
-        const modelName = tableName.charAt(0).toLowerCase() + tableName.slice(1);
-        
+
         for (const record of data[tableName]) {
           try {
-            await (prisma as any)[modelName].upsert({
-              where: { id: record.id },
-              update: record,
-              create: record
-            });
-          } catch (error) {
-            console.warn(`⚠️ Skipped ${tableName} record:`, error.message);
+            // Type-safe dynamic model access
+            switch (tableName) {
+              case "channels":
+                await prisma.channel.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "propertySettings":
+                await prisma.propertySettings.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "roomPricing":
+                await prisma.roomPricing.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "dailyRates":
+                await prisma.dailyRate.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "seasonalRates":
+                await prisma.seasonalRate.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "rateChangeLogs":
+                await prisma.rateChangeLog.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "amenities":
+                await prisma.amenity.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "roomImages":
+                await prisma.roomImage.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              case "favorites":
+                await prisma.favorite.upsert({
+                  where: { id: record.id },
+                  update: record,
+                  create: record
+                });
+                break;
+              default:
+                console.warn(`⚠️ Unknown table: ${tableName}`);
+            }
+          } catch (error: unknown) {
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            console.warn(`⚠️ Skipped ${tableName} record:`, errorMessage);
           }
         }
         console.log(`✅ Imported ${data[tableName].length} ${tableName}`);
       }
     }
-    
-    console.log('\n🎉 Data import completed successfully!');
-    
+
+    console.log("\n🎉 Data import completed successfully!");
+
     // Verify import
     const counts = {
       organizations: await prisma.organization.count(),
@@ -179,16 +252,15 @@ async function importData(backupFile: string) {
       users: await prisma.user.count(),
       reservations: await prisma.reservation.count(),
       roomTypes: await prisma.roomType.count(),
-      rooms: await prisma.room.count(),
+      rooms: await prisma.room.count()
     };
-    
-    console.log('\n📊 Current database counts:');
+
+    console.log("\n📊 Current database counts:");
     Object.entries(counts).forEach(([table, count]) => {
       console.log(`   ${table}: ${count}`);
     });
-    
   } catch (error) {
-    console.error('❌ Data import failed:', error);
+    console.error("❌ Data import failed:", error);
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -217,7 +289,7 @@ Examples:
   try {
     await importData(backupFile);
   } catch (error) {
-    console.error('❌ Import operation failed:', error);
+    console.error("❌ Import operation failed:", error);
     process.exit(1);
   }
 }

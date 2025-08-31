@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       const newRoom = await tx.room.create({
         data: {
           organizationId: property.organizationId, // Keep for backward compatibility
-          propertyId: propertyId, // NEW: Associate with property
+          propertyId: propertyId!, // NEW: Associate with property
           name,
           type,
           capacity,
