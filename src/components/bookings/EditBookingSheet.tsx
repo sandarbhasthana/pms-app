@@ -6,15 +6,20 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetClose
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ChevronLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import EditTabNavigation from "./edit-tabs/EditTabNavigation";
+
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
 import { EditPaymentTab } from "./edit-tabs/EditPaymentTab";
+import EditFolioTab from "./edit-tabs/EditFolioTab";
+import EditCardsTab from "./edit-tabs/EditCardsTab";
+import EditDocumentsTab from "./edit-tabs/EditDocumentsTab";
+import EditNotesTab from "./edit-tabs/EditNotesTab";
+import EditAuditTab from "./edit-tabs/EditAuditTab";
 import {
   EditBookingSheetProps,
   EditBookingTab,
@@ -205,6 +210,11 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
     return null;
   }
 
+  // Don't render if editingReservation is null or missing required fields
+  if (!editingReservation || !editingReservation.id) {
+    return null;
+  }
+
   return (
     <Sheet open={!!editingReservation} onOpenChange={() => {}}>
       <SheetClose asChild>
@@ -232,13 +242,45 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
             <span>Back</span>
           </button>
 
-          <SheetTitle className="text-3xl">Edit Reservation</SheetTitle>
-          <SheetDescription className="text-md">
-            Modify booking details for{" "}
-            {formData.guestName || editingReservation.guestName} •{" "}
-            {formatDateRange()} • {calculateNights()} night
-            {calculateNights() > 1 ? "s" : ""}
-          </SheetDescription>
+          <SheetTitle className="text-3xl flex items-center gap-3">
+            {formData.guestName || editingReservation.guestName}
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  editingReservation.status === "CONFIRMED"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : editingReservation.status === "PENDING"
+                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                    : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+                }`}
+              >
+                {editingReservation.status || "UNKNOWN"}
+              </span>
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  editingReservation.paymentStatus === "PAID"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : editingReservation.paymentStatus === "PARTIALLY_PAID"
+                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                    : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                }`}
+              >
+                {editingReservation.paymentStatus || "UNPAID"}
+              </span>
+            </div>
+          </SheetTitle>
+          <div className="text-md space-y-2 mt-2">
+            <div className="text-sm text-gray-600 pt-2 dark:text-gray-400 font-bold font-mono uppercase">
+              {editingReservation.id}
+              {/* Res ID:  */}
+            </div>
+            <div className="text-sm text-muted-foreground font-bold">
+              {/* Modify booking details for{" "}
+              {formData.guestName || editingReservation.guestName} |{" "} */}
+              {formatDateRange()} | {calculateNights()} Night(s)
+              {calculateNights() > 1 ? "s" : ""}
+            </div>
+          </div>
         </SheetHeader>
 
         <div className="p-4 pb-8">
@@ -274,6 +316,46 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 onSave={handleSave}
+              />
+            </TabsContent>
+
+            <TabsContent value="folio" className="mt-0">
+              <EditFolioTab
+                reservationData={editingReservation}
+                formData={formData}
+                onUpdate={updateFormData}
+              />
+            </TabsContent>
+
+            <TabsContent value="cards" className="mt-0">
+              <EditCardsTab
+                reservationData={editingReservation}
+                formData={formData}
+                onUpdate={updateFormData}
+              />
+            </TabsContent>
+
+            <TabsContent value="documents" className="mt-0">
+              <EditDocumentsTab
+                reservationData={editingReservation}
+                formData={formData}
+                onUpdate={updateFormData}
+              />
+            </TabsContent>
+
+            <TabsContent value="notes" className="mt-0">
+              <EditNotesTab
+                reservationData={editingReservation}
+                formData={formData}
+                onUpdate={updateFormData}
+              />
+            </TabsContent>
+
+            <TabsContent value="audit" className="mt-0">
+              <EditAuditTab
+                reservationData={editingReservation}
+                formData={formData}
+                onUpdate={updateFormData}
               />
             </TabsContent>
 

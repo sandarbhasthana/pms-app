@@ -42,7 +42,7 @@ export async function GET(
             property: {
               select: { id: true, name: true }
             },
-            Payment: {
+            payments: {
               orderBy: { createdAt: "desc" }
             }
           }

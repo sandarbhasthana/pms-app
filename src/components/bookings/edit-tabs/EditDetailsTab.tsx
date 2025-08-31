@@ -268,7 +268,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               Nights
             </label>
             <div className="px-3 py-2 bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-gray-600 h-[40px] flex items-center text-gray-900 dark:text-[#f0f8ff] text-sm">
-              {calculateNights()} night{calculateNights() > 1 ? "s" : ""}
+              {calculateNights()} Night{calculateNights() > 1 ? "s" : ""}
             </div>
           </div>
         </div>

@@ -407,12 +407,14 @@ export default function CalendarViewRowStyle({
         arg.event.display !== "background" ? (
           <div
             style={{
-              whiteSpace: "normal",
+              whiteSpace: "nowrap",
               lineHeight: "1.2",
               fontSize: "0.8rem",
               padding: "2px",
               overflow: "hidden",
-              fontWeight: "bold"
+              fontWeight: "bold",
+              textOverflow: "ellipsis",
+              color: "#f0f8ff !important" // Alice Blue color for guest names with !important
             }}
           >
             {arg.event.title}

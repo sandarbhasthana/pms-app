@@ -250,12 +250,12 @@
 
 .event-black-text,
 .fc-event-main > div {
-  color: black !important;
+  color: #f0f8ff !important; /* Alice Blue for guest names */
 }
 
 .dark .event-black-text,
 .dark .fc-event-main > div {
-  color: white !important;
+  color: #f0f8ff !important; /* Alice Blue for guest names in dark mode too */
 }
 
 /* Make the date input calendar icon visible in dark mode */

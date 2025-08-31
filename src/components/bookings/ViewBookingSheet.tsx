@@ -95,11 +95,20 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
             <span>Back</span>
           </button>
 
-          <SheetTitle className="text-3xl">Reservation Details</SheetTitle>
+          <SheetTitle className="text-3xl">
+            {viewReservation.guestName}
+          </SheetTitle>
           <SheetDescription className="text-md">
-            View booking information for {viewReservation.guestName} •{" "}
-            {formatDateRange()} • {calculateNights()} night
-            {calculateNights() > 1 ? "s" : ""}
+            <div className="space-y-1">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Reservation ID: {viewReservation.id}
+              </div>
+              <div>
+                View booking information for {viewReservation.guestName} •{" "}
+                {formatDateRange()} • {calculateNights()} night
+                {calculateNights() > 1 ? "s" : ""}
+              </div>
+            </div>
           </SheetDescription>
         </SheetHeader>
 

@@ -141,7 +141,15 @@ export interface EditTabProps {
   onDelete?: () => void;
 }
 
-export type EditBookingTab = "details" | "addons" | "payment";
+export type EditBookingTab =
+  | "details"
+  | "addons"
+  | "folio"
+  | "cards"
+  | "documents"
+  | "notes"
+  | "audit"
+  | "payment";
 
 export interface EditTabNavigationProps {
   activeTab: EditBookingTab;

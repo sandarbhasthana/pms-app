@@ -28,6 +28,7 @@ import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
 import EditBookingSheet from "@/components/bookings/EditBookingSheet";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
+import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
 import LegendModal from "@/components/bookings/LegendModal";
 import { LoadingSpinner } from "@/components/ui/spinner";
 
@@ -210,7 +211,7 @@ export default function BookingsRowStylePage() {
             reservations.map((r: Reservation) => ({
               id: r.id,
               resourceId: r.roomId,
-              title: r.guestName,
+              title: formatGuestNameForCalendar(r.guestName),
               start: r.checkIn,
               end: r.checkOut,
               allDay: true,

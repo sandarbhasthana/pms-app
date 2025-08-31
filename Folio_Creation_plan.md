@@ -9,27 +9,19 @@ This document consolidates requirements and defines a sequenced task list. We wi
 - NewBookingSheet: keep Payment; add Notes field in Add-ons tab (persisted to reservation).
 - EditBookingSheet:
   - Show Reservation ID under guest name at top (muted gray, monospace/uppercase).
-  - Remove Payment tab.
   - Add tabs: Notes, Cards, Documents, Reservation Log (Audit), Folio.
-  - Add placeholders for Status and Actions dropdowns (top-right; no-ops initially).
 - Backend:
   - Notes persistence.
   - Documents (S3) pipeline.
   - Reservation Log (audit trail).
-  - Cards via Stripe (SetupIntents/PaymentMethods).
   - Folio system (transactions, mapping to Stripe Intents/Charges/Refunds).
 
 ---
 
 ## UI Plan
 
-- Header (EditBooking):
-  - Line 1: Guest Name (bold)
-  - Line 2: Reservation ID (muted gray, monospace/uppercase)
-  - Right side: Status dropdown (Confirmed, Confirmation Pending, Canceled, In‑House, Checked Out, No‑Show) and Actions dropdown (Change Dates, Move Room, Add Charge, Record Payment, Refund, Print/Download Folio, Send Confirmation) — placeholders now.
 - Tabs (EditBooking):
-  - Details, Add-ons, Notes, Cards, Documents, Reservation Log, Folio
-  - Payment tab removed from Edit.
+  - Folio, Notes, Cards, Documents, Reservation Log
 - NewBookingSheet:
   - Add Notes field in Add-ons tab and persist to reservation notes on creation.
 
