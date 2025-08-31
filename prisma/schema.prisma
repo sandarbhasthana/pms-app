@@ -9,17 +9,17 @@ datasource db {
 
 /// Tenant entity representing an organization that can have multiple properties
 model Organization {
-  id           String        @id @default(cuid())
+  id           String            @id @default(cuid())
   name         String
-  domain       String?       @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  domain       String?           @unique
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   channels     Channel[]
   reservations Reservation[] // Keep for backward compatibility during migration
-  rooms        Room[]        // Keep for backward compatibility during migration
-  roomTypes    RoomType[]    // Keep for backward compatibility during migration
+  rooms        Room[] // Keep for backward compatibility during migration
+  roomTypes    RoomType[] // Keep for backward compatibility during migration
   users        UserOrg[]
-  properties   Property[]    // NEW: Organization can have multiple properties
+  properties   Property[] // NEW: Organization can have multiple properties
   invitations  InvitationToken[] // NEW: User invitations for this organization
 
   @@index([domain])
@@ -27,21 +27,21 @@ model Organization {
 
 /// Property entity representing individual properties within an organization
 model Property {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
-  name           String       // "Downtown NYC", "Beach Resort"
+  name           String // "Downtown NYC", "Beach Resort"
   address        String?
   phone          String?
   email          String?
-  timezone       String       @default("UTC")
-  currency       String       @default("USD")
-  isActive       Boolean      @default(true)
-  isDefault      Boolean      @default(false) // NEW: Mark default property per organization
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  timezone       String   @default("UTC")
+  currency       String   @default("USD")
+  isActive       Boolean  @default(true)
+  isDefault      Boolean  @default(false) // NEW: Mark default property per organization
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relationships
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization      @relation(fields: [organizationId], references: [id])
   roomTypes      RoomType[]
   rooms          Room[]
   reservations   Reservation[]
@@ -49,25 +49,25 @@ model Property {
   invitations    InvitationToken[] // NEW: Property-specific invitations
   settings       PropertySettings? // Property-specific settings
 
+  @@unique([organizationId, name]) // Unique property names within org
   @@index([organizationId])
   @@index([organizationId, isDefault]) // NEW: Index for finding default properties
-  @@unique([organizationId, name]) // Unique property names within org
 }
 
 /// Application user
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  name           String?
-  phone          String?         // NEW: Phone number for staff management
-  image          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  favorites      Favorite[]
-  reservations   Reservation[]
-  memberships    UserOrg[]       // Organization-level access
-  userProperties UserProperty[]  // NEW: Property-level access
-  rateChangeLogs RateChangeLog[] // Audit trail for rate changes
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String?
+  phone           String? // NEW: Phone number for staff management
+  image           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  favorites       Favorite[]
+  reservations    Reservation[]
+  memberships     UserOrg[] // Organization-level access
+  userProperties  UserProperty[] // NEW: Property-level access
+  rateChangeLogs  RateChangeLog[] // Audit trail for rate changes
   sentInvitations InvitationToken[] @relation("InvitationCreator") // NEW: Invitations sent by this user
 }
 
@@ -93,12 +93,12 @@ model UserProperty {
   userId     String
   propertyId String
   role       PropertyRole
-  shift      ShiftType?   // NEW: Basic shift assignment
+  shift      ShiftType? // NEW: Basic shift assignment
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  user       User         @relation(fields: [userId], references: [id])
-  property   Property     @relation(fields: [propertyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
 
   @@unique([userId, propertyId])
   @@index([userId])
@@ -107,24 +107,24 @@ model UserProperty {
 
 /// Invitation tokens for user management
 model InvitationToken {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   email          String
   organizationId String
-  role           UserRole     // Organization-level role for the invitation
-  propertyId     String?      // Optional: specific property assignment
+  role           UserRole // Organization-level role for the invitation
+  propertyId     String? // Optional: specific property assignment
   propertyRole   PropertyRole? // Optional: property-level role
-  shift          ShiftType?   // Optional: shift assignment
-  phone          String?      // Phone number for the invited user
-  token          String       @unique
+  shift          ShiftType? // Optional: shift assignment
+  phone          String? // Phone number for the invited user
+  token          String        @unique
   expiresAt      DateTime
-  createdBy      String       // Admin who sent invite
-  createdAt      DateTime     @default(now())
-  used           Boolean      @default(false)
+  createdBy      String // Admin who sent invite
+  createdAt      DateTime      @default(now())
+  used           Boolean       @default(false)
   usedAt         DateTime?
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  property       Property?    @relation(fields: [propertyId], references: [id])
-  creator        User         @relation("InvitationCreator", fields: [createdBy], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property?    @relation(fields: [propertyId], references: [id])
+  creator      User         @relation("InvitationCreator", fields: [createdBy], references: [id])
 
   @@index([token])
   @@index([email])
@@ -132,52 +132,54 @@ model InvitationToken {
   @@index([propertyId])
 }
 
+/// Room type entity
 model RoomType {
-  id                   String       @id @default(cuid())
-  organizationId       String       // Keep for backward compatibility during migration
-  propertyId           String?      // NEW: Property-level association
-  name                 String
-  abbreviation         String?
-  privateOrDorm        String       @default("private")
-  physicalOrVirtual    String       @default("physical")
-  maxOccupancy         Int          @default(1)
-  maxAdults            Int          @default(1)
-  maxChildren          Int          @default(0)
-  adultsIncluded       Int          @default(1)
-  childrenIncluded     Int          @default(0)
-  description          String?
-  amenities            String[]
-  customAmenities      String[]
-  featuredImageUrl     String?
-  additionalImageUrls  String[]
+  id                  String          @id @default(cuid())
+  organizationId      String // Keep for backward compatibility during migration
+  propertyId          String // NEW: Property-level association
+  name                String
+  abbreviation        String?
+  privateOrDorm       String          @default("private")
+  physicalOrVirtual   String          @default("physical")
+  maxOccupancy        Int             @default(1)
+  maxAdults           Int             @default(1)
+  maxChildren         Int             @default(0)
+  adultsIncluded      Int             @default(1)
+  childrenIncluded    Int             @default(0)
+  description         String?
+  amenities           String[]
+  customAmenities     String[]
+  featuredImageUrl    String?
+  additionalImageUrls String[]
   // Base pricing fields (migrated from RoomPricing concept)
-  basePrice            Float?                  // Base price for this room type
-  weekdayPrice         Float?                  // Separate weekday pricing
-  weekendPrice         Float?                  // Separate weekend pricing
-  currency             String       @default("INR")
-  availability         Int?                    // Available rooms count per room
-  minLOS               Int?                    // Minimum length of stay
-  maxLOS               Int?                    // Maximum length of stay
-  closedToArrival      Boolean      @default(false)
-  closedToDeparture    Boolean      @default(false)
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  organization         Organization    @relation(fields: [organizationId], references: [id])
-  property             Property?       @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
-  rooms                Room[]
-  dailyRates           DailyRate[]     // Date-specific rates
-  seasonalRates        SeasonalRate[]  // Seasonal pricing
-  rateChangeLogs       RateChangeLog[] // Audit trail
+  basePrice           Float? // Base price for this room type
+  weekdayPrice        Float? // Separate weekday pricing
+  weekendPrice        Float? // Separate weekend pricing
+  currency            String          @default("INR")
+  availability        Int? // Available rooms count per room
+  minLOS              Int? // Minimum length of stay
+  maxLOS              Int? // Maximum length of stay
+  closedToArrival     Boolean         @default(false)
+  closedToDeparture   Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  organization        Organization    @relation(fields: [organizationId], references: [id])
+  property            Property?       @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
+  rooms               Room[]
+  dailyRates          DailyRate[] // Date-specific rates
+  seasonalRates       SeasonalRate[] // Seasonal pricing
+  rateChangeLogs      RateChangeLog[] // Audit trail
 
   @@unique([organizationId, name])
   @@index([organizationId])
-  @@index([propertyId]) // NEW: Index for property-based queries
+  @@index([propertyId])
 }
 
+/// Room entity
 model Room {
   id             String        @id @default(cuid())
-  organizationId String        // Keep for backward compatibility during migration
-  propertyId     String?       // NEW: Property-level association
+  organizationId String // Keep for backward compatibility during migration
+  propertyId     String // NEW: Property-level association
   name           String
   type           String
   capacity       Int
@@ -186,9 +188,9 @@ model Room {
   imageUrl       String?
   pricingId      String?
   sizeSqFt       Int?
-  description    String?       // Individual room description
-  doorlockId     String?       // Door lock integration ID
-  roomTypeId     String?       // Link to RoomType
+  description    String? // Individual room description
+  doorlockId     String? // Door lock integration ID
+  roomTypeId     String? // Link to RoomType
   favorites      Favorite[]
   reservations   Reservation[]
   organization   Organization  @relation(fields: [organizationId], references: [id])
@@ -199,9 +201,10 @@ model Room {
   amenities      Amenity[]     @relation("RoomAmenities")
 
   @@index([organizationId])
-  @@index([propertyId]) // NEW: Index for property-based queries
+  @@index([propertyId])
 }
 
+/// Amenities available in a room
 model Amenity {
   id    String @id @default(cuid())
   name  String @unique
@@ -220,36 +223,47 @@ model RoomImage {
 
 /// Reservation or booking entity
 model Reservation {
-  id             String            @id @default(cuid())
-  organizationId String            // Keep for backward compatibility during migration
-  propertyId     String?           // NEW: Property-level association
-  roomId         String
-  userId         String?
-  guestName      String?
-  checkIn        DateTime
-  checkOut       DateTime
-  source         ReservationSource
-  channelId      String?
-  status         ReservationStatus @default(PENDING)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  adults         Int               @default(1)
-  children       Int               @default(0)
-  notes          String?
-  email          String?
-  idNumber       String?
-  idType         String?
-  issuingCountry String?
-  phone          String?
-  Payment        Payment[]
-  channel        Channel?          @relation(fields: [channelId], references: [id])
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  property       Property?         @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
-  room           Room              @relation(fields: [roomId], references: [id])
-  user           User?             @relation(fields: [userId], references: [id])
+  id                    String            @id @default(cuid())
+  organizationId        String // Keep for backward compatibility during migration
+  propertyId            String // NEW: Property-level association
+  roomId                String
+  userId                String?
+  guestName             String?
+  checkIn               DateTime
+  checkOut              DateTime
+  source                ReservationSource
+  channelId             String?
+  status                ReservationStatus @default(PENDING)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  adults                Int               @default(1)
+  children              Int               @default(0)
+  notes                 String?
+  email                 String?
+  idNumber              String?
+  idType                String?
+  issuingCountry        String?
+  phone                 String?
+  payments              Payment[]
+  stripeCustomerId      String? // Stripe Customer ID
+  stripePaymentIntentId String?           @unique
+  paymentStatus         String? // e.g. "requires_capture", "succeeded", "refunded"
+  amountHeld            Int? // in cents (authorized amount)
+  amountCaptured        Int? // in cents (captured amount)
+  depositAmount         Int? // Required deposit in cents
+  depositDueDate        DateTime? // When deposit is due
+  finalPaymentDue       DateTime? // When final payment is due
+  paymentTerms          String? // "full_upfront", "deposit_then_balance"
+
+  channel      Channel?     @relation(fields: [channelId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property?    @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
+  room         Room         @relation(fields: [roomId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+  Refund       Refund[]
 
   @@index([organizationId])
-  @@index([propertyId]) // NEW: Index for property-based queries
+  @@index([propertyId])
   @@index([roomId])
   @@index([userId])
   @@index([channelId])
@@ -257,34 +271,34 @@ model Reservation {
 
 /// Property settings scoped to a tenant or specific property
 model PropertySettings {
-  id                      String   @id @default(cuid())
-  orgId                   String?  // Organization-level settings (optional)
-  propertyId              String?  // Property-level settings (optional)
-  propertyType            String
-  propertyName            String
-  propertyPhone           String
-  propertyEmail           String
-  propertyWebsite         String?
-  firstName               String
-  lastName                String
-  country                 String
-  street                  String
-  suite                   String?
-  city                    String
-  state                   String
-  zip                     String
-  latitude                Float
-  longitude               Float
-  isManuallyPositioned    Boolean @default(false)
-  photos                  Json?
-  printHeader             String?
-  printHeaderImage        String?
-  description             Json
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  orgId                String? // Organization-level settings (optional)
+  propertyId           String? // Property-level settings (optional)
+  propertyType         String
+  propertyName         String
+  propertyPhone        String
+  propertyEmail        String
+  propertyWebsite      String?
+  firstName            String
+  lastName             String
+  country              String
+  street               String
+  suite                String?
+  city                 String
+  state                String
+  zip                  String
+  latitude             Float
+  longitude            Float
+  isManuallyPositioned Boolean  @default(false)
+  photos               Json?
+  printHeader          String?
+  printHeaderImage     String?
+  description          Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   // Relationships
-  property                Property? @relation(fields: [propertyId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
 
   @@unique([orgId])
   @@unique([propertyId])
@@ -322,57 +336,97 @@ model Favorite {
 
 /// Payments for a reservation
 model Payment {
-  id            String      @id @default(cuid())
-  reservationId String
-  type          String
-  method        String
-  status        String
-  amount        Float
-  currency      String      @default("INR")
-  gatewayTxId   String?
-  notes         String?
-  createdAt     DateTime    @default(now())
-  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  id              String    @id @default(cuid())
+  reservationId   String
+  paymentMethodId String? // Link to stored payment method
+  type            String // e.g. "capture", "refund"
+  method          String // e.g. "card"
+  status          String // e.g. "succeeded"
+  amount          Float
+  currency        String    @default("USD")
+  gatewayTxId     String? // e.g. Stripe Charge ID
+  description     String? // "Room deposit", "Minibar charges"
+  processedAt     DateTime? // When payment was actually processed
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  reservation   Reservation    @relation(fields: [reservationId], references: [id])
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  @@index([reservationId])
+  @@index([status])
+  @@index([type])
 }
 
+/// Stored payment methods for users/guests
+model PaymentMethod {
+  id                    String    @id @default(cuid())
+  customerId            String // Links to User or Guest
+  stripePaymentMethodId String    @unique
+  type                  String // "card", "bank_account"
+  cardBrand             String? // "visa", "mastercard"
+  cardLast4             String?
+  cardExpMonth          Int?
+  cardExpYear           Int?
+  isDefault             Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  payments              Payment[]
+
+  @@index([customerId])
+}
+
+/// Record of refunds processed
+model Refund {
+  id             String      @id @default(cuid())
+  stripeRefundId String      @unique // Stripe Refund ID
+  reservationId  String
+  amount         Int // in cents
+  status         String // e.g. "succeeded", "failed"
+  createdAt      DateTime    @default(now())
+  reservation    Reservation @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+}
+
+/// Pricing information for a room
 model RoomPricing {
-  id                            String            @id @default(cuid())
-  basePrice                     Float
-  weekdayPrice                  Float?            // Separate weekday pricing
-  weekendPrice                  Float?            // Separate weekend pricing
-  currency                      String            @default("INR")
-  mode                          String            @default("MANUAL")
-  availability                  Int?              // Available rooms count
-  minLOS                        Int?              // Minimum length of stay
-  maxLOS                        Int?              // Maximum length of stay
-  closedToArrival               Boolean           @default(false)
-  closedToDeparture             Boolean           @default(false)
-  createdAt                     DateTime          @default(now())
-  updatedAt                     DateTime          @updatedAt
-  roomId                        String            @unique
-  room                          Room              @relation("RoomPricingLink", fields: [roomId], references: [id])
-  dailyRates                    DailyRate[]       // Date-specific rates
-  seasonalRates                 SeasonalRate[]    // Seasonal pricing
+  id                String         @id @default(cuid())
+  basePrice         Float
+  weekdayPrice      Float? // Separate weekday pricing
+  weekendPrice      Float? // Separate weekend pricing
+  currency          String         @default("INR")
+  mode              String         @default("MANUAL")
+  availability      Int? // Available rooms count
+  minLOS            Int? // Minimum length of stay
+  maxLOS            Int? // Maximum length of stay
+  closedToArrival   Boolean        @default(false)
+  closedToDeparture Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  roomId            String         @unique
+  room              Room           @relation("RoomPricingLink", fields: [roomId], references: [id])
+  dailyRates        DailyRate[] // Date-specific rates
+  seasonalRates     SeasonalRate[] // Seasonal pricing
 }
 
 /// Daily rate overrides for specific dates
 model DailyRate {
-  id                        String          @id @default(cuid())
-  roomTypeId                String          // Link to RoomType instead of individual room
-  date                      DateTime        @db.Date
-  basePrice                 Float
-  availability              Int?            // Available rooms for this date
-  minLOS                    Int?            // Minimum length of stay
-  maxLOS                    Int?            // Maximum length of stay
-  closedToArrival           Boolean         @default(false)
-  closedToDeparture         Boolean         @default(false)
-  restrictions              Json?           // Flexible restrictions (JSON)
-  notes                     String?         // Optional notes
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
-  roomType                  RoomType        @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
-  pricingId                 String?         // Optional link to RoomPricing
-  pricing                   RoomPricing?    @relation(fields: [pricingId], references: [id])
+  id                String       @id @default(cuid())
+  roomTypeId        String // Link to RoomType instead of individual room
+  date              DateTime     @db.Date
+  basePrice         Float
+  availability      Int? // Available rooms for this date
+  minLOS            Int? // Minimum length of stay
+  maxLOS            Int? // Maximum length of stay
+  closedToArrival   Boolean      @default(false)
+  closedToDeparture Boolean      @default(false)
+  restrictions      Json? // Flexible restrictions (JSON)
+  notes             String? // Optional notes
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  roomType          RoomType     @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  pricingId         String? // Optional link to RoomPricing
+  pricing           RoomPricing? @relation(fields: [pricingId], references: [id])
 
   @@unique([roomTypeId, date])
   @@index([date])
@@ -381,18 +435,18 @@ model DailyRate {
 
 /// Seasonal rate multipliers
 model SeasonalRate {
-  id          String      @id @default(cuid())
-  name        String      // e.g., "Summer Season", "Holiday Premium"
-  startDate   DateTime    @db.Date
-  endDate     DateTime    @db.Date
-  multiplier  Float       // 1.2 for 20% increase, 0.8 for 20% decrease
-  isActive    Boolean     @default(true)
-  roomTypeId  String?     // Optional: specific to room type
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  roomType    RoomType?   @relation(fields: [roomTypeId], references: [id])
-  pricingId   String?     // Optional link to RoomPricing
-  pricing     RoomPricing? @relation(fields: [pricingId], references: [id])
+  id         String       @id @default(cuid())
+  name       String // e.g., "Summer Season", "Holiday Premium"
+  startDate  DateTime     @db.Date
+  endDate    DateTime     @db.Date
+  multiplier Float // 1.2 for 20% increase, 0.8 for 20% decrease
+  isActive   Boolean      @default(true)
+  roomTypeId String? // Optional: specific to room type
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  roomType   RoomType?    @relation(fields: [roomTypeId], references: [id])
+  pricingId  String? // Optional link to RoomPricing
+  pricing    RoomPricing? @relation(fields: [pricingId], references: [id])
 
   @@index([startDate, endDate])
   @@index([roomTypeId])
@@ -400,17 +454,17 @@ model SeasonalRate {
 
 /// Rate change audit log
 model RateChangeLog {
-  id          String      @id @default(cuid())
-  roomTypeId  String
-  date        DateTime?   @db.Date // null for base rate changes
-  oldPrice    Float?
-  newPrice    Float
-  changeType  String      // "BASE_RATE", "DAILY_RATE", "SEASONAL_RATE"
-  reason      String?     // Optional reason for change
-  userId      String      // Who made the change
-  createdAt   DateTime    @default(now())
-  roomType    RoomType    @relation(fields: [roomTypeId], references: [id])
-  user        User        @relation(fields: [userId], references: [id])
+  id         String    @id @default(cuid())
+  roomTypeId String
+  date       DateTime? @db.Date // null for base rate changes
+  oldPrice   Float?
+  newPrice   Float
+  changeType String // "BASE_RATE", "DAILY_RATE", "SEASONAL_RATE"
+  reason     String? // Optional reason for change
+  userId     String // Who made the change
+  createdAt  DateTime  @default(now())
+  roomType   RoomType  @relation(fields: [roomTypeId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
 
   @@index([roomTypeId])
   @@index([date])
@@ -466,8 +520,8 @@ enum ChannelType {
 }
 
 enum ShiftType {
-  MORNING    // 6 AM - 2 PM
-  EVENING    // 2 PM - 10 PM
-  NIGHT      // 10 PM - 6 AM
-  FLEXIBLE   // No fixed shift
+  MORNING // 6 AM - 2 PM
+  EVENING // 2 PM - 10 PM
+  NIGHT // 10 PM - 6 AM
+  FLEXIBLE // No fixed shift
 }

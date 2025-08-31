@@ -15,10 +15,7 @@ import ViewTabNavigation from "./view-tabs/ViewTabNavigation";
 import { ViewDetailsTab } from "./view-tabs/ViewDetailsTab";
 import { ViewAddonsTab } from "./view-tabs/ViewAddonsTab";
 import { ViewPaymentTab } from "./view-tabs/ViewPaymentTab";
-import {
-  ViewBookingSheetProps,
-  ViewBookingTab
-} from "./view-tabs/types";
+import { ViewBookingSheetProps, ViewBookingTab } from "./view-tabs/types";
 
 const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
   viewReservation,
@@ -41,20 +38,31 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
     if (!viewReservation) return 0;
     const checkIn = new Date(viewReservation.checkIn);
     const checkOut = new Date(viewReservation.checkOut);
-    return Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+    return Math.max(
+      1,
+      Math.ceil(
+        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+      )
+    );
   };
 
   const formatDateRange = () => {
     if (!viewReservation) return "";
-    const checkIn = new Date(viewReservation.checkIn).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-    const checkOut = new Date(viewReservation.checkOut).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const checkIn = new Date(viewReservation.checkIn).toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric"
+      }
+    );
+    const checkOut = new Date(viewReservation.checkOut).toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }
+    );
     return `${checkIn} - ${checkOut}`;
   };
 
@@ -65,7 +73,7 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
       <SheetClose asChild>
         <div />
       </SheetClose>
-      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto dark:bg-gray-900 dark:text-gray-200 bg-gray-100 text-gray-900 [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base z-[9999]">
+      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base z-[9999]">
         <SheetHeader className="relative">
           {/* Close button in top right corner */}
           <button
@@ -89,7 +97,9 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
 
           <SheetTitle className="text-3xl">Reservation Details</SheetTitle>
           <SheetDescription className="text-md">
-            View booking information for {viewReservation.guestName} • {formatDateRange()} • {calculateNights()} night{calculateNights() > 1 ? 's' : ''}
+            View booking information for {viewReservation.guestName} •{" "}
+            {formatDateRange()} • {calculateNights()} night
+            {calculateNights() > 1 ? "s" : ""}
           </SheetDescription>
         </SheetHeader>
 

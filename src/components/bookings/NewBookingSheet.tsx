@@ -196,7 +196,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       <SheetClose asChild>
         <div />
       </SheetClose>
-      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto dark:bg-gray-900 dark:text-gray-200 bg-gray-100 text-gray-900 [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base z-[9999]">
+      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base z-[9999]">
         <SheetHeader className="relative">
           {/* Close button in top right corner */}
           <button

@@ -92,7 +92,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
           <div className="flex-shrink-0">
             <div className="flex flex-col items-center">
               {/* Image Preview */}
-              <div className="w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mb-3 border-2 border-dashed border-gray-300 dark:border-gray-600">
+              <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center mb-3 border-2 border-dashed border-gray-300 dark:border-gray-600">
                 {uploadedImage ? (
                   <Image
                     src={uploadedImage}
@@ -103,7 +103,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                   />
                 ) : (
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
+                    <div className="w-16 h-16 dark:bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
                       <svg
                         className="w-8 h-8 text-gray-600"
                         fill="currentColor"
@@ -125,7 +125,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 <Button
                   type="button"
                   onClick={handleTakePhoto}
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full text-xs py-2"
+                  className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-700 text-white w-full text-xs py-2"
                 >
                   <CameraIcon className="h-3 w-3" />
                   TAKE PHOTO
@@ -171,7 +171,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 <label className="block text-sm font-medium mb-1">
                   Room No.
                 </label>
-                <div className="p-2 bg-gray-100 dark:bg-gray-900 rounded border border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {selectedSlot.roomName}
                 </div>
               </div>

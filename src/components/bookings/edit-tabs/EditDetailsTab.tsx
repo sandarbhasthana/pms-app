@@ -206,11 +206,11 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
             <select
               value={formData.roomId}
               onChange={(e) => handleRoomChange(e.target.value)}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+              className="w-full h-[40px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:!text-[#f0f8ff] focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors text-sm leading-tight"
             >
               <option value="">Select a room</option>
               {Object.entries(groupRoomsByType()).map(([roomType, group]) => (
-                <optgroup key={roomType} label={group.displayName}>
+                <optgroup key={roomType} label={group.displayName} className="bg-purple-300 dark:bg-purple-900 uppercase">
                   {group.rooms.map((room) => (
                     <option
                       key={room.id}
@@ -267,7 +267,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Nights
             </label>
-            <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+            <div className="px-3 py-2 bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-gray-600 h-[40px] flex items-center text-gray-900 dark:text-[#f0f8ff] text-sm">
               {calculateNights()} night{calculateNights() > 1 ? "s" : ""}
             </div>
           </div>
@@ -319,7 +319,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   onChange={(e) =>
                     handleInputChange("guestName", e.target.value)
                   }
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
                   placeholder="Enter guest name"
                 />
               </div>
@@ -331,7 +331,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
                   placeholder="Enter email address"
                 />
               </div>
@@ -347,7 +347,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
                   placeholder="Enter phone number"
                 />
               </div>
@@ -386,7 +386,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   onChange={(e) =>
                     handleInputChange("idNumber", e.target.value)
                   }
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
                   placeholder="Enter ID number"
                 />
               </div>
@@ -400,7 +400,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   onChange={(e) =>
                     handleInputChange("issuingCountry", e.target.value)
                   }
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
                   placeholder="Enter issuing country"
                 />
               </div>
@@ -425,7 +425,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               type="date"
               value={formatDateForInput(formData.checkIn)}
               onChange={(e) => handleDateChange("checkIn", e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
             />
           </div>
 
@@ -437,7 +437,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               type="date"
               value={formatDateForInput(formData.checkOut)}
               onChange={(e) => handleDateChange("checkOut", e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
             />
           </div>
         </div>
@@ -455,7 +455,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Adults *
             </label>
-            <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900">
+            <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e]">
               <button
                 type="button"
                 onClick={() => handleGuestCountChange("adults", false)}
@@ -463,7 +463,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               >
                 −
               </button>
-              <span className="flex-1 text-center py-2 text-gray-900 dark:text-gray-100">
+              <span className="flex-1 text-center py-2 text-gray-900 dark:text-[#f0f8ff]">
                 {formData.adults}
               </span>
               <button
@@ -480,7 +480,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Children
             </label>
-            <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900">
+            <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e]">
               <button
                 type="button"
                 onClick={() => handleGuestCountChange("children", false)}
@@ -488,7 +488,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               >
                 −
               </button>
-              <span className="flex-1 text-center py-2 text-gray-900 dark:text-gray-100">
+              <span className="flex-1 text-center py-2 text-gray-900 dark:text-[#f0f8ff]">
                 {formData.children}
               </span>
               <button
@@ -518,7 +518,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
             value={formData.notes}
             onChange={(e) => handleInputChange("notes", e.target.value)}
             rows={4}
-            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
             placeholder="Add any special requests or notes..."
           />
         </div>

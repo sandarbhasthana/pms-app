@@ -293,7 +293,7 @@ export async function DELETE(
       const existing = await tx.reservation.findUnique({
         where: { id },
         include: {
-          Payment: true // Include payments to check if any exist
+          payments: true // Include payments to check if any exist
         }
       });
 
@@ -302,7 +302,7 @@ export async function DELETE(
       }
 
       // Delete payments first (if any exist)
-      if (existing.Payment && existing.Payment.length > 0) {
+      if (existing.payments && existing.payments.length > 0) {
         await tx.payment.deleteMany({
           where: { reservationId: id }
         });

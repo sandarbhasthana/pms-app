@@ -19,7 +19,7 @@ export async function calculatePaymentStatus(
                   pricing: true
                 }
               },
-              Payment: true
+              payments: true
             }
           });
         });
@@ -33,7 +33,7 @@ export async function calculatePaymentStatus(
                 pricing: true
               }
             },
-            Payment: true
+            payments: true
           }
         });
       }
@@ -45,7 +45,7 @@ export async function calculatePaymentStatus(
       return "UNPAID";
     }
 
-    const { checkIn, checkOut, Payment: payments, room } = reservation;
+    const { checkIn, checkOut, payments: payments, room } = reservation;
 
     const nights =
       (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
