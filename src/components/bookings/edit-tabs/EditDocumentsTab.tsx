@@ -3,17 +3,18 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { DocumentIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { EditReservationData, EditBookingFormData } from "./types";
 
-interface EditDocumentsTabProps {
-  reservationData: any;
-  formData: any;
-  onUpdate: (data: any) => void;
+export interface EditDocumentsTabProps {
+    reservationData: EditReservationData;
+    formData: EditBookingFormData;
+    onUpdate: (data: Partial<EditBookingFormData>) => void;
 }
 
 const EditDocumentsTab: React.FC<EditDocumentsTabProps> = ({
-  reservationData,
-  formData,
-  onUpdate
+  // reservationData,
+  // formData,
+  // onUpdate
 }) => {
   return (
     <div className="space-y-6">

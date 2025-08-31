@@ -3,17 +3,18 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { CreditCardIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EditReservationData, EditBookingFormData } from "./types";
 
-interface EditCardsTabProps {
-  reservationData: any;
-  formData: any;
-  onUpdate: (data: any) => void;
+export interface EditCardsTabProps {
+    reservationData: EditReservationData;
+    formData: EditBookingFormData;
+    onUpdate: (data: Partial<EditBookingFormData>) => void;
 }
 
 const EditCardsTab: React.FC<EditCardsTabProps> = ({
-  reservationData,
-  formData,
-  onUpdate
+  // reservationData,
+  // formData,
+  // onUpdate
 }) => {
   return (
     <div className="space-y-6">

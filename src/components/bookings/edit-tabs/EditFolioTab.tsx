@@ -9,17 +9,18 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { EditReservationData, EditBookingFormData } from "./types";
 
 interface EditFolioTabProps {
-  reservationData: any;
-  formData: any;
-  onUpdate: (data: any) => void;
+  reservationData: EditReservationData;
+    formData: EditBookingFormData;
+    onUpdate: (data: Partial<EditBookingFormData>) => void;
 }
 
 const EditFolioTab: React.FC<EditFolioTabProps> = ({
-  reservationData,
-  formData,
-  onUpdate
+  // reservationData,
+  // formData,
+  // onUpdate
 }) => {
   return (
     <div className="space-y-6">
