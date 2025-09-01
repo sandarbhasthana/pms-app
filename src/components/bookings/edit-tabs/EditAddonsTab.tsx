@@ -7,7 +7,8 @@ import {
   HomeIcon,
   CakeIcon,
   StarIcon,
-  TrashIcon
+  TrashIcon,
+  PaperAirplaneIcon
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 // Note: Switch component will be imported when available
@@ -143,7 +144,7 @@ export const EditAddonsTab: React.FC<EditTabProps> = ({
 
         <div className="space-y-4">
           {/* Extra Bed */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:!bg-card rounded-lg border border-gray-200 dark:border-gray-600">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                 <HomeIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -198,7 +199,7 @@ export const EditAddonsTab: React.FC<EditTabProps> = ({
           </div>
 
           {/* Breakfast */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:!bg-card rounded-lg border border-gray-200 dark:border-gray-600">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                 <CakeIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -258,7 +259,7 @@ export const EditAddonsTab: React.FC<EditTabProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <StarIcon className="h-5 w-5 text-purple-600" />
+            <StarIcon className="h-5 w-5 text-purple-600 dark:text-white" />
             <h3 className="text-lg font-semibold">Custom Add-ons</h3>
           </div>
           <Button
@@ -278,11 +279,11 @@ export const EditAddonsTab: React.FC<EditTabProps> = ({
             {formData.addons.customAddons.map((addon) => (
               <div
                 key={addon.id}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600"
+                className="flex items-center justify-between p-4 bg-gray-50 dark:!bg-card rounded-lg border border-gray-200 dark:border-gray-600"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                    <StarIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <PaperAirplaneIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">

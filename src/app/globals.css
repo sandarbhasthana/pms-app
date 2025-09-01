@@ -102,7 +102,7 @@
 .dark {
   --background: #121212;
   --foreground: #f0f8ff; /* Alice Blue text for dark mode */
-  --card: #1e1e1e; /* Slightly lighter than background */
+  --card: #121212; /* Same as background for consistency */
   --card-foreground: #f0f8ff; /* Alice Blue text on cards */
   --popover: #1e1e1e;
   --popover-foreground: #f0f8ff; /* Alice Blue text in dropdowns */
@@ -743,6 +743,16 @@ label,
   display: block;
 }
 
+input{
+  background-color: #fff!important;
+  color: #121212!important;
+}
+
+.dark input{
+  background-color: #121212!important;
+  color: #f0f8ff!important;
+}
+
 /* Phone Input */
 
 .react-tel-input .flag-dropdown {
@@ -787,13 +797,18 @@ label,
 .dark .country-list,
 .dark .search,
 .dark .country {
-  background: #0a0a0a !important;
-  color: #fff !important;
+  background: #121212 !important;
+  color: #f0f8ff !important;
 }
 
 input.search-box {
   margin-left: 0 !important;
   width: 95% !important;
+}
+
+.dark input.search-box{
+  background: #121212 !important;
+  color: #f0f8ff !important;
 }
 
 .country:hover {
@@ -803,7 +818,7 @@ input.search-box {
 
 .dark .country:hover {
   background-color: #2a323f !important;
-  color: #fff;
+  color: #f0f8ff;
 }
 
 .country ~ .highlight {

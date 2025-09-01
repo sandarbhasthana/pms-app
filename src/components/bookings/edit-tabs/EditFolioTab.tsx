@@ -13,15 +13,17 @@ import { EditReservationData, EditBookingFormData } from "./types";
 
 interface EditFolioTabProps {
   reservationData: EditReservationData;
-    formData: EditBookingFormData;
-    onUpdate: (data: Partial<EditBookingFormData>) => void;
+  formData: EditBookingFormData;
+  onUpdate: (data: Partial<EditBookingFormData>) => void;
 }
 
-const EditFolioTab: React.FC<EditFolioTabProps> = ({
-  // reservationData,
-  // formData,
-  // onUpdate
-}) => {
+const EditFolioTab: React.FC<EditFolioTabProps> = (
+  {
+    // reservationData,
+    // formData,
+    // onUpdate
+  }
+) => {
   return (
     <div className="space-y-6">
       {/* Folio Actions */}
@@ -45,11 +47,13 @@ const EditFolioTab: React.FC<EditFolioTabProps> = ({
           >
             <DropdownMenuItem
               onClick={() => console.log("Add Payment clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Add Payment
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => console.log("Refund Payment clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Refund Payment
             </DropdownMenuItem>
@@ -75,26 +79,31 @@ const EditFolioTab: React.FC<EditFolioTabProps> = ({
           >
             <DropdownMenuItem
               onClick={() => console.log("Adjust Charge clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Adjust Charge
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => console.log("Add Exclusive Tax/Fee clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Add Exclusive Tax/Fee
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => console.log("Add Room Revenue clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Add Room Revenue
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => console.log("Add Cancellation Fee clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Add Cancellation Fee
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => console.log("Add No Show Fee clicked")}
+              className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
             >
               Add No Show Fee
             </DropdownMenuItem>
@@ -103,51 +112,49 @@ const EditFolioTab: React.FC<EditFolioTabProps> = ({
       </div>
 
       {/* Folio Summary */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Folio Summary
         </h3>
 
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600 dark:text-gray-400">
-              Room Charges:
+        <div className="grid grid-cols-[1fr_auto] gap-y-1.5">
+          <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+            Room Charges
+          </span>
+          <span className="text-base font-mono font-semibold text-gray-900 dark:text-gray-100 justify-self-end">
+            ₹5,000.00
+          </span>
+
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Taxes & Fees
+          </span>
+          <span className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
+            ₹900.00
+          </span>
+
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Add-ons
+          </span>
+          <span className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
+            ₹800.00
+          </span>
+
+          <div className="col-span-2 border-t border-gray-200 dark:border-gray-600 my-1"></div>
+
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Payments
+          </span>
+          <span className="text-sm font-mono font-semibold text-green-600 dark:text-green-400 justify-self-end">
+            -₹2,000.00
+          </span>
+
+          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 mt-2">
+            <span className="text-[17px] font-bold text-gray-900 dark:text-white">
+              Outstanding Balance
             </span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              ₹5,000.00
+            <span className="text-[19px] font-mono font-bold text-red-600 dark:text-red-400">
+              ₹4,700.00
             </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600 dark:text-gray-400">
-              Taxes & Fees:
-            </span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              ₹900.00
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600 dark:text-gray-400">Add-ons:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              ₹800.00
-            </span>
-          </div>
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 dark:text-gray-400">
-                Payments:
-              </span>
-              <span className="font-medium text-green-600 dark:text-green-400">
-                -₹2,000.00
-              </span>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-            <div className="flex justify-between items-center text-lg font-semibold">
-              <span className="text-gray-900 dark:text-gray-100">
-                Outstanding Balance:
-              </span>
-              <span className="text-red-600 dark:text-red-400">₹4,700.00</span>
-            </div>
           </div>
         </div>
       </div>

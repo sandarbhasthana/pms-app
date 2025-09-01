@@ -646,9 +646,9 @@
 .rounded-0,
 button.rounded-0,
 .rounded-0.bg-purple-500 {
-  border-radius: 0 !important;
   -webkit-border-radius: 0 !important;
   -moz-border-radius: 0 !important;
+  border-radius: 0 !important;
 }
 
 /* Site-wide Edit Button Hover - Purple Fill */

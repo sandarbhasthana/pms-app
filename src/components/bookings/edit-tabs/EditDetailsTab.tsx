@@ -319,7 +319,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   onChange={(e) =>
                     handleInputChange("guestName", e.target.value)
                   }
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:!text-[#f0f8ff]"
                   placeholder="Enter guest name"
                 />
               </div>
@@ -331,7 +331,7 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-[#f0f8ff]"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-gray-900 dark:!text-[#f0f8ff]"
                   placeholder="Enter email address"
                 />
               </div>

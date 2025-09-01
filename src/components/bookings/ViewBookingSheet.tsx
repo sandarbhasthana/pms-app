@@ -6,7 +6,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetClose
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -98,7 +97,7 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
           <SheetTitle className="text-3xl">
             {viewReservation.guestName}
           </SheetTitle>
-          <SheetDescription className="text-md">
+          <div className="text-md text-muted-foreground">
             <div className="space-y-1">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Reservation ID: {viewReservation.id}
@@ -109,7 +108,7 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
                 {calculateNights() > 1 ? "s" : ""}
               </div>
             </div>
-          </SheetDescription>
+          </div>
         </SheetHeader>
 
         <div className="p-4 pb-8">
