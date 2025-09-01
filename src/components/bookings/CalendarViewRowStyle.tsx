@@ -357,9 +357,10 @@ export default function CalendarViewRowStyle({
           info.el.style.width = `${info.el.clientWidth + colW * 0.4}px`;
           info.el.style.borderRadius = "4px";
         }
-        info.el.style.minHeight = "24px";
+        info.el.style.minHeight = "28px";
         info.el.style.whiteSpace = "normal";
         info.el.style.padding = "2px 4px";
+        info.el.style.marginTop = "20px";
       }}
       eventClassNames={({ event }) => {
         // Don't apply payment status classes to background events (weekend/today highlights)

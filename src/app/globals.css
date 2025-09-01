@@ -365,6 +365,53 @@
 
 /* STATUS STYLING END */
 
+/* FullCalendar Resource Group Expand/Collapse Arrow Styling */
+/* Target the specific FullCalendar icon classes */
+.fc-icon-minus-square,
+.fc-icon-plus-square {
+  font-size: 0 !important; /* Hide default square icons */
+  width: 16px !important;
+  height: 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Replace minus-square (expanded state) with down arrow */
+.fc-icon-minus-square:before {
+  content: "▼" !important;
+  font-size: 12px !important;
+  color: #121212 !important; /* Black color for light theme */
+  display: inline-block !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Replace plus-square (collapsed state) with right arrow */
+.fc-icon-plus-square:before {
+  content: "▶" !important;
+  font-size: 12px !important;
+  color: #121212 !important; /* Black color for light theme */
+  display: inline-block !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Dark mode styling for arrows */
+.dark .fc-icon-minus-square:before,
+.dark .fc-icon-plus-square:before {
+  color: #f0f8ff !important; /* Alice Blue for dark mode */
+}
+
+/* Hover effect for arrows */
+.fc-icon-minus-square:hover:before,
+.fc-icon-plus-square:hover:before {
+  color: #333333 !important; /* Slightly lighter black on hover */
+}
+
+.dark .fc-icon-minus-square:hover:before,
+.dark .fc-icon-plus-square:hover:before {
+  color: #ffffff !important; /* Pure white on hover in dark mode */
+}
+
 /* Weekend highlight styling - Friday & Saturday with yellow color */
 .weekend-highlight {
   background-color: #fdeda5 !important; /* Light yellow for light mode (same as Sunday) */
@@ -743,14 +790,14 @@ label,
   display: block;
 }
 
-input{
-  background-color: #fff!important;
-  color: #121212!important;
+input {
+  background-color: #fff !important;
+  color: #121212 !important;
 }
 
-.dark input{
-  background-color: #121212!important;
-  color: #f0f8ff!important;
+.dark input {
+  background-color: #121212 !important;
+  color: #f0f8ff !important;
 }
 
 /* Phone Input */
@@ -806,7 +853,7 @@ input.search-box {
   width: 95% !important;
 }
 
-.dark input.search-box{
+.dark input.search-box {
   background: #121212 !important;
   color: #f0f8ff !important;
 }
