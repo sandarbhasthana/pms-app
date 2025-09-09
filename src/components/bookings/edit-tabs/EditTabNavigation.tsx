@@ -16,8 +16,6 @@ import { EditTabNavigationProps, EditBookingTab } from "./types";
 const EditTabNavigation: React.FC<EditTabNavigationProps> = ({
   activeTab,
   setActiveTab,
-  reservationData,
-  //formData,
   hasUnsavedChanges
 }) => {
   const tabConfig = {
