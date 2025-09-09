@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { PropertySwitcher } from "@/components/PropertySwitcher";
@@ -45,9 +46,20 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
         {/* Logo / Brand */}
         <Link
           href="/"
-          className="text-heading-md font-semibold text-gray-800 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center hover:opacity-80 transition-opacity"
         >
-          PMS App
+          <Image
+            src="/logo.webp"
+            alt="PMS App"
+            width={120}
+            height={40}
+            className="h-8 w-auto"
+            priority
+          />
+          {/* Text logo fallback - commented out */}
+          {/* <span className="text-heading-md font-semibold text-gray-800 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+            PMS App
+          </span> */}
         </Link>
       </div>
 
