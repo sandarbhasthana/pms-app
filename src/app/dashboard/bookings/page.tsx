@@ -104,8 +104,6 @@ export default function BookingsRowStylePage() {
     x: number;
     y: number;
     showDetails: boolean;
-    showAddNote: boolean;
-    noteText: string;
   } | null>(null);
 
   // View‐Details modal state
@@ -570,9 +568,7 @@ export default function BookingsRowStylePage() {
         reservation: resv,
         x: rect.left + window.scrollX,
         y: rect.bottom + window.scrollY,
-        showDetails: false,
-        showAddNote: false,
-        noteText: resv.notes || ""
+        showDetails: false
       });
     },
     [events]
@@ -824,37 +820,6 @@ export default function BookingsRowStylePage() {
               await reload();
             })
           }
-          handleNoteSave={async (id, note) => {
-            if (!note.trim()) return toast.error("Please type a note.");
-            try {
-              const res = await fetch(`/api/reservations/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ notes: note })
-              });
-              if (!res.ok) throw new Error("Failed to save note");
-              const updated = await res.json();
-              setEvents((evs) =>
-                evs.map((e) =>
-                  e.id === id ? { ...e, notes: updated.notes ?? note } : e
-                )
-              );
-              if (viewReservation?.id === id)
-                setViewReservation(
-                  (v) => v && { ...v, notes: updated.notes ?? note }
-                );
-              setFlyout(null);
-              toast.success("Note saved!");
-            } catch (err: unknown) {
-              toast.error(
-                err instanceof Error ? err.message : "Could not save note"
-              );
-            }
-          }}
-          setFlyoutNote={(text) =>
-            setFlyout((f) => (f ? { ...f, noteText: text } : null))
-          }
-          onPaymentAdded={reload}
         />
       )}
 
@@ -930,7 +895,7 @@ export default function BookingsRowStylePage() {
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
 
       {/* Debug Info (Development Only) */}
-      {process.env.NODE_ENV === "development" && (
+      {/* {process.env.NODE_ENV === "development" && (
         <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
           <p>
             🔧 Debug: Last refetch: {new Date(lastRefetch).toLocaleTimeString()}
@@ -938,7 +903,7 @@ export default function BookingsRowStylePage() {
           <p>🔧 Debug: Is refetching: {isRefetching ? "Yes" : "No"}</p>
           <p>🔧 Debug: Events count: {events.length}</p>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

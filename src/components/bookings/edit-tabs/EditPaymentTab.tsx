@@ -380,7 +380,7 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
           )}
 
           {/* Total */}
-          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 mt-4">
+          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:!bg-gray-700/50 rounded-lg px-4 mt-4">
             <span className="text-[17px] font-bold text-gray-900 dark:text-white">
               Total Amount
             </span>

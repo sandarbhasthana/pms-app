@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { BookingTabProps, SelectedSlot } from "./types";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
+import AutocompleteInputFixed from "@/components/bookings/AutocompleteInputFixed";
 
 // Extended props for details tab to include scanner functionality
 interface BookingDetailsTabProps extends BookingTabProps {
@@ -43,6 +44,49 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
     height: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSelectingCustomerRef = useRef<boolean>(false);
+  const selectedCustomerValuesRef = useRef<{
+    fullName: string;
+    email: string;
+    phone: string;
+    idNumber: string;
+  }>({ fullName: "", email: "", phone: "", idNumber: "" });
+
+  // Customer selection handler for autocomplete
+  const handleCustomerSelect = useCallback(
+    (customer: {
+      guestName: string;
+      email?: string;
+      phone?: string;
+      idNumber?: string;
+      idType?: string;
+      issuingCountry?: string;
+    }) => {
+      // Set flag to prevent dropdowns from showing during batch update
+      isSelectingCustomerRef.current = true;
+
+      // Store the values we're about to set
+      const newValues = {
+        fullName: customer.guestName || "",
+        email: customer.email || "",
+        phone: customer.phone || "",
+        idNumber: customer.idNumber || ""
+      };
+      selectedCustomerValuesRef.current = newValues;
+
+      updateFormData({
+        ...newValues,
+        idType: customer.idType || "passport",
+        issuingCountry: customer.issuingCountry || ""
+      });
+
+      // Clear the flag after React has processed the updates
+      setTimeout(() => {
+        isSelectingCustomerRef.current = false;
+      }, 100);
+    },
+    [updateFormData]
+  );
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -176,16 +220,15 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Guest Name
-                </label>
-                <input
-                  type="text"
+                <AutocompleteInputFixed
+                  label="Guest Name"
+                  name="guestName"
                   value={formData.fullName}
-                  onChange={(e) => updateFormData({ fullName: e.target.value })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
+                  setValue={(value) => updateFormData({ fullName: value })}
                   placeholder="John Doe"
-                  required
+                  onCustomerSelect={handleCustomerSelect}
+                  isSelectingCustomerRef={isSelectingCustomerRef}
+                  selectedCustomerValuesRef={selectedCustomerValuesRef}
                 />
               </div>
             </div>
@@ -193,25 +236,29 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
             {/* Row 2: Email | Phone No. */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <input
-                  type="email"
+                <AutocompleteInputFixed
+                  label="Email"
+                  name="email"
                   value={formData.email}
-                  onChange={(e) => updateFormData({ email: e.target.value })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
+                  type="email"
+                  setValue={(value) => updateFormData({ email: value })}
                   placeholder="guest@example.com"
-                  required
+                  onCustomerSelect={handleCustomerSelect}
+                  isSelectingCustomerRef={isSelectingCustomerRef}
+                  selectedCustomerValuesRef={selectedCustomerValuesRef}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
-                <input
-                  type="tel"
+                <AutocompleteInputFixed
+                  label="Phone"
+                  name="phone"
                   value={formData.phone}
-                  onChange={(e) => updateFormData({ phone: e.target.value })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
+                  type="tel"
+                  setValue={(value) => updateFormData({ phone: value })}
                   placeholder="+1 (555) 555-5555"
-                  required
+                  onCustomerSelect={handleCustomerSelect}
+                  isSelectingCustomerRef={isSelectingCustomerRef}
+                  selectedCustomerValuesRef={selectedCustomerValuesRef}
                 />
               </div>
             </div>
@@ -324,15 +371,15 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  ID Number
-                </label>
-                <input
-                  type="text"
+                <AutocompleteInputFixed
+                  label="ID Number"
+                  name="idNumber"
                   value={formData.idNumber}
-                  onChange={(e) => updateFormData({ idNumber: e.target.value })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
+                  setValue={(value) => updateFormData({ idNumber: value })}
                   placeholder="Enter ID number"
+                  onCustomerSelect={handleCustomerSelect}
+                  isSelectingCustomerRef={isSelectingCustomerRef}
+                  selectedCustomerValuesRef={selectedCustomerValuesRef}
                 />
               </div>
             </div>

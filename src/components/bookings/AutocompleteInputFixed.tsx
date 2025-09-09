@@ -26,6 +26,13 @@ interface Props {
   setValue: (val: string) => void;
   onCustomerSelect: (r: Reservation) => void;
   type?: string;
+  isSelectingCustomerRef?: React.MutableRefObject<boolean>;
+  selectedCustomerValuesRef?: React.MutableRefObject<{
+    fullName: string;
+    email: string;
+    phone: string;
+    idNumber: string;
+  }>;
 }
 
 export default function AutocompleteInputFixed({
@@ -35,13 +42,16 @@ export default function AutocompleteInputFixed({
   setValue,
   placeholder,
   onCustomerSelect,
-  type = "text"
+  type = "text",
+  isSelectingCustomerRef,
+  selectedCustomerValuesRef
 }: Props) {
   const [results, setResults] = useState<Reservation[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLUListElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastSelectedValueRef = useRef<string>("");
 
   // FIXED: Memoized search function to prevent recreation
   const searchCustomers = useCallback(async (query: string) => {
@@ -78,31 +88,49 @@ export default function AutocompleteInputFixed({
 
   // FIXED: Optimized search effect with better debouncing and cleanup
   useEffect(() => {
-    const trimmed = value.trim();
-
-    if (trimmed.length <= 1) {
+    // Don't search if we're in the middle of selecting a customer
+    if (isSelectingCustomerRef?.current) {
       setResults([]);
       setShowDropdown(false);
       return;
     }
 
-    // FIXED: Check if value matches a previously selected item to prevent unnecessary searches
-    const exactMatch = results.find(
-      (r) =>
-        r.guestName === trimmed ||
-        r.email === trimmed ||
-        r.phone === trimmed ||
-        r.idNumber === trimmed
-    );
+    const trimmed = value.trim();
 
-    if (exactMatch) {
+    if (trimmed.length <= 1) {
+      setResults([]);
       setShowDropdown(false);
+      lastSelectedValueRef.current = "";
+      return;
+    }
+
+    // Check if this value matches a recently selected customer value
+    const selectedValues = selectedCustomerValuesRef?.current;
+    if (selectedValues) {
+      const isSelectedValue =
+        trimmed === selectedValues.fullName ||
+        trimmed === selectedValues.email ||
+        trimmed === selectedValues.phone ||
+        trimmed === selectedValues.idNumber;
+
+      if (isSelectedValue) {
+        setResults([]);
+        setShowDropdown(false);
+        return;
+      }
+    }
+
+    // Prevent search if this is the same value that was just selected
+    if (trimmed === lastSelectedValueRef.current) {
       return;
     }
 
     // FIXED: Increased debounce delay to reduce API calls
     const timeoutId = setTimeout(() => {
-      searchCustomers(trimmed);
+      // Double-check the ref before making the API call
+      if (!isSelectingCustomerRef?.current) {
+        searchCustomers(trimmed);
+      }
     }, 500); // Increased from 250ms to 500ms
 
     return () => {
@@ -112,7 +140,12 @@ export default function AutocompleteInputFixed({
         abortControllerRef.current.abort();
       }
     };
-  }, [value, searchCustomers, results]); // FIXED: Include results in dependencies
+  }, [
+    value,
+    searchCustomers,
+    isSelectingCustomerRef,
+    selectedCustomerValuesRef
+  ]); // FIXED: Removed results from dependencies to prevent infinite loop
 
   // FIXED: Memoized click outside handler
   const handleClickOutside = useCallback((e: MouseEvent) => {
@@ -137,11 +170,13 @@ export default function AutocompleteInputFixed({
   // FIXED: Memoized customer selection handler
   const handleCustomerClick = useCallback(
     (customer: Reservation) => {
+      // Track the selected value to prevent unnecessary searches
+      lastSelectedValueRef.current = value;
       onCustomerSelect(customer);
       setShowDropdown(false);
       setResults([]);
     },
-    [onCustomerSelect]
+    [onCustomerSelect, value]
   );
 
   // FIXED: Memoized focus handler
@@ -154,9 +189,33 @@ export default function AutocompleteInputFixed({
   // FIXED: Memoized change handler
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Clear the last selected value when user manually types
+      lastSelectedValueRef.current = "";
+
+      // Clear selected customer values if user starts typing something different
+      if (selectedCustomerValuesRef?.current) {
+        const currentValue = e.target.value.trim();
+        const selectedValues = selectedCustomerValuesRef.current;
+        const isTypingSelectedValue =
+          currentValue === selectedValues.fullName ||
+          currentValue === selectedValues.email ||
+          currentValue === selectedValues.phone ||
+          currentValue === selectedValues.idNumber;
+
+        if (!isTypingSelectedValue) {
+          // User is typing something new, clear the selected customer values
+          selectedCustomerValuesRef.current = {
+            fullName: "",
+            email: "",
+            phone: "",
+            idNumber: ""
+          };
+        }
+      }
+
       setValue(e.target.value);
     },
-    [setValue]
+    [setValue, selectedCustomerValuesRef]
   );
 
   // FIXED: Memoized dropdown items to prevent unnecessary re-renders

@@ -7,10 +7,9 @@ import {
   EyeIcon,
   CheckIcon,
   PencilIcon,
-  XCircleIcon,
-  PencilSquareIcon
+  TrashIcon
 } from "@heroicons/react/24/outline";
-import ManualPaymentForm from "@/components/payments/ManualPaymentForm";
+
 //import { useSession } from "next-auth/react";
 
 interface Reservation {
@@ -33,8 +32,6 @@ interface FlyoutState {
   x: number;
   y: number;
   showDetails: boolean;
-  showAddNote: boolean;
-  noteText: string;
 }
 
 interface FlyoutMenuProps {
@@ -47,9 +44,6 @@ interface FlyoutMenuProps {
   setViewReservation: React.Dispatch<React.SetStateAction<Reservation | null>>;
   handleCheckOut: (id: string) => void;
   handleDelete: (id: string) => void;
-  handleNoteSave: (id: string, note: string) => void;
-  setFlyoutNote: (note: string) => void;
-  onPaymentAdded?: () => void;
 }
 
 const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
@@ -59,10 +53,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
   setEditingReservation,
   setViewReservation,
   handleCheckOut,
-  handleDelete,
-  handleNoteSave,
-  setFlyoutNote,
-  onPaymentAdded
+  handleDelete
 }) => {
   //const { data: session } = useSession();
 
@@ -85,90 +76,60 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
   return (
     <div
       ref={flyoutRef}
-      className="absolute bg-yellow-50 dark:bg-blue-950 text-gray-900 dark:text-white rounded-xl shadow-lg z-50 text-sm"
+      className="absolute bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 text-sm"
       style={{ top: flyout.y - 60, left: flyout.x + 20 }}
     >
       <ul>
         <li>
           <button
+            type="button"
             onClick={handleViewDetails}
-            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-[#f3ddff] hover:text-gray-900 hover:rounded-t-xl"
+            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 hover:rounded-t-xl transition-colors"
           >
-            <EyeIcon className="h-4 w-4 mr-2 text-orange-600" />
+            <EyeIcon className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
             View Details
           </button>
         </li>
         <li>
           <button
-            onClick={() => handleCheckOut(flyout.reservation.id)}
-            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-[#f3ddff] hover:text-gray-900"
+            type="button"
+            onClick={() => {
+              setEditingReservation(flyout.reservation);
+              setFlyout(null);
+            }}
+            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <CheckIcon className="h-4 w-4 mr-2 text-green-600" />
+            <PencilIcon className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-400" />
+            Edit Booking
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            onClick={() => handleCheckOut(flyout.reservation.id)}
+            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <CheckIcon className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
             Check Out
           </button>
         </li>
         <li>
           <button
-            onClick={() => {
-              setEditingReservation(flyout.reservation);
-              setFlyout(null);
-            }}
-            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-[#f3ddff] hover:text-gray-900"
-          >
-            <PencilIcon className="h-4 w-4 mr-2 text-blue-600" />
-            Modify Booking
-          </button>
-        </li>
-        <li>
-          <button
+            type="button"
             onClick={() => handleDelete(flyout.reservation.id)}
-            className="flex items-center w-full text-left px-4 py-2 font-semibold text-red-600 hover:bg-red-100"
+            className="flyout-delete-btn group flex items-center w-full text-left px-4 py-2 font-semibold text-red-600 hover:bg-red-600 hover:text-white hover:rounded-b-xl transition-colors"
+            style={{
+              border: "none !important",
+              outline: "none !important",
+              boxShadow: "none !important",
+              borderRadius: "0 0 12px 12px"
+            }}
           >
-            <XCircleIcon className="h-4 w-4 mr-2 text-red-600" />
+            <TrashIcon className="h-4 w-4 mr-2 text-red-600 group-hover:text-white transition-colors" />
             Cancel Booking
           </button>
         </li>
-        <li>
-          <button
-            onClick={() =>
-              setFlyout((f: FlyoutState | null) =>
-                f ? { ...f, showAddNote: !f.showAddNote } : null
-              )
-            }
-            className="flex items-center w-full text-left px-4 py-2 font-semibold hover:bg-[#f3ddff] hover:text-gray-900 rounded-b-xl"
-          >
-            <PencilSquareIcon className="h-4 w-4 mr-2 text-indigo-600" />
-            Add Note
-          </button>
-        </li>
       </ul>
-
-      {flyout.showAddNote && (
-        <div className="px-4 py-2 border-t border-gray-200 space-y-2">
-          <textarea
-            value={flyout.noteText}
-            onChange={(e) => setFlyoutNote(e.target.value)}
-            placeholder="Type your note here..."
-            className="block w-full h-20 border border-gray-300 rounded p-2 text-sm"
-          />
-          <button
-            onClick={() =>
-              handleNoteSave(flyout.reservation.id, flyout.noteText)
-            }
-            className="mt-1 px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
-          >
-            Save
-          </button>
-        </div>
-      )}
-      {process.env.NEXT_PUBLIC_MANUAL_PAYMENT_MODE === "true" && (
-        <div className="border-t border-gray-200 px-4 py-3">
-          <ManualPaymentForm
-            reservationId={flyout.reservation.id}
-            onPaymentAdded={onPaymentAdded}
-          />
-        </div>
-      )}
     </div>
   );
 };

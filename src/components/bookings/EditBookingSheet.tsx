@@ -8,8 +8,19 @@ import {
   SheetTitle,
   SheetClose
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { ChevronLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ChevronLeftIcon,
+  XMarkIcon,
+  ChevronDownIcon
+} from "@heroicons/react/24/outline";
 import EditTabNavigation from "./edit-tabs/EditTabNavigation";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
@@ -222,15 +233,149 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       </SheetClose>
       <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base [&_[data-slot=select-content]]:z-[99999] z-[9999]">
         <SheetHeader className="relative">
-          {/* Close button in top right corner */}
-          <button
-            type="button"
-            onClick={handleClose}
-            className="absolute top-0 right-0 p-2 rounded-md bg-gray-200 hover:!bg-gray-300 dark:!bg-gray-700 dark:hover:bg-gray-900 transition-colors"
-            title="Close"
-          >
-            <XMarkIcon className="h-6 w-6 dark:!text-[#f0f8f9]" />
-          </button>
+          {/* Status and Action Dropdowns + Close button in top right */}
+          <div className="absolute top-0 right-0 flex items-center gap-3">
+            {/* Status Dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Status:
+              </span>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                  >
+                    <span>
+                      {editingReservation.status === "CONFIRMED"
+                        ? "Confirmed"
+                        : editingReservation.status === "PENDING"
+                        ? "Pending"
+                        : editingReservation.status === "CANCELED"
+                        ? "Canceled"
+                        : editingReservation.status === "IN_HOUSE"
+                        ? "In-House"
+                        : editingReservation.status === "CHECKED_OUT"
+                        ? "Checked Out"
+                        : editingReservation.status === "NO_SHOW"
+                        ? "No-Show"
+                        : "Confirmed"}
+                    </span>
+                    <ChevronDownIcon className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="z-[10000]"
+                  sideOffset={5}
+                >
+                  <DropdownMenuItem
+                    onClick={() => console.log("Status changed to: CONFIRMED")}
+                  >
+                    Confirmed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Status changed to: PENDING")}
+                  >
+                    Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Status changed to: CANCELED")}
+                  >
+                    Canceled
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Status changed to: IN_HOUSE")}
+                  >
+                    In-House
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      console.log("Status changed to: CHECKED_OUT")
+                    }
+                  >
+                    Checked Out
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Status changed to: NO_SHOW")}
+                  >
+                    No-Show
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Actions Dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Actions:
+              </span>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                  >
+                    <span>Select Action</span>
+                    <ChevronDownIcon className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="z-[10000]"
+                  sideOffset={5}
+                >
+                  <DropdownMenuItem
+                    onClick={() => console.log("Change Dates clicked")}
+                  >
+                    Change Dates
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Move Room clicked")}
+                  >
+                    Move Room
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Add Charge clicked")}
+                  >
+                    Add Charge
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Record Payment clicked")}
+                  >
+                    Record Payment
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Refund clicked")}
+                  >
+                    Refund
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Print/Download Folio clicked")}
+                  >
+                    Print/Download Folio
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => console.log("Send Confirmation clicked")}
+                  >
+                    Send Confirmation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-2 rounded-md bg-gray-200 hover:!bg-gray-300 dark:!bg-gray-700 dark:hover:bg-gray-900 transition-colors"
+              title="Close"
+            >
+              <XMarkIcon className="h-6 w-6 dark:!text-[#f0f8f9]" />
+            </button>
+          </div>
 
           {/* Back button */}
           <button
@@ -242,43 +387,46 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
             <span>Back</span>
           </button>
 
-          <SheetTitle className="text-3xl flex items-center gap-3">
-            {formData.guestName || editingReservation.guestName}
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  editingReservation.status === "CONFIRMED"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                    : editingReservation.status === "PENDING"
-                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-                }`}
-              >
-                {editingReservation.status || "UNKNOWN"}
-              </span>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  editingReservation.paymentStatus === "PAID"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                    : editingReservation.paymentStatus === "PARTIALLY_PAID"
-                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                    : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                }`}
-              >
-                {editingReservation.paymentStatus || "UNPAID"}
-              </span>
-            </div>
-          </SheetTitle>
-          <div className="text-md space-y-2 mt-2">
-            <div className="text-sm text-gray-600 pt-2 dark:text-gray-400 font-bold font-mono uppercase">
-              {editingReservation.id}
-              {/* Res ID:  */}
-            </div>
-            <div className="text-sm text-muted-foreground font-bold">
-              {/* Modify booking details for{" "}
-              {formData.guestName || editingReservation.guestName} |{" "} */}
-              {formatDateRange()} | {calculateNights()} Night(s)
-              {calculateNights() > 1 ? "s" : ""}
+          {/* Guest Information - Aligned with form content */}
+          <div className="pl-4">
+            <SheetTitle className="text-3xl flex items-center gap-3">
+              {formData.guestName || editingReservation.guestName}
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    editingReservation.status === "CONFIRMED"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : editingReservation.status === "PENDING"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+                  }`}
+                >
+                  {editingReservation.status || "UNKNOWN"}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    editingReservation.paymentStatus === "PAID"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : editingReservation.paymentStatus === "PARTIALLY_PAID"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {editingReservation.paymentStatus || "UNPAID"}
+                </span>
+              </div>
+            </SheetTitle>
+            <div className="text-md space-y-2 mt-2">
+              <div className="text-sm text-gray-600 pt-2 dark:text-gray-400 font-bold font-mono uppercase">
+                {editingReservation.id}
+                {/* Res ID:  */}
+              </div>
+              <div className="text-sm text-muted-foreground font-bold">
+                {/* Modify booking details for{" "}
+                {formData.guestName || editingReservation.guestName} |{" "} */}
+                {formatDateRange()} | {calculateNights()} Night(s)
+                {calculateNights() > 1 ? "s" : ""}
+              </div>
             </div>
           </div>
         </SheetHeader>

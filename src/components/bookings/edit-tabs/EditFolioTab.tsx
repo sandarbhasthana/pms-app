@@ -148,7 +148,7 @@ const EditFolioTab: React.FC<EditFolioTabProps> = (
             -₹2,000.00
           </span>
 
-          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 mt-2">
+          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:!bg-gray-700/50 rounded-lg px-4 mt-2">
             <span className="text-[17px] font-bold text-gray-900 dark:text-white">
               Outstanding Balance
             </span>

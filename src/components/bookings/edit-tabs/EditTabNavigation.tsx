@@ -6,20 +6,12 @@ import {
   PlusCircleIcon,
   CreditCardIcon,
   ExclamationTriangleIcon,
-  ChevronDownIcon,
   DocumentTextIcon,
   FolderIcon,
   ClipboardDocumentListIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
 import { EditTabNavigationProps, EditBookingTab } from "./types";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 
 const EditTabNavigation: React.FC<EditTabNavigationProps> = ({
   activeTab,
@@ -81,136 +73,6 @@ const EditTabNavigation: React.FC<EditTabNavigationProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Status and Actions Dropdowns */}
-      <div className="flex items-center gap-4 -ml-4">
-        {/* Status Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Status:
-          </span>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 w-40 text-sm justify-between px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
-              >
-                <span>
-                  {reservationData.status === "CONFIRMED"
-                    ? "Confirmed"
-                    : reservationData.status === "PENDING"
-                    ? "Confirmation Pending"
-                    : reservationData.status === "CANCELED"
-                    ? "Canceled"
-                    : reservationData.status === "IN_HOUSE"
-                    ? "In-House"
-                    : reservationData.status === "CHECKED_OUT"
-                    ? "Checked Out"
-                    : reservationData.status === "NO_SHOW"
-                    ? "No-Show"
-                    : "Confirmed"}
-                </span>
-                <ChevronDownIcon className="h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="z-[10000]"
-              sideOffset={5}
-            >
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: CONFIRMED")}
-              >
-                Confirmed
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: PENDING")}
-              >
-                Confirmation Pending
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: CANCELED")}
-              >
-                Canceled
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: IN_HOUSE")}
-              >
-                In-House
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: CHECKED_OUT")}
-              >
-                Checked Out
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Status changed to: NO_SHOW")}
-              >
-                No-Show
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Actions Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Actions:
-          </span>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 w-40 text-sm justify-between px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
-              >
-                <span>Select Action</span>
-                <ChevronDownIcon className="h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="z-[10000]"
-              sideOffset={5}
-            >
-              <DropdownMenuItem
-                onClick={() => console.log("Change Dates clicked")}
-              >
-                Change Dates
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Move Room clicked")}
-              >
-                Move Room
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Add Charge clicked")}
-              >
-                Add Charge
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Record Payment clicked")}
-              >
-                Record Payment
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log("Refund clicked")}>
-                Refund
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Print/Download Folio clicked")}
-              >
-                Print/Download Folio
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => console.log("Send Confirmation clicked")}
-              >
-                Send Confirmation
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
       {/* Horizontal Tab Navigation */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-1 overflow-x-auto">
@@ -220,6 +82,7 @@ const EditTabNavigation: React.FC<EditTabNavigationProps> = ({
 
             return (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap rounded-t-lg ${

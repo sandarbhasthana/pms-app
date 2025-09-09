@@ -123,13 +123,13 @@ export const BookingAddonsTab: React.FC<BookingTabProps> = ({
           </div>
         </div>
 
-        <div className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+        {/* <div className="text-sm text-gray-600 dark:text-gray-400 mt-4">
           <p>
             📝 <strong>Note:</strong> This is a basic implementation for Phase
             1.
           </p>
           <p>Custom add-ons and dynamic pricing will be added in Phase 2.</p>
-        </div>
+        </div> */}
       </div>
 
       {/* Add-ons Summary */}

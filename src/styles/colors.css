@@ -721,20 +721,35 @@ button[class*="border-purple-primary"]:hover {
 }
 
 /* Delete buttons with red outline - targeting existing classes */
-button.text-red-600,
-button[class*="text-red-600"],
-button[class*="border-red-600"] {
+button.text-red-600:not(.flyout-delete-btn),
+button[class*="text-red-600"]:not(.flyout-delete-btn),
+button[class*="border-red-600"]:not(.flyout-delete-btn) {
   border: 1px solid #dc2626 !important;
   color: #dc2626 !important;
   transition: all 0.2s ease !important;
 }
 
-button.text-red-600:hover,
-button[class*="text-red-600"]:hover,
-button[class*="border-red-600"]:hover {
+button.text-red-600:not(.flyout-delete-btn):hover,
+button[class*="text-red-600"]:not(.flyout-delete-btn):hover,
+button[class*="border-red-600"]:not(.flyout-delete-btn):hover {
   background-color: #dc2626 !important;
   border-color: #dc2626 !important;
   color: white !important;
+}
+
+/* Specific override for flyout delete button - no border/outline but allow hover bg */
+button.flyout-delete-btn,
+.flyout-delete-btn {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button.flyout-delete-btn:hover,
+.flyout-delete-btn:hover {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Dark mode versions - lighter purple */
@@ -746,12 +761,27 @@ button[class*="border-red-600"]:hover {
   color: white !important;
 }
 
-.dark button.text-red-600:hover,
-.dark button[class*="text-red-600"]:hover,
-.dark button[class*="border-red-600"]:hover {
+.dark button.text-red-600:not(.flyout-delete-btn):hover,
+.dark button[class*="text-red-600"]:not(.flyout-delete-btn):hover,
+.dark button[class*="border-red-600"]:not(.flyout-delete-btn):hover {
   background-color: #dc2626 !important;
   border-color: #dc2626 !important;
   color: white !important;
+}
+
+/* Dark mode specific override for flyout delete button */
+.dark button.flyout-delete-btn,
+.dark .flyout-delete-btn {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.dark button.flyout-delete-btn:hover,
+.dark .flyout-delete-btn:hover {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Save Changes and Update buttons - Purple outline style */

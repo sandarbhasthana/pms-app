@@ -94,9 +94,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     },
     payment: {
       totalAmount: 0,
-      suggestedDeposit: 0,
-      selectedDeposit: 0,
-      paymentMethod: "deposit"
+      paymentMethod: "full"
     }
   });
 

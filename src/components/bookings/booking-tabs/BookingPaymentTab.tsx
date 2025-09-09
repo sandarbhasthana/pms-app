@@ -14,6 +14,7 @@ interface BookingPaymentTabProps extends BookingTabProps {
 
 export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   formData,
+  updateFormData,
   selectedSlot,
   onPrevious,
   handleCreate,
@@ -41,14 +42,11 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
         : 0);
 
     const subtotal = basePrice + addonsTotal;
-    const suggestedDeposit = Math.max(subtotal * 0.3, 1000);
 
     return {
       basePrice,
       addonsTotal,
       subtotal,
-      suggestedDeposit,
-      remainingBalance: subtotal - suggestedDeposit,
       nights
     };
   };
@@ -93,7 +91,7 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
           </div>
           <div>
             <p className="text-gray-600 dark:text-gray-400">Nights</p>
-            <p className="font-semibold">1</p>
+            <p className="font-semibold">{totals.nights}</p>
           </div>
         </div>
       </div>
@@ -139,47 +137,63 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
 
-        <RadioGroup defaultValue="deposit" className="space-y-4">
+        <RadioGroup
+          value={formData.payment.paymentMethod}
+          onValueChange={(value: "full" | "authorize") =>
+            updateFormData({
+              payment: {
+                ...formData.payment,
+                paymentMethod: value,
+                totalAmount: totals.subtotal
+              }
+            })
+          }
+          className="space-y-4"
+        >
           <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
-            <RadioGroupItem value="deposit" id="deposit" />
-            <Label htmlFor="deposit" className="flex-1 cursor-pointer">
+            <RadioGroupItem value="full" id="full" />
+            <Label htmlFor="full" className="flex-1 cursor-pointer">
               <div>
-                <p className="font-medium">Pay Deposit Now</p>
+                <p className="font-medium">Charge Full Amount Now</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Pay ₹{Math.round(totals.suggestedDeposit)} now, ₹
-                  {Math.round(totals.remainingBalance)} at check-in
+                  Collect ₹{totals.subtotal.toLocaleString()} now via cash, bank
+                  transfer, wire transfer, or card
                 </p>
               </div>
             </Label>
             <div className="text-right">
               <p className="font-semibold text-green-600">
-                ₹{Math.round(totals.suggestedDeposit)}
+                ₹{totals.subtotal.toLocaleString()}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
-            <RadioGroupItem value="full" id="full" />
-            <Label htmlFor="full" className="flex-1 cursor-pointer">
+            <RadioGroupItem value="authorize" id="authorize" />
+            <Label htmlFor="authorize" className="flex-1 cursor-pointer">
               <div>
-                <p className="font-medium">Pay Full Amount</p>
+                <p className="font-medium">Authorize Card</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Pay the complete amount now
+                  Hold ₹{totals.subtotal.toLocaleString()} on the guest&apos;s
+                  card (funds reserved, charged at check-out)
                 </p>
               </div>
             </Label>
             <div className="text-right">
-              <p className="font-semibold text-purple-600">
-                ₹{totals.subtotal}
+              <p className="font-semibold text-blue-600">
+                ₹{totals.subtotal.toLocaleString()}{" "}
+                <span className="text-xs text-gray-500">HOLD</span>
               </p>
             </div>
           </div>
         </RadioGroup>
 
-        <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            <strong>Note:</strong> Credit card storage and secure payment
-            processing will be implemented in Phase 3.
+        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Payment Methods:</strong> Full payment can be collected via
+            cash, bank transfer, wire transfer, or card. Card authorization is
+            only available for card payments and holds funds without charging
+            until check-out.
           </p>
         </div>
       </div>

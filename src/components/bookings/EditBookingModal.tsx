@@ -5,7 +5,6 @@
 import React from "react";
 import { Dialog } from "@headlessui/react";
 //import { useSession } from "next-auth/react";
-import ManualPaymentForm from "../payments/ManualPaymentForm";
 
 interface Reservation {
   id: string;
@@ -158,9 +157,6 @@ const EditBookingModal: React.FC<EditBookingModalProps> = ({
               </div>
             </div>
           </form>
-          {process.env.NEXT_PUBLIC_MANUAL_PAYMENT_MODE === "true" && (
-            <ManualPaymentForm reservationId={editingReservation.id} />
-          )}
         </Dialog.Panel>
       </div>
     </Dialog>

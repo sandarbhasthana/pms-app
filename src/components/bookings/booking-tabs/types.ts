@@ -45,9 +45,8 @@ export interface BookingFormData {
   // Payment
   payment: {
     totalAmount: number;
-    suggestedDeposit: number;
-    selectedDeposit: number;
-    paymentMethod: "full" | "deposit";
+    paymentMethod: "full" | "authorize";
+    paymentType?: "cash" | "bank_transfer" | "wire_transfer" | "card"; // Only for full payment
     creditCard?: {
       last4: string;
       brand: string;

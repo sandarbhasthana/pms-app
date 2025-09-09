@@ -43,7 +43,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
         <div className="flex gap-6">
           {/* Left Side: Image Placeholder */}
           <div className="flex-shrink-0">
-            <div className="w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
               <div className="text-center">
                 <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
                   <svg
@@ -71,7 +71,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Guest Name
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.guestName}
                 </div>
               </div>
@@ -79,7 +79,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Email
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.email || "—"}
                 </div>
               </div>
@@ -91,7 +91,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Phone
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.phone || "—"}
                 </div>
               </div>
@@ -99,7 +99,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   ID Type
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.idType || "—"}
                 </div>
               </div>
@@ -111,7 +111,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   ID Number
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.idNumber || "—"}
                 </div>
               </div>
@@ -119,7 +119,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Issuing Country
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                   {reservationData.issuingCountry || "—"}
                 </div>
               </div>
@@ -142,7 +142,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                 Room
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {reservationData.roomName ||
                   reservationData.roomNumber ||
                   `Room ${reservationData.roomId}`}
@@ -154,7 +154,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <CalendarIcon className="h-4 w-4" />
                 Check-in Date
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {formatDate(reservationData.checkIn)}
               </div>
             </div>
@@ -163,7 +163,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                 Adults
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {reservationData.adults}
               </div>
             </div>
@@ -175,7 +175,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                 Nights
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {calculateNights()} night{calculateNights() > 1 ? "s" : ""}
               </div>
             </div>
@@ -185,7 +185,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <CalendarIcon className="h-4 w-4" />
                 Check-out Date
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {formatDate(reservationData.checkOut)}
               </div>
             </div>
@@ -194,7 +194,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                 Children
               </label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 h-10 flex items-center">
+              <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {reservationData.children}
               </div>
             </div>
@@ -216,7 +216,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Rate Plan
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 min-h-[2.5rem] flex items-center">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 min-h-[2.5rem] flex items-center">
                   {reservationData.ratePlan}
                 </div>
               </div>
@@ -227,7 +227,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   Notes
                 </label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 min-h-[4rem]">
+                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 min-h-[4rem]">
                   {reservationData.notes}
                 </div>
               </div>
