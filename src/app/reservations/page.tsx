@@ -42,9 +42,11 @@ interface Reservation {
   paymentStatus?: string;
 }
 
-// simple SWR fetcher
+// simple SWR fetcher with credentials for authentication
 const fetcher = (url: string) =>
-  fetch(url).then((res) => {
+  fetch(url, {
+    credentials: "include" // Include cookies for authentication
+  }).then((res) => {
     if (!res.ok) throw new Error("Network error");
     return res.json() as Promise<{ reservations: Reservation[] }>;
   });

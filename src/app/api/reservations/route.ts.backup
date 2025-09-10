@@ -59,14 +59,9 @@ export async function GET(req: NextRequest) {
     // Parse query parameters for filtering
     const url = new URL(req.url);
     const status = url.searchParams.get("status");
-    // Support both parameter names: calendar sends 'start'/'end', others send 'startDate'/'endDate'
-    const startDate =
-      url.searchParams.get("start") || url.searchParams.get("startDate");
-    const endDate =
-      url.searchParams.get("end") || url.searchParams.get("endDate");
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
     const roomId = url.searchParams.get("roomId");
-
-    console.log("🔍 Query parameters:", { status, startDate, endDate, roomId });
 
     const reservations: ReservationFromDB[] = await withPropertyContext(
       propertyId!,
