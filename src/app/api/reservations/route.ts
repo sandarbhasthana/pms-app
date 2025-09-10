@@ -35,9 +35,19 @@ type ReservationFromDB = {
 
 export async function GET(req: NextRequest) {
   try {
+    console.log("🔍 GET /api/reservations - Starting request");
+    console.log("🔍 Request URL:", req.url);
+    console.log(
+      "🔍 Request headers:",
+      Object.fromEntries(req.headers.entries())
+    );
+
     // Validate property access
     const validation = await validatePropertyAccess(req);
+    console.log("🔍 Property validation result:", validation);
+
     if (!validation.success) {
+      console.error("❌ Property validation failed:", validation.error);
       return new NextResponse(validation.error, {
         status: validation.error === "Unauthorized" ? 401 : 403
       });
