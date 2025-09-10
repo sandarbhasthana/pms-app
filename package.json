@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && prisma migrate deploy",
     "enable-rls": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/script/enable-rls.ts",
     "backup:full": "tsx scripts/database-backup.ts full",
     "backup:schema": "tsx scripts/database-backup.ts schema",

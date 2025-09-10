@@ -35,16 +35,16 @@ type ReservationFromDB = {
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("🔍 GET /api/reservations - Starting request");
-    console.log("🔍 Request URL:", req.url);
-    console.log(
-      "🔍 Request headers:",
-      Object.fromEntries(req.headers.entries())
-    );
+    // console.log("🔍 GET /api/reservations - Starting request");
+    // console.log("🔍 Request URL:", req.url);
+    // console.log(
+    //   "🔍 Request headers:",
+    //   Object.fromEntries(req.headers.entries())
+    // );
 
     // Validate property access
     const validation = await validatePropertyAccess(req);
-    console.log("🔍 Property validation result:", validation);
+    //console.log("🔍 Property validation result:", validation);
 
     if (!validation.success) {
       console.error("❌ Property validation failed:", validation.error);
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { propertyId } = validation;
-    console.log("GET /api/reservations, resolved propertyId:", propertyId);
+    // console.log("GET /api/reservations, resolved propertyId:", propertyId);
 
     // Parse query parameters for filtering
     const url = new URL(req.url);
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       url.searchParams.get("end") || url.searchParams.get("endDate");
     const roomId = url.searchParams.get("roomId");
 
-    console.log("🔍 Query parameters:", { status, startDate, endDate, roomId });
+    // console.log("🔍 Query parameters:", { status, startDate, endDate, roomId });
 
     const reservations: ReservationFromDB[] = await withPropertyContext(
       propertyId!,
