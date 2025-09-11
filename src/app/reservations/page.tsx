@@ -379,8 +379,8 @@ const ReservationsPage = () => {
       {/* Reservations table */}
       <div className="overflow-auto">
         <table className="min-w-full">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+          <thead className="rounded-lg">
+            <tr className="bg-white dark:!bg-gray-700 text-gray-900 dark:!text-[#f0f8ff] h-12 uppercase">
               <th className="p-2 text-left">Guest</th>
               <th className="p-2 text-left">Room</th>
               <th className="p-2 text-left">Check-In</th>
