@@ -40,6 +40,11 @@ interface Reservation {
   phone?: string;
   email?: string;
   paymentStatus?: string;
+  room?: {
+    id: string;
+    name: string;
+    type: string;
+  };
 }
 
 // simple SWR fetcher with credentials for authentication
@@ -84,9 +89,31 @@ const ReservationsPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // — Sorting state —
+  const [sortField, setSortField] = useState<keyof Reservation | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
   // — mutation state —
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // — Sorting function —
+  const handleSort = (field: keyof Reservation) => {
+    if (sortField === field) {
+      // Cycle through: asc -> desc -> none
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortField(null); // Reset to no sorting
+        setSortDirection("asc");
+      }
+    } else {
+      // New field, default to ascending
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setPage(1); // Reset to first page when sorting
+  };
 
   // 1. Global report for all reservations (uses current search/filter state)
   const handleFullReport = async () => {
@@ -234,9 +261,11 @@ const ReservationsPage = () => {
     }
   };
 
-  // — Filtering & pagination logic (unchanged) —
+  // — Filtering & pagination logic with sorting —
   const filtered = useMemo(() => {
     let d = reservations;
+
+    // Apply search filter
     if (search) {
       const q = search.toLowerCase();
       d = d.filter(
@@ -246,6 +275,8 @@ const ReservationsPage = () => {
           r.phone?.toLowerCase().includes(q)
       );
     }
+
+    // Apply date range filter
     if (filter !== "all") {
       const now = new Date();
       let range: { start: Date; end: Date } | null = null;
@@ -277,11 +308,100 @@ const ReservationsPage = () => {
         );
       }
     }
+
+    // Apply sorting
+    if (sortField) {
+      d = [...d].sort((a, b) => {
+        let aVal = a[sortField];
+        let bVal = b[sortField];
+
+        // Handle date fields
+        if (sortField === "checkIn" || sortField === "checkOut") {
+          aVal = new Date(aVal as string).getTime();
+          bVal = new Date(bVal as string).getTime();
+        }
+
+        // Handle string fields
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
+
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return sortDirection === "asc" ? -1 : 1;
+        if (bVal == null) return sortDirection === "asc" ? 1 : -1;
+
+        // Compare values
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
     return d;
-  }, [reservations, search, filter, customRange]);
+  }, [reservations, search, filter, customRange, sortField, sortDirection]);
 
   const pageCount = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  // — Sortable header component —
+  const SortableHeader = ({
+    field,
+    children,
+    className = "p-2 text-left"
+  }: {
+    field: keyof Reservation;
+    children: React.ReactNode;
+    className?: string;
+  }) => {
+    const isActive = sortField === field;
+    const isAsc = sortDirection === "asc";
+
+    return (
+      <th
+        className={`${className} cursor-pointer select-none ${
+          isActive
+            ? "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30"
+            : ""
+        }`}
+        onClick={() => handleSort(field)}
+        title={`Sort by ${children} ${
+          isActive
+            ? isAsc
+              ? "(ascending)"
+              : "(descending)"
+            : "- click to sort"
+        }`}
+      >
+        <div className="flex items-center justify-center relative">
+          <div className="flex items-center gap-1">
+            <span>{children}</span>
+            <div className="flex flex-col items-center gap-0.5">
+              {/* Filled Up Triangle */}
+              <div
+                className={`w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+                  isActive && isAsc
+                    ? "border-b-[#7210a2] dark:border-b-[#a855f7]"
+                    : "border-b-gray-400 dark:border-b-gray-500"
+                }`}
+              />
+              {/* Filled Down Triangle */}
+              <div
+                className={`w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+                  isActive && !isAsc
+                    ? "border-t-[#7210a2] dark:border-t-[#a855f7]"
+                    : "border-t-gray-400 dark:border-t-gray-500"
+                }`}
+              />
+            </div>
+          </div>
+          {/* Vertical divider - centered with padding */}
+          <div className="absolute right-0 top-0.5 bottom-0.5 w-0.5 bg-gray-500 dark:bg-gray-300"></div>
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -380,30 +500,81 @@ const ReservationsPage = () => {
       <div className="overflow-auto">
         <table className="min-w-full">
           <thead className="rounded-lg">
-            <tr className="bg-white dark:!bg-gray-700 text-gray-900 dark:!text-[#f0f8ff] h-12 uppercase">
-              <th className="p-2 text-left">Guest</th>
-              <th className="p-2 text-left">Room</th>
-              <th className="p-2 text-left">Check-In</th>
-              <th className="p-2 text-left">Check-Out</th>
-              <th className="p-2 text-center">Adults</th>
-              <th className="p-2 text-center">Children</th>
-              <th className="p-2 text-center">Status</th>
-              <th className="p-2 text-center">Payment</th>
-              <th className="p-2 text-center">Actions</th>
+            <tr className="bg-gradient-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-sm font-medium tracking-wider">
+              <SortableHeader
+                field="guestName"
+                className="px-3 py-4 text-center min-w-[140px]"
+              >
+                Guest
+              </SortableHeader>
+              <SortableHeader
+                field="roomId"
+                className="px-3 py-4 text-center min-w-[120px]"
+              >
+                Room
+              </SortableHeader>
+              <SortableHeader
+                field="checkIn"
+                className="px-3 py-4 text-center min-w-[110px]"
+              >
+                Check-In
+              </SortableHeader>
+              <SortableHeader
+                field="checkOut"
+                className="px-3 py-4 text-center min-w-[110px]"
+              >
+                Check-Out
+              </SortableHeader>
+              <SortableHeader
+                field="adults"
+                className="px-3 py-4 text-center min-w-[80px]"
+              >
+                Adults
+              </SortableHeader>
+              <SortableHeader
+                field="children"
+                className="px-3 py-4 text-center min-w-[80px]"
+              >
+                Children
+              </SortableHeader>
+              <SortableHeader
+                field="status"
+                className="px-3 py-4 text-center min-w-[100px]"
+              >
+                Status
+              </SortableHeader>
+              <SortableHeader
+                field="paymentStatus"
+                className="px-3 py-4 text-center min-w-[100px]"
+              >
+                Payment
+              </SortableHeader>
+              <th className="px-3 py-4 text-center min-w-[90px] text-gray-700 dark:!text-[#f0f8ff]">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {paginated.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td className="p-2">{r.guestName}</td>
-                <td className="p-2">{r.roomId}</td>
-                <td className="p-2">{format(parseISO(r.checkIn), "P")}</td>
-                <td className="p-2">{format(parseISO(r.checkOut), "P")}</td>
-                <td className="p-2 text-center">{r.adults}</td>
-                <td className="p-2 text-center">{r.children}</td>
-                <td className="p-2 text-center">{r.status}</td>
-                <td className="p-2 text-center">{r.paymentStatus}</td>
-                <td className="p-2 text-center">
+              <tr
+                key={r.id}
+                className="border-t hover:bg-gray-50 dark:hover:bg-gray-800/50 text-xs"
+              >
+                <td className="px-3 py-3 text-center">{r.guestName}</td>
+                <td className="px-3 py-3 text-center">
+                  {r.room?.name || r.roomId}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  {format(parseISO(r.checkIn), "P")}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  {format(parseISO(r.checkOut), "P")}
+                </td>
+                <td className="px-3 py-3 text-center">{r.adults}</td>
+                <td className="px-3 py-3 text-center">{r.children}</td>
+                <td className="px-3 py-3 text-center">{r.status}</td>
+                <td className="px-3 py-3 text-center">{r.paymentStatus}</td>
+                <td className="px-3 py-3 text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
