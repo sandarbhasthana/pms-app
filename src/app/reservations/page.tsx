@@ -499,11 +499,11 @@ const ReservationsPage = () => {
       {/* Reservations table */}
       <div className="overflow-auto">
         <table className="min-w-full">
-          <thead className="rounded-lg">
+          <thead>
             <tr className="bg-gradient-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-sm font-medium tracking-wider">
               <SortableHeader
                 field="guestName"
-                className="px-3 py-4 text-center min-w-[140px]"
+                className="px-3 py-4 text-center min-w-[140px] rounded-tl-sm rounded-bl-sm"
               >
                 Guest
               </SortableHeader>
@@ -549,7 +549,7 @@ const ReservationsPage = () => {
               >
                 Payment
               </SortableHeader>
-              <th className="px-3 py-4 text-center min-w-[90px] text-gray-700 dark:!text-[#f0f8ff]">
+              <th className="px-3 py-4 text-center min-w-[90px] text-gray-700 dark:!text-[#f0f8ff] rounded-tr-sm rounded-br-sm">
                 Actions
               </th>
             </tr>

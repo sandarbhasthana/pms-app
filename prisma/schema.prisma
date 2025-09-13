@@ -14,6 +14,12 @@ model Organization {
   domain       String?           @unique
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+
+  // Stripe Connect fields
+  stripeAccountId           String?  // Stripe Connect account ID
+  stripeOnboardingComplete  Boolean  @default(false) // Onboarding status
+  stripeChargesEnabled      Boolean  @default(false) // Can process payments
+
   channels     Channel[]
   reservations Reservation[] // Keep for backward compatibility during migration
   rooms        Room[] // Keep for backward compatibility during migration
@@ -23,6 +29,7 @@ model Organization {
   invitations  InvitationToken[] // NEW: User invitations for this organization
 
   @@index([domain])
+  @@index([stripeAccountId])
 }
 
 /// Property entity representing individual properties within an organization
@@ -250,17 +257,20 @@ model Reservation {
   paymentStatus         String? // e.g. "requires_capture", "succeeded", "refunded"
   amountHeld            Int? // in cents (authorized amount)
   amountCaptured        Int? // in cents (captured amount)
+  paidAmount            Float? // Total amount paid in dollars
+  refundedAmount        Float? // Total amount refunded in dollars
   depositAmount         Int? // Required deposit in cents
   depositDueDate        DateTime? // When deposit is due
   finalPaymentDue       DateTime? // When final payment is due
   paymentTerms          String? // "full_upfront", "deposit_then_balance"
 
-  channel      Channel?     @relation(fields: [channelId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
-  property     Property?    @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
-  room         Room         @relation(fields: [roomId], references: [id])
-  user         User?        @relation(fields: [userId], references: [id])
-  Refund       Refund[]
+  channel             Channel?             @relation(fields: [channelId], references: [id])
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  property            Property?            @relation(fields: [propertyId], references: [id]) // NEW: Property relationship
+  room                Room                 @relation(fields: [roomId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id])
+  Refund              Refund[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -380,12 +390,52 @@ model Refund {
   id             String      @id @default(cuid())
   stripeRefundId String      @unique // Stripe Refund ID
   reservationId  String
-  amount         Int // in cents
+  amount         Float // in dollars (converted from cents)
   status         String // e.g. "succeeded", "failed"
+  reason         String? // refund reason
   createdAt      DateTime    @default(now())
   reservation    Reservation @relation(fields: [reservationId], references: [id])
 
   @@index([reservationId])
+}
+
+/// Webhook event tracking for idempotency and debugging
+model WebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique // Stripe event ID
+  eventType     String   // Event type (e.g., "payment_intent.succeeded")
+  processedAt   DateTime @default(now())
+  data          Json     // Raw event data
+  error         String?  // Error message if processing failed
+  createdAt     DateTime @default(now())
+
+  @@index([eventType])
+  @@index([processedAt])
+}
+
+/// Payment transaction log for detailed tracking
+model PaymentTransaction {
+  id                       String   @id @default(cuid())
+  reservationId            String
+  stripePaymentIntentId    String?
+  stripeRefundId           String?
+  type                     String   // 'payment', 'refund', 'capture', 'dispute'
+  amount                   Float    // in dollars
+  currency                 String   @default("USD")
+  status                   String   // 'completed', 'failed', 'pending', 'canceled'
+  paymentMethod            String?  // 'card', 'bank_account', etc.
+  failureReason            String?  // Error message for failed transactions
+  reason                   String?  // Reason for refunds
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  reservation              Reservation @relation(fields: [reservationId], references: [id])
+
+  @@unique([reservationId, stripePaymentIntentId])
+  @@index([reservationId])
+  @@index([stripePaymentIntentId])
+  @@index([type])
+  @@index([status])
 }
 
 /// Pricing information for a room
