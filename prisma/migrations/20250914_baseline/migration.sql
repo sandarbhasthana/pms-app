@@ -26,6 +26,9 @@ CREATE TABLE "public"."Organization" (
     "domain" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "stripeAccountId" TEXT,
+    "stripeChargesEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "stripeOnboardingComplete" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Organization_pkey" PRIMARY KEY ("id")
 );
@@ -41,9 +44,9 @@ CREATE TABLE "public"."Property" (
     "timezone" TEXT NOT NULL DEFAULT 'UTC',
     "currency" TEXT NOT NULL DEFAULT 'USD',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Property_pkey" PRIMARY KEY ("id")
 );
@@ -53,10 +56,10 @@ CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT,
-    "phone" TEXT,
     "image" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "phone" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -79,9 +82,9 @@ CREATE TABLE "public"."UserProperty" (
     "userId" TEXT NOT NULL,
     "propertyId" TEXT NOT NULL,
     "role" "public"."PropertyRole" NOT NULL,
-    "shift" "public"."ShiftType",
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "shift" "public"."ShiftType",
 
     CONSTRAINT "UserProperty_pkey" PRIMARY KEY ("id")
 );
@@ -110,7 +113,6 @@ CREATE TABLE "public"."InvitationToken" (
 CREATE TABLE "public"."RoomType" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
-    "propertyId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "abbreviation" TEXT,
     "privateOrDorm" TEXT NOT NULL DEFAULT 'private',
@@ -125,17 +127,18 @@ CREATE TABLE "public"."RoomType" (
     "customAmenities" TEXT[],
     "featuredImageUrl" TEXT,
     "additionalImageUrls" TEXT[],
-    "basePrice" DOUBLE PRECISION,
-    "weekdayPrice" DOUBLE PRECISION,
-    "weekendPrice" DOUBLE PRECISION,
-    "currency" TEXT NOT NULL DEFAULT 'INR',
-    "availability" INTEGER,
-    "minLOS" INTEGER,
-    "maxLOS" INTEGER,
-    "closedToArrival" BOOLEAN NOT NULL DEFAULT false,
-    "closedToDeparture" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "availability" INTEGER,
+    "basePrice" DOUBLE PRECISION,
+    "closedToArrival" BOOLEAN NOT NULL DEFAULT false,
+    "closedToDeparture" BOOLEAN NOT NULL DEFAULT false,
+    "currency" TEXT NOT NULL DEFAULT 'INR',
+    "maxLOS" INTEGER,
+    "minLOS" INTEGER,
+    "weekdayPrice" DOUBLE PRECISION,
+    "weekendPrice" DOUBLE PRECISION,
+    "propertyId" TEXT NOT NULL,
 
     CONSTRAINT "RoomType_pkey" PRIMARY KEY ("id")
 );
@@ -144,7 +147,6 @@ CREATE TABLE "public"."RoomType" (
 CREATE TABLE "public"."Room" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
-    "propertyId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "capacity" INTEGER NOT NULL,
@@ -156,6 +158,7 @@ CREATE TABLE "public"."Room" (
     "description" TEXT,
     "doorlockId" TEXT,
     "roomTypeId" TEXT,
+    "propertyId" TEXT NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );
@@ -183,7 +186,6 @@ CREATE TABLE "public"."RoomImage" (
 CREATE TABLE "public"."Reservation" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
-    "propertyId" TEXT NOT NULL,
     "roomId" TEXT NOT NULL,
     "userId" TEXT,
     "guestName" TEXT,
@@ -202,15 +204,18 @@ CREATE TABLE "public"."Reservation" (
     "idType" TEXT,
     "issuingCountry" TEXT,
     "phone" TEXT,
-    "stripeCustomerId" TEXT,
-    "stripePaymentIntentId" TEXT,
-    "paymentStatus" TEXT,
-    "amountHeld" INTEGER,
+    "propertyId" TEXT NOT NULL,
     "amountCaptured" INTEGER,
+    "amountHeld" INTEGER,
     "depositAmount" INTEGER,
     "depositDueDate" TIMESTAMP(3),
     "finalPaymentDue" TIMESTAMP(3),
+    "paymentStatus" TEXT,
     "paymentTerms" TEXT,
+    "stripeCustomerId" TEXT,
+    "stripePaymentIntentId" TEXT,
+    "paidAmount" DOUBLE PRECISION,
+    "refundedAmount" DOUBLE PRECISION,
 
     CONSTRAINT "Reservation_pkey" PRIMARY KEY ("id")
 );
@@ -219,7 +224,6 @@ CREATE TABLE "public"."Reservation" (
 CREATE TABLE "public"."PropertySettings" (
     "id" TEXT NOT NULL,
     "orgId" TEXT,
-    "propertyId" TEXT,
     "propertyType" TEXT NOT NULL,
     "propertyName" TEXT NOT NULL,
     "propertyPhone" TEXT NOT NULL,
@@ -242,6 +246,7 @@ CREATE TABLE "public"."PropertySettings" (
     "description" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "propertyId" TEXT,
 
     CONSTRAINT "PropertySettings_pkey" PRIMARY KEY ("id")
 );
@@ -273,17 +278,17 @@ CREATE TABLE "public"."Favorite" (
 CREATE TABLE "public"."Payment" (
     "id" TEXT NOT NULL,
     "reservationId" TEXT NOT NULL,
-    "paymentMethodId" TEXT,
     "type" TEXT NOT NULL,
     "method" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "amount" DOUBLE PRECISION NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'USD',
     "gatewayTxId" TEXT,
-    "description" TEXT,
-    "processedAt" TIMESTAMP(3),
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "description" TEXT,
+    "paymentMethodId" TEXT,
+    "processedAt" TIMESTAMP(3),
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -309,11 +314,44 @@ CREATE TABLE "public"."Refund" (
     "id" TEXT NOT NULL,
     "stripeRefundId" TEXT NOT NULL,
     "reservationId" TEXT NOT NULL,
-    "amount" INTEGER NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
     "status" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reason" TEXT,
 
     CONSTRAINT "Refund_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."WebhookEvent" (
+    "id" TEXT NOT NULL,
+    "stripeEventId" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "processedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "data" JSONB NOT NULL,
+    "error" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WebhookEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."PaymentTransaction" (
+    "id" TEXT NOT NULL,
+    "reservationId" TEXT NOT NULL,
+    "stripePaymentIntentId" TEXT,
+    "stripeRefundId" TEXT,
+    "type" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'USD',
+    "status" TEXT NOT NULL,
+    "paymentMethod" TEXT,
+    "failureReason" TEXT,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PaymentTransaction_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -402,6 +440,9 @@ CREATE UNIQUE INDEX "Organization_domain_key" ON "public"."Organization"("domain
 CREATE INDEX "Organization_domain_idx" ON "public"."Organization"("domain");
 
 -- CreateIndex
+CREATE INDEX "Organization_stripeAccountId_idx" ON "public"."Organization"("stripeAccountId");
+
+-- CreateIndex
 CREATE INDEX "Property_organizationId_idx" ON "public"."Property"("organizationId");
 
 -- CreateIndex
@@ -483,16 +524,16 @@ CREATE INDEX "Reservation_userId_idx" ON "public"."Reservation"("userId");
 CREATE INDEX "Reservation_channelId_idx" ON "public"."Reservation"("channelId");
 
 -- CreateIndex
-CREATE INDEX "PropertySettings_orgId_idx" ON "public"."PropertySettings"("orgId");
-
--- CreateIndex
-CREATE INDEX "PropertySettings_propertyId_idx" ON "public"."PropertySettings"("propertyId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "PropertySettings_orgId_key" ON "public"."PropertySettings"("orgId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PropertySettings_propertyId_key" ON "public"."PropertySettings"("propertyId");
+
+-- CreateIndex
+CREATE INDEX "PropertySettings_orgId_idx" ON "public"."PropertySettings"("orgId");
+
+-- CreateIndex
+CREATE INDEX "PropertySettings_propertyId_idx" ON "public"."PropertySettings"("propertyId");
 
 -- CreateIndex
 CREATE INDEX "Channel_organizationId_idx" ON "public"."Channel"("organizationId");
@@ -523,6 +564,30 @@ CREATE UNIQUE INDEX "Refund_stripeRefundId_key" ON "public"."Refund"("stripeRefu
 
 -- CreateIndex
 CREATE INDEX "Refund_reservationId_idx" ON "public"."Refund"("reservationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WebhookEvent_stripeEventId_key" ON "public"."WebhookEvent"("stripeEventId");
+
+-- CreateIndex
+CREATE INDEX "WebhookEvent_eventType_idx" ON "public"."WebhookEvent"("eventType");
+
+-- CreateIndex
+CREATE INDEX "WebhookEvent_processedAt_idx" ON "public"."WebhookEvent"("processedAt");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_reservationId_idx" ON "public"."PaymentTransaction"("reservationId");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_stripePaymentIntentId_idx" ON "public"."PaymentTransaction"("stripePaymentIntentId");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_type_idx" ON "public"."PaymentTransaction"("type");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_status_idx" ON "public"."PaymentTransaction"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PaymentTransaction_reservationId_stripePaymentIntentId_key" ON "public"."PaymentTransaction"("reservationId", "stripePaymentIntentId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RoomPricing_roomId_key" ON "public"."RoomPricing"("roomId");
@@ -564,19 +629,19 @@ ALTER TABLE "public"."UserOrg" ADD CONSTRAINT "UserOrg_organizationId_fkey" FORE
 ALTER TABLE "public"."UserOrg" ADD CONSTRAINT "UserOrg_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."UserProperty" ADD CONSTRAINT "UserProperty_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "public"."Property"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."UserProperty" ADD CONSTRAINT "UserProperty_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserProperty" ADD CONSTRAINT "UserProperty_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "public"."Property"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."InvitationToken" ADD CONSTRAINT "InvitationToken_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."InvitationToken" ADD CONSTRAINT "InvitationToken_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."InvitationToken" ADD CONSTRAINT "InvitationToken_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "public"."Property"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."InvitationToken" ADD CONSTRAINT "InvitationToken_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."RoomType" ADD CONSTRAINT "RoomType_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -624,28 +689,31 @@ ALTER TABLE "public"."Favorite" ADD CONSTRAINT "Favorite_roomId_fkey" FOREIGN KE
 ALTER TABLE "public"."Favorite" ADD CONSTRAINT "Favorite_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Payment" ADD CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "public"."Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Payment" ADD CONSTRAINT "Payment_paymentMethodId_fkey" FOREIGN KEY ("paymentMethodId") REFERENCES "public"."PaymentMethod"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Payment" ADD CONSTRAINT "Payment_paymentMethodId_fkey" FOREIGN KEY ("paymentMethodId") REFERENCES "public"."PaymentMethod"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."Payment" ADD CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "public"."Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Refund" ADD CONSTRAINT "Refund_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "public"."Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."RoomPricing" ADD CONSTRAINT "RoomPricing_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "public"."Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "public"."Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."DailyRate" ADD CONSTRAINT "DailyRate_roomTypeId_fkey" FOREIGN KEY ("roomTypeId") REFERENCES "public"."RoomType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."RoomPricing" ADD CONSTRAINT "RoomPricing_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "public"."Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."DailyRate" ADD CONSTRAINT "DailyRate_pricingId_fkey" FOREIGN KEY ("pricingId") REFERENCES "public"."RoomPricing"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."SeasonalRate" ADD CONSTRAINT "SeasonalRate_roomTypeId_fkey" FOREIGN KEY ("roomTypeId") REFERENCES "public"."RoomType"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."DailyRate" ADD CONSTRAINT "DailyRate_roomTypeId_fkey" FOREIGN KEY ("roomTypeId") REFERENCES "public"."RoomType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."SeasonalRate" ADD CONSTRAINT "SeasonalRate_pricingId_fkey" FOREIGN KEY ("pricingId") REFERENCES "public"."RoomPricing"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."SeasonalRate" ADD CONSTRAINT "SeasonalRate_roomTypeId_fkey" FOREIGN KEY ("roomTypeId") REFERENCES "public"."RoomType"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."RateChangeLog" ADD CONSTRAINT "RateChangeLog_roomTypeId_fkey" FOREIGN KEY ("roomTypeId") REFERENCES "public"."RoomType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

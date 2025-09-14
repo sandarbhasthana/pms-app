@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build:vercel",
+  "installCommand": "npm install",
+  "env": {
+    "SKIP_ENV_VALIDATION": "1"
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
