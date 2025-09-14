@@ -245,7 +245,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
                   >
                     <span>
                       {editingReservation.status === "CONFIRMED"
@@ -316,7 +316,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
                   >
                     <span>Select Action</span>
                     <ChevronDownIcon className="h-3 w-3 opacity-50" />
@@ -381,7 +381,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-purple-600 dark:bg-purple-500 hover:bg-purple-700 dark:hover:bg-purple-600 text-white font-medium transition-colors"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] text-[#f0f8ff] font-medium transition-colors"
           >
             <ChevronLeftIcon className="h-5 w-5" />
             <span>Back</span>

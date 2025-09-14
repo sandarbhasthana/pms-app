@@ -30,7 +30,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   return (
     <div className="flex items-center gap-4 mb-6" role="toolbar">
       <div className="flex items-center justify-center rounded-bl-sm rounded-tl-sm">
-        <div className="bg-purple-500 flex items-center justify-center rounded-bl-sm rounded-tl-sm border-r border-purple-600">
+        <div className="bg-[#7210a2] dark:bg-[#8b4aff] flex items-center justify-center rounded-bl-sm rounded-tl-sm border-r border-purple-600">
           <button
             onClick={handlePrev}
             className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"
@@ -45,11 +45,11 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         </div>
         <button
           onClick={handleToday}
-          className="px-2 py-1 rounded-0 bg-purple-500 h-[50px] text-white hover:text-gray-900 cursor-pointer"
+          className="px-2 py-1 rounded-0 bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] h-[50px] text-[#f0f8ff] hover:text-gray-900 cursor-pointer"
         >
           Today
         </button>
-        <div className="bg-purple-500 flex items-center justify-center rounded-br-sm rounded-tr-sm border-l border-purple-600">
+        <div className="bg-[#7210a2] dark:bg-[#8b4aff] flex items-center justify-center rounded-br-sm rounded-tr-sm border-l border-purple-600">
           <button
             onClick={handleNext}
             className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"

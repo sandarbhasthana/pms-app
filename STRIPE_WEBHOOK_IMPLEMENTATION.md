@@ -170,10 +170,22 @@ const TRANSFER_WEBHOOKS = [
 - ✅ Webhook idempotency system implemented
 - ✅ Error handling and logging system
 - ✅ Database models for WebhookEvent and PaymentTransaction
+- ✅ **Organization Onboarding API Complete** - Stripe Connect account creation
+- ✅ **Phase 3 Account Management Complete** - All 9 account/connect webhooks
+- ✅ `account.updated` - Organization status sync
+- ✅ `account.application.authorized` - App authorization tracking
+- ✅ `account.application.deauthorized` - Deauthorization handling
+- ✅ `account.external_account.created` - Bank account addition
+- ✅ `account.external_account.updated` - Bank account updates
+- ✅ `account.external_account.deleted` - Bank account removal
+- ✅ `person.created` - Person management for compliance
+- ✅ `person.updated` - Person information updates
+- ✅ `person.deleted` - Person removal tracking
+- ✅ **Stripe Onboarding UI Component** - React component for setup
 
 ### **🚧 IN PROGRESS**
 
-- 🚧 Organization onboarding API
+- 🚧 Phase 2 webhook implementation (Business Protection)
 
 ### **⏳ PENDING IMPLEMENTATION**
 
@@ -203,17 +215,17 @@ const TRANSFER_WEBHOOKS = [
 - ⏳ `review.opened`
 - ⏳ `review.closed`
 
-#### **Phase 3: Account Management (Priority 3)**
+#### **Phase 3: Account Management (Priority 3) - ✅ COMPLETED**
 
-- ⏳ `account.updated`
-- ⏳ `account.application.authorized`
-- ⏳ `account.application.deauthorized`
-- ⏳ `account.external_account.created`
-- ⏳ `account.external_account.updated`
-- ⏳ `account.external_account.deleted`
-- ⏳ `person.created`
-- ⏳ `person.updated`
-- ⏳ `person.deleted`
+- ✅ `account.updated`
+- ✅ `account.application.authorized`
+- ✅ `account.application.deauthorized`
+- ✅ `account.external_account.created`
+- ✅ `account.external_account.updated`
+- ✅ `account.external_account.deleted`
+- ✅ `person.created`
+- ✅ `person.updated`
+- ✅ `person.deleted`
 
 #### **Phase 4: Customer Management (Priority 4)**
 
@@ -231,9 +243,181 @@ const TRANSFER_WEBHOOKS = [
 
 - **Total Webhooks Selected:** 61
 - **Phase 1 Completed:** 16 (26%) ✅
-- **Completed:** 16 (26%)
+- **Phase 3 Completed:** 9 (15%) ✅
+- **Completed:** 25 (41%)
 - **In Progress:** 1 (2%)
-- **Pending:** 44 (72%)
+- **Pending:** 35 (57%)
+
+## 🏗️ **Multi-Property Stripe Architecture Decision**
+
+### **📋 Current Implementation: Organization-Level Stripe Connect**
+
+The current implementation uses **one Stripe Connect account per organization**, not per property:
+
+```
+Organization (Hotel Chain ABC)
+├── stripeAccountId: "acct_123" ← ONE Stripe account for entire organization
+├── Property A (Downtown Hotel)
+├── Property B (Airport Hotel)
+└── Property C (Beach Resort)
+```
+
+### **✅ How Multi-Property Currently Works:**
+
+#### **Payment Flow:**
+
+1. **Guest books** at Property A (Downtown Hotel)
+2. **Payment intent created** with metadata:
+   ```json
+   {
+     "reservationId": "res_123",
+     "orgId": "org_abc",
+     "propertyId": "prop_downtown",
+     "type": "reservation_payment"
+   }
+   ```
+3. **Webhook processes** payment using organization's Stripe account
+4. **Database tracks** which property each payment belongs to
+5. **Reports filter** by property using `propertyId`
+
+#### **Financial Separation:**
+
+- ✅ **Same Stripe account** processes all payments
+- ✅ **Database tracks** property-specific transactions
+- ✅ **Property managers** see only their property's data via UI filtering
+- ✅ **Reports separate** revenue by property in application layer
+
+### **🔄 Alternative Architecture: Property-Level Stripe Connect**
+
+An alternative approach would be **separate Stripe accounts per property**:
+
+```
+Organization (Hotel Chain ABC)
+├── Property A → Stripe Connect Account (acct_123)
+├── Property B → Stripe Connect Account (acct_456)
+└── Property C → Stripe Connect Account (acct_789)
+```
+
+### **📊 Architecture Comparison:**
+
+| Feature                    | Organization-Level (Current)    | Property-Level (Alternative)      |
+| -------------------------- | ------------------------------- | --------------------------------- |
+| **Setup Complexity**       | ✅ Simple - One onboarding      | ❌ Complex - Multiple onboardings |
+| **Financial Management**   | ✅ Centralized dashboard        | ✅ Separate property finances     |
+| **Bank Accounts**          | ❌ Shared across properties     | ✅ Separate per property          |
+| **Stripe Fees**            | ✅ Lower - Single account       | ❌ Higher - Multiple accounts     |
+| **Compliance**             | ✅ One set of requirements      | ❌ Multiple compliance processes  |
+| **Property Autonomy**      | ❌ Limited financial control    | ✅ Full financial independence    |
+| **Reporting**              | ❌ Requires app-layer filtering | ✅ Native Stripe separation       |
+| **Webhook Complexity**     | ✅ Simple routing               | ❌ Complex account mapping        |
+| **Multi-tenant Isolation** | ✅ Database-level separation    | ✅ Stripe-level separation        |
+
+### **🎯 Current Implementation Benefits:**
+
+#### **For Hotel Chains/Management Companies:**
+
+- ✅ **Centralized financial oversight** across all properties
+- ✅ **Simplified accounting** - one bank account, one reconciliation
+- ✅ **Lower operational overhead** - single Stripe dashboard
+- ✅ **Easier compliance management** - one set of requirements
+
+#### **For Individual Property Managers:**
+
+- ✅ **Property-specific reporting** via application filtering
+- ✅ **Role-based access control** limits data to assigned properties
+- ✅ **Consistent payment processing** across all properties
+
+### **⚠️ Current Implementation Limitations:**
+
+#### **Financial Separation:**
+
+- ❌ **Mixed bank deposits** - all properties deposit to same account
+- ❌ **Complex financial reconciliation** - requires manual property separation
+- ❌ **Limited property autonomy** - cannot have separate banking arrangements
+
+#### **Scalability Concerns:**
+
+- ❌ **Stripe account limits** may affect large organizations
+- ❌ **Single point of failure** - one account issue affects all properties
+
+### **🔮 Future Architecture Considerations:**
+
+#### **Hybrid Approach (Potential Enhancement):**
+
+```typescript
+// Organization can choose architecture per their needs
+model Organization {
+  stripeArchitecture: "CENTRALIZED" | "PER_PROPERTY"
+  stripeAccountId?: String  // For centralized
+}
+
+model Property {
+  stripeAccountId?: String  // For per-property
+}
+```
+
+#### **Migration Path:**
+
+If switching to property-level Stripe is needed:
+
+1. **Add `stripeAccountId`** to Property model
+2. **Create property onboarding API** endpoints
+3. **Update payment routes** to use property's Stripe account
+4. **Modify webhooks** to route by property Stripe account
+5. **Implement data migration** for existing organizations
+
+### **📝 Stakeholder Decision Required:**
+
+**Key Questions for Business Stakeholders:**
+
+1. **Financial Management:**
+
+   - Do properties need separate bank accounts?
+   - Is centralized financial oversight preferred?
+   - How important is property-level financial autonomy?
+
+2. **Operational Complexity:**
+
+   - Can the organization handle multiple Stripe onboardings?
+   - Is simplified setup more important than financial separation?
+   - What's the preferred compliance management approach?
+
+3. **Scalability:**
+
+   - How many properties will the organization have?
+   - Will properties be independently managed?
+   - Are there regulatory requirements for financial separation?
+
+4. **Use Case Priority:**
+   - Hotel chains with centralized management → Organization-level
+   - Property management companies with independent owners → Property-level
+   - Franchise models → Depends on franchise agreement
+
+### **🎯 Recommendation:**
+
+**Current organization-level architecture is recommended for:**
+
+- ✅ Hotel chains with centralized management
+- ✅ Organizations prioritizing simplicity
+- ✅ Companies with shared financial oversight
+- ✅ Smaller organizations (< 10 properties)
+
+**Property-level architecture should be considered for:**
+
+- 🔄 Property management companies
+- 🔄 Organizations with independent property owners
+- 🔄 Large enterprises requiring strict financial separation
+- 🔄 Regulatory environments requiring separate accounts
+
+### **📋 Action Items:**
+
+- [ ] **Stakeholder meeting** to discuss financial management preferences
+- [ ] **Review regulatory requirements** for financial separation
+- [ ] **Assess operational capacity** for multiple Stripe account management
+- [ ] **Finalize architecture decision** before production deployment
+- [ ] **Document chosen approach** and implementation rationale
+
+---
 
 ## 🛠️ **Implementation Architecture**
 

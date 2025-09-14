@@ -264,10 +264,14 @@
 
 /* Property Status Tags */
 .property-default-tag {
-  background-color: #f3e8ff; /* Purple pastel */
-  color: #7c3aed;
-  border: 1px solid #ddd6fe;
+  background-color: #7210a2; /* Your brand purple */
+  color: #f0f8ff; /* Alice blue text */
+  border: 1px solid #7210a2;
   font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .property-active-tag {
@@ -374,9 +378,10 @@
 
 /* Property Status Tags - Dark Mode */
 .dark .property-default-tag {
-  background-color: #581c87; /* Dark purple */
-  color: #ddd6fe;
-  border: 1px solid #7c3aed;
+  background-color: #8b4aff; /* Lighter purple for dark mode */
+  color: #f0f8ff; /* Alice blue text */
+  border: 1px solid #8b4aff;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 
 .dark .property-active-tag {

@@ -170,10 +170,11 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     const role = session?.user?.role;
 
-    // Only SUPER_ADMIN and ORG_ADMIN can create users directly
+    // Allow SUPER_ADMIN, ORG_ADMIN, and PROPERTY_MGR to create users directly
     const allowedCreateRoles: UserRole[] = [
       UserRole.SUPER_ADMIN,
-      UserRole.ORG_ADMIN
+      UserRole.ORG_ADMIN,
+      UserRole.PROPERTY_MGR
     ];
     if (
       !session?.user ||

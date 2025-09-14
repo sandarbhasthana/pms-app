@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, UserPlus, Clock, Settings } from "lucide-react";
 import { StaffList } from "./StaffList";
 import { InviteUserModal } from "./InviteUserModal";
+import { CreateUserModal } from "./CreateUserModal";
 import { InvitationsList } from "./InvitationsList";
 import { EmailTestModal } from "./EmailTestModal";
 
@@ -69,6 +70,7 @@ export function StaffManagement() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showEmailTestModal, setShowEmailTestModal] = useState(false);
   const [activeTab, setActiveTab] = useState("staff");
 
@@ -157,6 +159,12 @@ export function StaffManagement() {
     fetchInvitations(); // Refresh invitations list
   };
 
+  // Handle successful user creation
+  const handleUserCreated = () => {
+    setShowCreateUserModal(false);
+    fetchStaffMembers(); // Refresh staff list
+  };
+
   // Handle staff member update
   const handleStaffUpdate = () => {
     fetchStaffMembers(); // Refresh staff list
@@ -202,11 +210,19 @@ export function StaffManagement() {
                 Test Email
               </Button>
               <Button
+                onClick={() => setShowCreateUserModal(true)}
+                variant="outline"
+                className="border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Create User
+              </Button>
+              <Button
                 onClick={() => setShowInviteModal(true)}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
-                Invite Staff Member
+                Send Invitation
               </Button>
             </>
           )}
@@ -258,7 +274,7 @@ export function StaffManagement() {
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Recent Activity
             </CardTitle>
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+            <div className="p-2 bg-green-100 dark:!bg-green-900/30 rounded-lg">
               <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
@@ -342,6 +358,15 @@ export function StaffManagement() {
           isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
           onInvitationSent={handleInvitationSent}
+        />
+      )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && (
+        <CreateUserModal
+          isOpen={showCreateUserModal}
+          onClose={() => setShowCreateUserModal(false)}
+          onUserCreated={handleUserCreated}
         />
       )}
 

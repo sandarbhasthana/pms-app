@@ -206,7 +206,7 @@ export function PropertySwitcher({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-96 max-w-[400px]">
           <DropdownMenuLabel className="text-xs text-gray-500 uppercase tracking-wide">
             Available Properties
           </DropdownMenuLabel>
@@ -216,32 +216,34 @@ export function PropertySwitcher({
             <DropdownMenuItem
               key={property.id}
               onClick={() => handlePropertySwitch(property.id)}
-              className="cursor-pointer"
+              className="cursor-pointer p-3 min-h-[60px]"
               disabled={isLoading}
             >
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center space-x-3">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{property.name}</span>
-                    <div className="flex items-center space-x-1 mt-1">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-medium text-sm truncate">
+                      {property.name}
+                    </span>
+                    <div className="flex items-center space-x-2 mt-1">
                       {property.role && (
                         <RoleTag
                           role={property.role as OrganizationRole}
                           variant="compact"
-                          className="text-xs"
+                          className="text-xs flex-shrink-0"
                         />
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
                   {property.isDefault && (
                     <PropertyStatusTag
                       status="DEFAULT"
                       variant="compact"
-                      className="text-xs"
+                      className="text-xs whitespace-nowrap"
                     />
                   )}
                   {property.id === currentProperty?.id && (

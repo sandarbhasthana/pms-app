@@ -210,7 +210,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-purple-600 dark:bg-purple-500 hover:bg-purple-700 dark:hover:bg-purple-600 text-white font-medium transition-colors"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] text-[#f0f8ff] font-medium transition-colors"
           >
             <ChevronLeftIcon className="h-5 w-5" />
             <span>Back</span>

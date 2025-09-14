@@ -49,7 +49,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     { label: "Reservations", href: "/reservations", icon: CalendarDays },
     // Calendar maps to Dashboard/bookings
     { label: "Calendar", href: "/dashboard/bookings", icon: Calendar },
-    { label: "Settings", href: "/settings/general", icon: SettingsIcon }
+    { label: "Settings", href: "/settings/general", icon: SettingsIcon },
+    // Development test page - remove in production
+    ...(process.env.NODE_ENV === "development"
+      ? [{ label: "🧪 Test Stripe", href: "/test-stripe", icon: SettingsIcon }]
+      : [])
   ];
 
   return (
@@ -84,10 +88,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm text-foreground/70 transition-colors",
+                  "flex items-center rounded-md px-3 py-2 text-sm text-gray-600 dark:text-gray-400 transition-colors",
                   active
-                    ? "bg-purple-100 dark:bg-purple-900/20 font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/20"
-                    : "hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-foreground"
+                    ? "bg-purple-lightest dark:bg-purple-darker/20 font-medium text-purple-primary dark:text-purple-light hover:bg-purple-lightest dark:hover:bg-purple-darker/20"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
                 )}
                 onClick={onClose} // Close sidebar when navigation item is clicked
               >

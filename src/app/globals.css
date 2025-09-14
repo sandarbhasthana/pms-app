@@ -65,7 +65,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 15.7%;
   --primary: 280 78% 35%; /* #7210a2 - Deep Purple */
-  --primary-foreground: 0 0% 100%; /* White text on purple */
+  --primary-foreground: 240 100% 97%; /* #f0f8ff - Alice Blue text */
   --secondary: 0 0% 73.7%; /* #bcbcbc - Light Gray */
   --secondary-foreground: 0 0% 15.7%;
   --muted: 240 100% 95%; /* Slightly muted background based on #f0f8ff */
@@ -106,8 +106,8 @@
   --card-foreground: #f0f8ff; /* Alice Blue text on cards */
   --popover: #1e1e1e;
   --popover-foreground: #f0f8ff; /* Alice Blue text in dropdowns */
-  --primary: #7c3aed; /* Purple for primary elements */
-  --primary-foreground: #ffffff; /* White text on purple */
+  --primary: #8b4aff; /* Lighter purple for dark mode */
+  --primary-foreground: #f0f8ff; /* Alice Blue text */
   --secondary: #2a2a2a; /* Lighter gray for secondary */
   --secondary-foreground: #f0f8ff; /* Alice Blue text on secondary elements */
   --muted: #2a2a2a; /* Muted background */
@@ -164,6 +164,7 @@
   /* Ensure cards have proper backgrounds and styling immediately */
   .card,
   [data-card],
+  [data-slot="card"],
   .bg-card {
     background-color: #ffffff !important;
     border-radius: var(--radius) !important;
@@ -173,8 +174,108 @@
   /* Dark mode cards keep original background */
   .dark .card,
   .dark [data-card],
+  .dark [data-slot="card"],
   .dark .bg-card {
     background-color: hsl(var(--card)) !important;
+  }
+
+  /* Stripe onboarding card specific styling - highest specificity */
+  div.stripe-onboarding-card[data-slot="card"] {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  .dark div.stripe-onboarding-card[data-slot="card"] {
+    background-color: #111827 !important;
+    color: #f9fafb !important;
+    border: 1px solid #374151 !important;
+  }
+
+  /* Fallback with even higher specificity */
+  html body .dark div.stripe-onboarding-card {
+    background-color: #111827 !important;
+    color: #f9fafb !important;
+    border: 1px solid #374151 !important;
+  }
+
+  /* Force red text in dark mode for requirements */
+  .dark .text-red-600 {
+    color: #f87171 !important; /* red-400 */
+  }
+
+  /* Global Primary Button Styling - Consistent Purple Theme */
+  .btn-primary,
+  button[data-primary="true"],
+  button.primary-button,
+  .primary-button {
+    background-color: #7210a2 !important;
+    color: #f0f8ff !important;
+    border: 1px solid #7210a2 !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .btn-primary:hover,
+  button[data-primary="true"]:hover,
+  button.primary-button:hover,
+  .primary-button:hover {
+    background-color: #8b5cf6 !important; /* purple-600 */
+    border-color: #8b5cf6 !important;
+  }
+
+  /* Dark mode variants */
+  .dark .btn-primary,
+  .dark button[data-primary="true"],
+  .dark button.primary-button,
+  .dark .primary-button {
+    background-color: #8b4aff !important;
+    color: #f0f8ff !important;
+    border: 1px solid #8b4aff !important;
+  }
+
+  .dark .btn-primary:hover,
+  .dark button[data-primary="true"]:hover,
+  .dark button.primary-button:hover,
+  .dark .primary-button:hover {
+    background-color: #a876ff !important;
+    border-color: #a876ff !important;
+  }
+
+  /* Override default button variant hover states */
+  button[data-slot="button"]:not([class*="outline"]):not([class*="ghost"]):not(
+      [class*="secondary"]
+    ):not([class*="destructive"]):hover {
+    background-color: #8b5cf6 !important; /* purple-600 for light mode */
+  }
+
+  .dark
+    button[data-slot="button"]:not([class*="outline"]):not(
+      [class*="ghost"]
+    ):not([class*="secondary"]):not([class*="destructive"]):hover {
+    background-color: #a876ff !important; /* custom hover for dark mode */
+  }
+
+  /* Catch any remaining purple-500/600 buttons and update them */
+  .bg-purple-500,
+  .bg-purple-600 {
+    background-color: #7210a2 !important;
+    color: #f0f8ff !important;
+  }
+
+  .dark .bg-purple-500,
+  .dark .bg-purple-600 {
+    background-color: #8b4aff !important;
+    color: #f0f8ff !important;
+  }
+
+  .bg-purple-500:hover,
+  .bg-purple-600:hover {
+    background-color: #8b5cf6 !important; /* purple-600 */
+  }
+
+  .dark .bg-purple-500:hover,
+  .dark .bg-purple-600:hover {
+    background-color: #a876ff !important;
   }
 
   /* Professional card shadows for light mode */
