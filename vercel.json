@@ -1,8 +1,9 @@
 {
-  "buildCommand": "npm run build:vercel",
+  "buildCommand": "npm run build:production",
   "installCommand": "npm install",
   "env": {
-    "SKIP_ENV_VALIDATION": "1"
+    "SKIP_ENV_VALIDATION": "1",
+    "NODE_ENV": "production"
   },
   "functions": {
     "app/api/**/*.ts": {

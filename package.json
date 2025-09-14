@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack --port 4001",
     "build": "next build",
     "build:vercel": "prisma migrate deploy && next build",
+    "build:production": "prisma db push && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
