@@ -184,14 +184,18 @@ export const ViewPaymentTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 key={payment.id}
                 className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600"
               >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{payment.method}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium capitalize">
+                      {payment.method}
+                    </span>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        payment.status === "COMPLETED"
+                        payment.status === "COMPLETED" ||
+                        payment.status === "succeeded"
                           ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                          : payment.status === "PENDING"
+                          : payment.status === "PENDING" ||
+                            payment.status === "processing"
                           ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
                           : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
                       }`}
@@ -208,6 +212,39 @@ export const ViewPaymentTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                       minute: "2-digit"
                     })}
                   </p>
+
+                  {/* Stripe Payment Details */}
+                  {payment.method === "card" && payment.paymentMethod && (
+                    <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border">
+                      <div className="flex items-center gap-2 text-sm">
+                        <CreditCardIcon className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium capitalize">
+                          {payment.paymentMethod.cardBrand || "Card"}
+                        </span>
+                        <span className="text-gray-500">
+                          ••••{payment.paymentMethod.cardLast4}
+                        </span>
+                        {payment.paymentMethod.cardExpMonth &&
+                          payment.paymentMethod.cardExpYear && (
+                            <span className="text-gray-500">
+                              {payment.paymentMethod.cardExpMonth
+                                .toString()
+                                .padStart(2, "0")}
+                              /
+                              {payment.paymentMethod.cardExpYear
+                                .toString()
+                                .slice(-2)}
+                            </span>
+                          )}
+                      </div>
+                      {payment.gatewayTxId && (
+                        <p className="text-xs text-gray-500 mt-1 font-mono">
+                          Transaction ID: {payment.gatewayTxId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {payment.notes && (
                     <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                       {payment.notes}

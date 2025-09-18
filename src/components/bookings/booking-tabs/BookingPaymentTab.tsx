@@ -1,15 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { BookingTabProps, BookingFormData } from "./types";
+import { PaymentProvider } from "@/components/payments/PaymentProvider";
+import { PaymentForm } from "@/components/payments/PaymentForm";
+import { toast } from "sonner";
+import { PaymentResult } from "@/lib/payments/types";
 
 interface BookingPaymentTabProps extends BookingTabProps {
   handleCreate: (formData: BookingFormData) => void;
   checkInDate: string;
   checkOutDate: string;
+  actualRoomPrice: number;
+  ratesLoading: boolean;
 }
 
 export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
@@ -19,9 +25,87 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   onPrevious,
   handleCreate,
   checkInDate,
-  checkOutDate
+  checkOutDate,
+  actualRoomPrice,
+  ratesLoading
 }) => {
-  const calculateTotals = () => {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingPaymentIntent, setIsCreatingPaymentIntent] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<
+    "idle" | "processing" | "succeeded" | "failed"
+  >("idle");
+
+  // Create payment intent when card payment is selected
+  const createPaymentIntent = useCallback(
+    async (amount: number) => {
+      console.log("🚀 Creating PaymentIntent for amount:", amount);
+      setIsCreatingPaymentIntent(true);
+      try {
+        const requestBody = {
+          amount: Math.round(amount * 100), // Convert to cents
+          currency: "inr",
+          metadata: {
+            roomId: selectedSlot.roomId,
+            roomName: selectedSlot.roomName,
+            checkIn: formData.checkIn,
+            checkOut: formData.checkOut,
+            guestName: formData.fullName,
+            guestEmail: formData.email,
+            guestPhone: formData.phone
+          }
+        };
+
+        console.log("📤 Request body:", requestBody);
+
+        const response = await fetch("/api/test/create-payment-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        console.log("📥 Response status:", response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ Response error:", errorText);
+          throw new Error(
+            `Failed to create payment intent: ${response.status} ${errorText}`
+          );
+        }
+
+        const data = await response.json();
+        console.log("✅ PaymentIntent created:", data);
+
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+          console.log("🔑 Client secret set:", data.clientSecret);
+        } else {
+          console.error("❌ No clientSecret in response:", data);
+          throw new Error("No clientSecret received from server");
+        }
+      } catch (error) {
+        console.error("💥 Error creating payment intent:", error);
+        toast.error("Failed to initialize payment. Please try again.");
+        setClientSecret(null); // Clear any existing client secret
+      } finally {
+        setIsCreatingPaymentIntent(false);
+      }
+    },
+    [
+      selectedSlot.roomId,
+      selectedSlot.roomName,
+      formData.checkIn,
+      formData.checkOut,
+      formData.fullName,
+      formData.email,
+      formData.phone
+    ]
+  );
+
+  // Calculate totals function
+  const calculateTotals = useCallback(() => {
     // Calculate number of nights using the actual form data (user-modified dates)
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
@@ -32,7 +116,8 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       )
     );
 
-    const basePricePerNight = 2500; // Placeholder - will be dynamic in Phase 3
+    // Use actual room price from rates data
+    const basePricePerNight = actualRoomPrice;
     const basePrice = basePricePerNight * nights;
 
     const addonsTotal =
@@ -49,15 +134,165 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       subtotal,
       nights
     };
+  }, [
+    formData.checkIn,
+    formData.checkOut,
+    actualRoomPrice,
+    formData.addons.extraBed,
+    formData.addons.breakfast,
+    formData.adults,
+    formData.childrenCount
+  ]);
+
+  // Handle payment method selection
+  const handlePaymentMethodChange = async (method: string) => {
+    console.log("� HANDLER CALLED - Payment method changed to:", method);
+    console.log("�💳 Payment method changed to:", method);
+    console.log("📊 Rates loading:", ratesLoading);
+
+    // Update form data
+    updateFormData({
+      payment: {
+        ...formData.payment,
+        paymentMethod: method as "card" | "cash" | "bank_transfer",
+        totalAmount: calculateTotals().subtotal
+      }
+    });
+
+    // Auto-initialize PaymentIntent when card is selected (better UX)
+    if (method === "card" && !ratesLoading) {
+      const totals = calculateTotals();
+      console.log("💰 Calculated totals:", totals);
+
+      if (totals.subtotal > 0) {
+        console.log("🎯 Creating PaymentIntent for subtotal:", totals.subtotal);
+        // Auto-create PaymentIntent immediately for smooth UX
+        await createPaymentIntent(totals.subtotal);
+      } else {
+        console.warn("⚠️ Subtotal is 0, not creating PaymentIntent");
+      }
+    } else {
+      console.log(
+        "🚫 Not creating PaymentIntent - method:",
+        method,
+        "ratesLoading:",
+        ratesLoading
+      );
+      // Clear payment intent for non-card payments
+      setClientSecret(null);
+      setPaymentStatus("idle");
+    }
   };
 
   const totals = calculateTotals();
 
+  // Create PaymentIntent on mount if card is already selected
+  useEffect(() => {
+    console.log("🔄 useEffect triggered - checking if PaymentIntent needed");
+    if (
+      formData.payment.paymentMethod === "card" &&
+      !clientSecret &&
+      !isCreatingPaymentIntent &&
+      !ratesLoading &&
+      totals.subtotal > 0
+    ) {
+      console.log(
+        "🚀 Auto-creating PaymentIntent on mount for existing card selection"
+      );
+      createPaymentIntent(totals.subtotal);
+    }
+  }, [
+    formData.payment.paymentMethod,
+    clientSecret,
+    isCreatingPaymentIntent,
+    ratesLoading,
+    totals.subtotal,
+    createPaymentIntent
+  ]);
+
+  // Debug current state
+  console.log("🔍 Current state:", {
+    paymentMethod: formData.payment.paymentMethod,
+    clientSecret: !!clientSecret,
+    isCreatingPaymentIntent,
+    ratesLoading,
+    totals: totals.subtotal
+  });
+
+  // Handle payment success
+  const handlePaymentSuccess = (result: PaymentResult) => {
+    setPaymentStatus("succeeded");
+    toast.success("Payment successful! Creating your reservation...");
+
+    console.log("Payment succeeded with result:", result);
+    console.log("PaymentIntent ID:", result.paymentIntentId);
+
+    // Validate payment result
+    if (!result.success || !result.paymentIntentId) {
+      console.error("Payment result invalid:", result);
+      toast.error("Payment data incomplete. Please try again.");
+      setPaymentStatus("idle");
+      return;
+    }
+
+    // For now, we'll create a simplified payment record
+    // In a real implementation, you'd fetch the full PaymentIntent details from your backend
+    const updatedFormData = {
+      ...formData,
+      payment: {
+        ...formData.payment,
+        totalAmount: calculateTotals().subtotal,
+        creditCard: {
+          last4: "****", // PaymentResult doesn't include card details
+          brand: "card",
+          expiryMonth: 0,
+          expiryYear: 0,
+          paymentMethodId: result.paymentIntentId,
+          paymentIntentId: result.paymentIntentId,
+          stripePaymentIntentId: result.paymentIntentId
+        }
+      }
+    };
+
+    console.log("Creating booking with payment data:", updatedFormData.payment);
+    console.log(
+      "Credit card data being sent:",
+      updatedFormData.payment.creditCard
+    );
+
+    // Create the booking
+    handleCreate(updatedFormData);
+  };
+
+  // Handle payment failure
+  const handlePaymentError = (error: string) => {
+    setPaymentStatus("failed");
+    toast.error(`Payment failed: ${error}`);
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Pass the form data directly since handleCreate expects BookingFormData
-    handleCreate(formData);
+    // For card payments, payment processing is handled by Stripe component
+    if (formData.payment.paymentMethod === "card") {
+      if (paymentStatus !== "succeeded") {
+        toast.error("Please complete the payment first.");
+        return;
+      }
+      // Payment already processed, booking creation handled in handlePaymentSuccess
+      return;
+    }
+
+    // For cash and bank transfer, create booking directly
+    const updatedFormData = {
+      ...formData,
+      payment: {
+        ...formData.payment,
+        totalAmount: calculateTotals().subtotal
+      }
+    };
+
+    handleCreate(updatedFormData);
   };
 
   return (
@@ -137,27 +372,49 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
 
+        <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-purple-800 dark:text-purple-200">
+                Payment Required
+              </p>
+              <p className="text-sm text-purple-600 dark:text-purple-300">
+                Full amount for {totals.nights} night
+                {totals.nights > 1 ? "s" : ""} stay
+              </p>
+              {ratesLoading && (
+                <p className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                  Loading current rates...
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-purple-800 dark:text-purple-200">
+                {ratesLoading ? (
+                  <span className="animate-pulse">₹--,---</span>
+                ) : (
+                  `₹${totals.subtotal.toLocaleString()}`
+                )}
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400">
+                Total Amount
+              </p>
+            </div>
+          </div>
+        </div>
+
         <RadioGroup
           value={formData.payment.paymentMethod}
-          onValueChange={(value: "full" | "authorize") =>
-            updateFormData({
-              payment: {
-                ...formData.payment,
-                paymentMethod: value,
-                totalAmount: totals.subtotal
-              }
-            })
-          }
+          onValueChange={handlePaymentMethodChange}
           className="space-y-4"
         >
           <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
-            <RadioGroupItem value="full" id="full" />
-            <Label htmlFor="full" className="flex-1 cursor-pointer">
+            <RadioGroupItem value="card" id="card" />
+            <Label htmlFor="card" className="flex-1 cursor-pointer">
               <div>
-                <p className="font-medium">Charge Full Amount Now</p>
+                <p className="font-medium">Pay with Credit/Debit Card</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Collect ₹{totals.subtotal.toLocaleString()} now via cash, bank
-                  transfer, wire transfer, or card
+                  Secure payment processing via Stripe
                 </p>
               </div>
             </Label>
@@ -169,31 +426,80 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
-            <RadioGroupItem value="authorize" id="authorize" />
-            <Label htmlFor="authorize" className="flex-1 cursor-pointer">
+            <RadioGroupItem value="cash" id="cash" />
+            <Label htmlFor="cash" className="flex-1 cursor-pointer">
               <div>
-                <p className="font-medium">Authorize Card</p>
+                <p className="font-medium">Cash Payment</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Hold ₹{totals.subtotal.toLocaleString()} on the guest&apos;s
-                  card (funds reserved, charged at check-out)
+                  Collect payment in cash at check-in
                 </p>
               </div>
             </Label>
             <div className="text-right">
               <p className="font-semibold text-blue-600">
-                ₹{totals.subtotal.toLocaleString()}{" "}
-                <span className="text-xs text-gray-500">HOLD</span>
+                ₹{totals.subtotal.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+            <Label htmlFor="bank_transfer" className="flex-1 cursor-pointer">
+              <div>
+                <p className="font-medium">Bank Transfer</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Direct bank transfer or wire transfer
+                </p>
+              </div>
+            </Label>
+            <div className="text-right">
+              <p className="font-semibold text-orange-600">
+                ₹{totals.subtotal.toLocaleString()}
               </p>
             </div>
           </div>
         </RadioGroup>
 
+        {/* Stripe Payment Form - Show when card payment is selected */}
+        {formData.payment.paymentMethod === "card" && (
+          <div className="mt-6 p-4 bg-gray-50 dark:!bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">
+              Complete Your Payment
+            </h4>
+
+            {isCreatingPaymentIntent || !clientSecret ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <span className="ml-3 text-gray-600 dark:text-gray-400">
+                  {isCreatingPaymentIntent
+                    ? "Initializing payment..."
+                    : "Loading payment form..."}
+                </span>
+              </div>
+            ) : (
+              <PaymentProvider clientSecret={clientSecret}>
+                <PaymentForm
+                  amount={totals.subtotal}
+                  currency="INR"
+                  clientSecret={clientSecret}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  loading={paymentStatus === "processing"}
+                  showAmount={true}
+                  title="Complete Payment"
+                  description={`Payment for ${selectedSlot.roomName}`}
+                />
+              </PaymentProvider>
+            )}
+          </div>
+        )}
+
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Payment Methods:</strong> Full payment can be collected via
-            cash, bank transfer, wire transfer, or card. Card authorization is
-            only available for card payments and holds funds without charging
-            until check-out.
+            <strong>Payment Policy:</strong> Full payment is required to confirm
+            your reservation. Card payments are processed securely through
+            Stripe. Cash and bank transfer payments will be marked as pending
+            until received.
           </p>
         </div>
       </div>
@@ -211,9 +517,30 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
           </Button>
           <Button
             type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white"
+            disabled={
+              formData.payment.paymentMethod === "card" &&
+              (paymentStatus === "processing" ||
+                paymentStatus === "idle" ||
+                isCreatingPaymentIntent)
+            }
+            className={`text-white ${
+              formData.payment.paymentMethod === "card" &&
+              paymentStatus === "succeeded"
+                ? "bg-green-600 hover:bg-green-700"
+                : formData.payment.paymentMethod === "card"
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
           >
-            Confirm Reservation
+            {formData.payment.paymentMethod === "card"
+              ? paymentStatus === "succeeded"
+                ? "✓ Payment Complete - Confirm Reservation"
+                : paymentStatus === "processing"
+                ? "Processing Payment..."
+                : isCreatingPaymentIntent
+                ? "Initializing Payment..."
+                : "Complete Payment Above"
+              : "Confirm Reservation"}
           </Button>
         </div>
       </form>

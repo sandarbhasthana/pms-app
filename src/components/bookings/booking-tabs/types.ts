@@ -45,14 +45,15 @@ export interface BookingFormData {
   // Payment
   payment: {
     totalAmount: number;
-    paymentMethod: "full" | "authorize";
-    paymentType?: "cash" | "bank_transfer" | "wire_transfer" | "card"; // Only for full payment
+    paymentMethod: "card" | "cash" | "bank_transfer";
     creditCard?: {
       last4: string;
       brand: string;
       expiryMonth: number;
       expiryYear: number;
       paymentMethodId: string; // Stripe payment method ID
+      paymentIntentId?: string; // Stripe payment intent ID
+      stripePaymentIntentId?: string; // For database storage
     };
   };
 }

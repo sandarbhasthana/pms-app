@@ -54,6 +54,15 @@ export interface Payment {
   gatewayTxId?: string;
   notes?: string;
   createdAt: string;
+  paymentMethod?: {
+    id: string;
+    cardBrand?: string;
+    cardLast4?: string;
+    cardExpMonth?: number;
+    cardExpYear?: number;
+    type: string;
+    isDefault: boolean;
+  };
 }
 
 export interface ViewBookingSheetProps {

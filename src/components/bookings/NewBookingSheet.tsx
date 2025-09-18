@@ -20,6 +20,8 @@ import {
   BookingFormData,
   BookingTab
 } from "./booking-tabs/types";
+import { useRatesData } from "@/lib/hooks/useRatesData";
+import { format } from "date-fns";
 
 const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   selectedSlot,
@@ -75,6 +77,79 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     };
   }, [selectedSlot]);
 
+  // Fetch rates data for the selected date to get actual room pricing
+  const { data: ratesData, isLoading: ratesLoading } = useRatesData(
+    selectedSlot ? new Date(selectedSlot.date) : new Date(),
+    7, // Fetch 7 days of data
+    "base" // Using base rate plan
+  );
+
+  // Create room type mapping (same as in CalendarViewRowStyle)
+  const roomTypeMapping = useMemo(() => {
+    return {
+      Standard: "Standard Room",
+      Deluxe: "Deluxe Room",
+      Suite: "Executive Suite",
+      Presidential: "Presidential Suite"
+    };
+  }, []);
+
+  // Get actual room price for the selected slot
+  const actualRoomPrice = useMemo(() => {
+    if (!selectedSlot || !ratesData || ratesData.length === 0) {
+      // Fallback prices based on room name
+      const roomName = selectedSlot?.roomName || "";
+      if (roomName.toLowerCase().includes("presidential")) return 12000;
+      if (roomName.toLowerCase().includes("suite")) return 5500;
+      if (roomName.toLowerCase().includes("deluxe")) return 3500;
+      if (roomName.toLowerCase().includes("standard")) return 2500;
+      return 2500; // Default fallback
+    }
+
+    // Find the room type from the room name
+    const roomName = selectedSlot.roomName;
+    let calendarRoomType = "Standard"; // Default
+
+    // Extract room type from room name (e.g., "Standard Room 101" -> "Standard")
+    if (roomName.toLowerCase().includes("presidential"))
+      calendarRoomType = "Presidential";
+    else if (roomName.toLowerCase().includes("suite"))
+      calendarRoomType = "Suite";
+    else if (roomName.toLowerCase().includes("deluxe"))
+      calendarRoomType = "Deluxe";
+    else if (roomName.toLowerCase().includes("standard"))
+      calendarRoomType = "Standard";
+
+    // Find the corresponding database room type name
+    const dbRoomTypeName =
+      roomTypeMapping[calendarRoomType as keyof typeof roomTypeMapping];
+
+    // Find the rates data for this room type
+    const roomTypeRates = ratesData.find(
+      (rates) => rates.roomTypeName === dbRoomTypeName
+    );
+
+    if (roomTypeRates) {
+      const dateStr = format(new Date(selectedSlot.date), "yyyy-MM-dd");
+      const rateData = roomTypeRates.dates[dateStr];
+      if (rateData) {
+        return rateData.finalPrice;
+      }
+    }
+
+    // Fallback to default prices if no rates data found
+    const fallbackPrices = {
+      Standard: 2500,
+      Deluxe: 3500,
+      Suite: 5500,
+      Presidential: 12000
+    };
+
+    return (
+      fallbackPrices[calendarRoomType as keyof typeof fallbackPrices] || 2500
+    );
+  }, [selectedSlot, ratesData, roomTypeMapping]);
+
   // Initialize form data from props
   const [formData, setFormData] = useState<BookingFormData>({
     fullName,
@@ -94,7 +169,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     },
     payment: {
       totalAmount: 0,
-      paymentMethod: "full"
+      paymentMethod: "card"
     }
   });
 
@@ -269,6 +344,8 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
                 handleCreate={handleCreate}
                 checkInDate={checkInDate}
                 checkOutDate={checkOutDate}
+                actualRoomPrice={actualRoomPrice}
+                ratesLoading={ratesLoading}
               />
             </TabsContent>
           </Tabs>

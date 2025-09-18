@@ -7,7 +7,38 @@ import {
   validatePropertyAccess
 } from "@/lib/property-context";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
-import { ReservationStatus, PropertyRole } from "@prisma/client";
+import {
+  ReservationStatus,
+  PropertyRole,
+  ReservationSource
+} from "@prisma/client";
+
+// Payment data types
+interface PaymentData {
+  totalAmount: number;
+  paymentMethod: "card" | "cash" | "bank_transfer";
+  creditCard?: {
+    last4: string;
+    brand: string;
+    expiryMonth: number;
+    expiryYear: number;
+    paymentMethodId: string;
+    paymentIntentId?: string;
+    stripePaymentIntentId?: string;
+  };
+}
+
+// Addons data types
+interface AddonsData {
+  extraBed: boolean;
+  breakfast: boolean;
+  customAddons: Array<{
+    id: string;
+    name: string;
+    price: number;
+    selected: boolean;
+  }>;
+}
 
 // Type for the reservation data returned from the database query
 type ReservationFromDB = {
@@ -179,7 +210,25 @@ export async function POST(req: NextRequest) {
       idType,
       idNumber,
       issuingCountry,
-      source
+      source,
+      payment,
+      addons
+    }: {
+      roomId: string;
+      guestName: string;
+      checkIn: string;
+      checkOut: string;
+      adults: number;
+      children?: number;
+      notes?: string;
+      phone?: string;
+      email?: string;
+      idType?: string;
+      idNumber?: string;
+      issuingCountry?: string;
+      source?: ReservationSource;
+      payment?: PaymentData;
+      addons?: AddonsData;
     } = await req.json();
 
     if (!roomId || !guestName || !checkIn || !checkOut || adults == null) {
@@ -268,8 +317,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const reservation = await withPropertyContext(propertyId!, (tx) =>
-      tx.reservation.create({
+    const reservation = await withPropertyContext(propertyId!, async (tx) => {
+      // Create the reservation
+      const newReservation = await tx.reservation.create({
         data: {
           organizationId: property.organizationId, // Keep for backward compatibility
           propertyId: propertyId, // NEW: Associate with property
@@ -285,8 +335,24 @@ export async function POST(req: NextRequest) {
           idType,
           idNumber,
           issuingCountry,
-          source: source || "WEBSITE",
-          status: "CONFIRMED"
+          source: (source as ReservationSource) || ReservationSource.WEBSITE,
+          status: "CONFIRMED",
+          // Add payment-related fields using correct schema fields
+          amountCaptured:
+            payment?.paymentMethod === "card"
+              ? Math.round((payment.totalAmount || 0) * 100)
+              : null,
+          depositAmount: payment?.totalAmount
+            ? Math.round(payment.totalAmount * 100)
+            : null,
+          paymentStatus:
+            payment?.paymentMethod === "card"
+              ? "PAID"
+              : payment?.paymentMethod === "cash"
+              ? "UNPAID"
+              : payment?.paymentMethod === "bank_transfer"
+              ? "UNPAID"
+              : "UNPAID"
         },
         include: {
           room: {
@@ -296,14 +362,151 @@ export async function POST(req: NextRequest) {
             select: { id: true, name: true }
           }
         }
-      })
-    );
+      });
+
+      // Create payment record if payment data exists
+      if (payment && payment.totalAmount > 0) {
+        console.log("Creating payment record for:", payment);
+        console.log("Payment creditCard data:", payment.creditCard);
+        let paymentMethodRecord = null;
+
+        // For card payments, validate payment data first
+        if (payment.paymentMethod === "card") {
+          console.log("Validating card payment data...");
+          console.log("payment.creditCard exists:", !!payment.creditCard);
+          console.log(
+            "paymentMethodId exists:",
+            payment.creditCard?.paymentMethodId
+          );
+
+          if (!payment.creditCard || !payment.creditCard.paymentMethodId) {
+            console.error("Missing payment data:", {
+              hasCreditCard: !!payment.creditCard,
+              creditCardData: payment.creditCard,
+              paymentMethodId: payment.creditCard?.paymentMethodId,
+              fullPaymentData: payment
+            });
+            throw new Error(
+              "Card payment failed - missing payment method details. Please try again."
+            );
+          }
+        }
+
+        try {
+          // Create PaymentMethod record for card payments
+          if (payment.paymentMethod === "card" && payment.creditCard) {
+            console.log("Creating PaymentMethod record:", payment.creditCard);
+            paymentMethodRecord = await tx.paymentMethod.create({
+              data: {
+                customerId: guestName || "unknown", // Using guest name as customer ID for now
+                stripePaymentMethodId: payment.creditCard.paymentMethodId,
+                type: "card",
+                cardBrand: payment.creditCard.brand,
+                cardLast4: payment.creditCard.last4,
+                cardExpMonth: payment.creditCard.expiryMonth,
+                cardExpYear: payment.creditCard.expiryYear,
+                isDefault: true
+              }
+            });
+            console.log("PaymentMethod created:", paymentMethodRecord.id);
+          }
+
+          // Create Payment record
+          console.log("Creating Payment record...");
+          await tx.payment.create({
+            data: {
+              reservationId: newReservation.id,
+              type: "payment",
+              method: payment.paymentMethod,
+              status:
+                payment.paymentMethod === "card" ? "COMPLETED" : "PENDING",
+              amount: payment.totalAmount,
+              currency: "INR",
+              paymentMethodId: paymentMethodRecord?.id,
+              description: `Payment for reservation ${newReservation.id}`,
+              processedAt: payment.paymentMethod === "card" ? new Date() : null
+            }
+          });
+          console.log("Payment record created successfully");
+        } catch (paymentError) {
+          console.error("Error creating payment records:", paymentError);
+          // Don't throw here - let the reservation be created even if payment record fails
+        }
+      }
+
+      // Process addons data if provided
+      if (addons) {
+        console.log("Processing addons data:", addons);
+
+        // Store addons information in reservation notes
+        const addonsList = [];
+        if (addons.extraBed) addonsList.push("Extra Bed");
+        if (addons.breakfast) addonsList.push("Breakfast");
+        if (addons.customAddons) {
+          addons.customAddons
+            .filter((addon) => addon.selected)
+            .forEach((addon) =>
+              addonsList.push(`${addon.name} (₹${addon.price})`)
+            );
+        }
+
+        if (addonsList.length > 0) {
+          const addonsNote = `Add-ons: ${addonsList.join(", ")}`;
+          console.log("Adding addons to reservation notes:", addonsNote);
+
+          // Update reservation with addons information
+          await tx.reservation.update({
+            where: { id: newReservation.id },
+            data: {
+              notes: newReservation.notes
+                ? `${newReservation.notes}\n\n${addonsNote}`
+                : addonsNote
+            }
+          });
+        }
+      }
+
+      return newReservation;
+    });
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
     console.error("POST /api/reservations error:", error);
+
+    // Provide more detailed error information
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    const errorDetails =
+      error instanceof Error && error.stack
+        ? error.stack
+        : "No stack trace available";
+
+    // Try to get request data safely
+    let requestData: string | object = "Unable to parse request data";
+    try {
+      const body = await req.clone().json();
+      requestData = {
+        roomId: body.roomId || "unknown",
+        guestName: body.guestName || "unknown",
+        checkIn: body.checkIn || "unknown",
+        checkOut: body.checkOut || "unknown",
+        payment: body.payment ? "provided" : "none"
+      };
+    } catch {
+      requestData = "Failed to parse request body";
+    }
+
+    console.error("Error details:", {
+      message: errorMessage,
+      stack: errorDetails,
+      requestData
+    });
+
     return NextResponse.json(
-      { error: (error as Error).message },
+      {
+        error: errorMessage,
+        details: "Check server logs for more information"
+      },
       { status: 500 }
     );
   }

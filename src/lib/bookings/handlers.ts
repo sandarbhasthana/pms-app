@@ -27,6 +27,27 @@ export async function handleCreateBooking({
     checkOut: string;
     adults: number;
     children: number;
+    payment?: {
+      totalAmount: number;
+      paymentMethod: string;
+      creditCard?: {
+        last4: string;
+        brand: string;
+        expiryMonth: number;
+        expiryYear: number;
+        paymentMethodId: string;
+      };
+    };
+    addons?: {
+      extraBed: boolean;
+      breakfast: boolean;
+      customAddons: Array<{
+        id: string;
+        name: string;
+        price: number;
+        selected: boolean;
+      }>;
+    };
   };
   reload: () => Promise<void>;
   onClose: () => void;
@@ -44,7 +65,13 @@ export async function handleCreateBooking({
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, roomId: selectedSlot.roomId })
+      body: JSON.stringify({
+        ...data,
+        roomId: selectedSlot.roomId,
+        // Include payment and addon data
+        payment: data.payment,
+        addons: data.addons
+      })
     });
 
     if (!res.ok) {

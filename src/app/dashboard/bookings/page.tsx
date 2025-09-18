@@ -740,7 +740,10 @@ export default function BookingsRowStylePage() {
               checkIn: bookingData.checkIn,
               checkOut: bookingData.checkOut,
               adults: bookingData.adults,
-              children: bookingData.childrenCount
+              children: bookingData.childrenCount,
+              // Add payment data
+              payment: bookingData.payment,
+              addons: bookingData.addons
             },
             reload,
             onClose: () => setSelectedSlot(null)

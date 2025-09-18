@@ -96,6 +96,7 @@
     "react-datepicker": "^8.4.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.60.0",
+    "react-payment-logos": "^1.1.0",
     "react-phone-input-2": "^2.15.1",
     "react-webcam": "^7.2.0",
     "resend": "^6.0.1",
