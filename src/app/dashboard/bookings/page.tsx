@@ -115,7 +115,7 @@ export default function BookingsRowStylePage() {
   const [country, setCountry] = useState<string>("");
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
-  // FIXED: Stable today highlight using local timezone consistently
+  // Stable today highlight using local timezone consistently
   const todayDateString = useMemo(() => {
     const now = new Date();
     // Use local timezone instead of UTC
@@ -134,7 +134,7 @@ export default function BookingsRowStylePage() {
     );
   };
 
-  // FIXED: Use stable date for today highlight in local timezone
+  // Use stable date for today highlight in local timezone
   const startOfToday = useMemo(() => {
     const [year, month, day] = todayDateString.split("-").map(Number);
     return new Date(year, month - 1, day); // Local timezone
@@ -146,11 +146,10 @@ export default function BookingsRowStylePage() {
     return dt;
   }, [startOfToday]);
 
-  // FIXED: Debounced refetch function to prevent rapid successive calls
+  // Debounced refetch function to prevent rapid successive calls
   const debouncedRefetch = useCallback(() => {
     const now = Date.now();
     if (now - lastRefetch < 2000 || isRefetching) {
-      // Minimum 2 second gap
       return;
     }
 
@@ -163,7 +162,7 @@ export default function BookingsRowStylePage() {
     }, 100);
   }, [lastRefetch, isRefetching]);
 
-  // FIXED: Optimized eventSources without caching to ensure fresh payment status
+  // Optimized eventSources without caching to ensure fresh payment status
   const eventSources = useMemo(() => {
     return [
       async (
@@ -194,12 +193,12 @@ export default function BookingsRowStylePage() {
           });
           const res = await fetch(`/api/reservations?${params}`, {
             credentials: "include",
-            // FIXED: Ensure fresh data for payment status updates
+            // Ensure fresh data for payment status updates
             cache: "no-cache",
             headers: {
               "Cache-Control": "no-cache",
               Pragma: "no-cache",
-              // FIXED: Include organization context
+              // Include organization context
               ...(orgId && { "x-organization-id": orgId })
             }
           });
@@ -224,7 +223,7 @@ export default function BookingsRowStylePage() {
           failure(e as Error);
         }
       },
-      // FIXED: Static today highlight that doesn't cause re-renders
+      // Static today highlight that doesn't cause re-renders
       {
         events: [
           {
@@ -239,7 +238,6 @@ export default function BookingsRowStylePage() {
           }
         ]
       },
-      // Weekend highlight function - Friday & Saturday only (yellow color)
       (
         info: { start: Date; end: Date },
         success: (
@@ -693,9 +691,7 @@ export default function BookingsRowStylePage() {
 
   return (
     <div ref={containerRef} className="relative p-6">
-      <h1 className="text-2xl font-semibold mb-4">
-        Booking Calendar (Row Style)
-      </h1>
+      <h1 className="text-2xl font-semibold mb-4">Booking Calendar</h1>
 
       {/* Toolbar */}
       <CalendarToolbar
@@ -845,13 +841,7 @@ export default function BookingsRowStylePage() {
             type: roomType.toLowerCase().replace(/\s+/g, "_"),
             typeDisplayName: roomType,
             capacity: 4, // Placeholder - should come from room data
-            basePrice: roomType.toLowerCase().includes("presidential")
-              ? 5000
-              : roomType.toLowerCase().includes("deluxe")
-              ? 3500
-              : roomType.toLowerCase().includes("suite")
-              ? 4000
-              : 2500,
+            basePrice: 0, // No fallback prices in production
             available: true, // Will be updated by availability check
             isCurrentRoom: editingReservation?.roomId === room.id
           };

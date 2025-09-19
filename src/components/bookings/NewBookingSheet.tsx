@@ -97,13 +97,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   // Get actual room price for the selected slot
   const actualRoomPrice = useMemo(() => {
     if (!selectedSlot || !ratesData || ratesData.length === 0) {
-      // Fallback prices based on room name
-      const roomName = selectedSlot?.roomName || "";
-      if (roomName.toLowerCase().includes("presidential")) return 12000;
-      if (roomName.toLowerCase().includes("suite")) return 5500;
-      if (roomName.toLowerCase().includes("deluxe")) return 3500;
-      if (roomName.toLowerCase().includes("standard")) return 2500;
-      return 2500; // Default fallback
+      return 0; // No fallback prices - return 0 if no data available
     }
 
     // Find the room type from the room name
@@ -137,17 +131,8 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       }
     }
 
-    // Fallback to default prices if no rates data found
-    const fallbackPrices = {
-      Standard: 2500,
-      Deluxe: 3500,
-      Suite: 5500,
-      Presidential: 12000
-    };
-
-    return (
-      fallbackPrices[calendarRoomType as keyof typeof fallbackPrices] || 2500
-    );
+    // No rates data found - return 0 instead of fallback prices
+    return 0;
   }, [selectedSlot, ratesData, roomTypeMapping]);
 
   // Initialize form data from props

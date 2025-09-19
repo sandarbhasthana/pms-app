@@ -81,7 +81,11 @@ export default function CalendarViewRowStyle({
   }, [selectedDate, calendarRef]);
 
   // Fetch rates data for the 14-day calendar view
-  const { data: ratesData, isLoading: ratesLoading } = useRatesData(
+  const {
+    data: ratesData,
+    isLoading: ratesLoading,
+    error: ratesError
+  } = useRatesData(
     calendarStartDate,
     14, // 14 days to match calendar duration
     "base" // Using base rate plan
@@ -197,13 +201,26 @@ export default function CalendarViewRowStyle({
         setCalendarStartDate(dateInfo.start);
       }}
       // Enhanced styling for parent resources (room type headers)
-      resourceGroupLabelClassNames="font-bold text-purple-800 bg-white dark:bg-purple-900 dark:text-white py-3 border-b-2 border-purple-200"
+      resourceGroupLabelClassNames="room-type-header font-bold text-xl text-purple-800 bg-white dark:bg-purple-900 dark:text-white py-4 border-b-2 border-purple-200 uppercase tracking-wide"
       // Enhanced content for parent resource rows with more detailed info
       resourceGroupLabelContent={(info) => (
-        <div className="flex items-center justify-between px-3">
+        <div
+          className="flex items-center justify-between px-3"
+          data-group="true"
+        >
           <div className="flex items-center space-x-3">
-            <span className="text-lg font-semibold">{info.groupValue}</span>
-            <span className="text-sm text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-800 px-2 py-1 rounded-full">
+            <span
+              className="room-type-title text-xl font-bold uppercase tracking-wide"
+              data-group="true"
+              style={{
+                fontSize: "1.25rem",
+                textTransform: "uppercase",
+                fontWeight: "bold"
+              }}
+            >
+              {info.groupValue}
+            </span>
+            <span className="font-bold text-sm text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-800 px-2 py-1 rounded-full">
               {info.resource?.getChildren()?.length || 0} rooms
             </span>
           </div>
@@ -223,17 +240,15 @@ export default function CalendarViewRowStyle({
           </div>
         </div>
       )}
-      // Enhanced resource area width for better visibility
       resourceAreaWidth="320px"
       resourcesInitiallyExpanded={true}
-      // Enhanced background for parent resources with white background AND pricing values
       resourceLaneContent={(info) => {
         // Only add content to parent resources (room type rows)
         if (!info.resource.getParent()) {
-          const calendarRoomType = info.resource.title; // This is like "Standard", "Deluxe", etc.
+          const calendarRoomType = info.resource.title;
           const roomTypeRates = ratesLookup[calendarRoomType];
 
-          // Show pricing for room types that have rates data, otherwise show test values
+          // Show pricing for room types that have rates data
           return (
             <div className="h-full w-full absolute top-0 left-0 pointer-events-none z-0">
               <div className="h-full w-full !bg-white dark:!bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 flex">
@@ -241,26 +256,22 @@ export default function CalendarViewRowStyle({
                 {Array.from({ length: 14 }, (_, i) => {
                   let displayPrice;
 
-                  if (roomTypeRates && !ratesLoading) {
+                  if (ratesError) {
+                    // Show error state when rates data fails to load
+                    displayPrice = "Error";
+                  } else if (roomTypeRates && !ratesLoading) {
                     // Use real rates data if available
                     const currentDate = addDays(calendarStartDate, i);
                     const dateStr = format(currentDate, "yyyy-MM-dd");
                     const price = roomTypeRates[dateStr];
                     displayPrice =
                       price !== undefined ? `₹${price.toFixed(2)}` : "--";
+                  } else if (ratesLoading) {
+                    // Show loading state
+                    displayPrice = "...";
                   } else {
-                    // Fallback to test values for demonstration
-                    const basePrice =
-                      calendarRoomType === "Standard"
-                        ? 2500
-                        : calendarRoomType === "Deluxe"
-                        ? 3500
-                        : calendarRoomType === "Suite"
-                        ? 5500
-                        : calendarRoomType === "Presidential"
-                        ? 12000
-                        : 1000;
-                    displayPrice = `₹${(basePrice + i * 100).toFixed(2)}`;
+                    // No data available
+                    displayPrice = "--";
                   }
 
                   // Calculate occupancy for this room type and date
@@ -278,6 +289,10 @@ export default function CalendarViewRowStyle({
                       {ratesLoading ? (
                         <div className="text-blue-500 dark:text-blue-400 font-bold text-sm">
                           ...
+                        </div>
+                      ) : ratesError ? (
+                        <div className="text-red-500 dark:text-red-400 font-bold text-sm">
+                          Error
                         </div>
                       ) : (
                         <>
@@ -309,17 +324,17 @@ export default function CalendarViewRowStyle({
           classes.push("parent-resource-row", "!bg-white", "dark:!bg-gray-800");
         }
 
-        // Add a class for the selected resource
-        if (info.resource.id === selectedResource) {
-          classes.push("bg-blue-50 dark:bg-blue-900/30");
-        }
+        // // Add a class for the selected resource
+        // if (info.resource.id === selectedResource) {
+        //   classes.push("bg-blue-50 dark:bg-blue-900/30");
+        // }
 
         // Enhanced bottom border for room type separation
         if (
           info.resource.getChildren().length > 0 &&
           !info.resource.getParent()
         ) {
-          classes.push("border-b-2 border-purple-200 dark:border-purple-800");
+          classes.push("border-b-2 border-white dark:border-gray-200 dark:border-gray-300");
         }
 
         return classes;
@@ -339,7 +354,14 @@ export default function CalendarViewRowStyle({
                 day: "numeric"
               })}
             </div>
-            {name && <div className="mt-1 text-xs text-red-600">{name}</div>}
+            {name && (
+              <div
+                className="text-xs text-red-600 text-center px-1 holiday-text"
+                title={name}
+              >
+                {name}
+              </div>
+            )}
           </div>
         );
       }}
@@ -430,8 +452,9 @@ export default function CalendarViewRowStyle({
         <span
           onClick={() => setSelectedResource(info.resource.id)}
           className={cn(
-            info.resource.id === selectedResource && "bg-blue-50",
-            "block px-2 py-1 cursor-pointer text-sm"
+            info.resource.id === selectedResource &&
+              "bg-white text-gray-[#121212] dark:bg-gray-600 text-[#f0f8f9]",
+            "flex items-center justify-start px-3 py-3 cursor-pointer text-sm font-bold h-full"
           )}
         >
           {info.resource.title}
@@ -442,7 +465,7 @@ export default function CalendarViewRowStyle({
           "bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
         ];
         const dow = date.getDay();
-        // Highlight Friday (5) and Saturday (6) only - no Sunday
+        // HighlightFriday's and Saturday's
         if (dow === 5 || dow === 6) cls.push("bg-pink-100");
         if (date.toLocaleDateString("en-CA") === selectedDate)
           cls.push("bg-blue-100");
@@ -450,7 +473,7 @@ export default function CalendarViewRowStyle({
         return cls;
       }}
       height="auto"
-      slotMinWidth={80} // Increased for better visibility of daily info
+      slotMinWidth={80}
     />
   );
 }

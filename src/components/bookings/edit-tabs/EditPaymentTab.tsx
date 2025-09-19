@@ -47,8 +47,8 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
 
   const calculateTotals = () => {
     const nights = calculateNights();
-    // Use room's base price from reservationData if available, otherwise fallback to 2500
-    const roomBasePrice = reservationData.roomName ? 2500 : 2500; // TODO: Get actual room price from API
+    // TODO: Get actual room price from API - for now return 0 if no data available
+    const roomBasePrice = 0; // No fallback prices in production
     const basePrice = roomBasePrice * nights;
 
     let addonsTotal = 0;
