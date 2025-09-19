@@ -470,7 +470,7 @@
 /* Target the specific FullCalendar icon classes */
 .fc-icon-minus-square,
 .fc-icon-plus-square {
-  font-size: 0 !important; /* Hide default square icons */
+  font-size: 0 !important;
   width: 16px !important;
   height: 16px !important;
   display: inline-flex !important;
@@ -510,8 +510,9 @@ span.fc-scrollgrid-sync-inner {
   justify-content: space-between !important;
 }
 
-.fc-datagrid-expander .fc-datagrid-expander-placeholder .fc-icon {
+.fc-datagrid-expander .fc-datagrid-expander-placeholder {
   display: none !important;
+  visibility: hidden !important;
 }
 
 /* Hide horizontal scrollbar and prevent horizontal overflow */
