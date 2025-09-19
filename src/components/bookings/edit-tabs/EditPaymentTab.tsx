@@ -20,9 +20,10 @@ import {
 } from "@/components/ui/select";
 
 export const EditPaymentTab: React.FC<EditTabProps> = ({
-  reservationData,
+  // reservationData,
   formData,
   updateFormData,
+  availableRooms,
   onPrevious,
   onSave,
   onDelete
@@ -47,8 +48,11 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
 
   const calculateTotals = () => {
     const nights = calculateNights();
-    // TODO: Get actual room price from API - for now return 0 if no data available
-    const roomBasePrice = 0; // No fallback prices in production
+    // Get actual room price from availableRooms data
+    const currentRoom = availableRooms?.find(
+      (room) => room.id === formData.roomId
+    );
+    const roomBasePrice = currentRoom?.basePrice || 0;
     const basePrice = roomBasePrice * nights;
 
     let addonsTotal = 0;
