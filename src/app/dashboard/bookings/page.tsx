@@ -123,7 +123,7 @@ export default function BookingsRowStylePage() {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`; // YYYY-MM-DD format in local timezone
-  }, []); // Only compute once on mount
+  }, []);
 
   const isToday = (date: Date) => {
     const now = new Date();
@@ -896,17 +896,6 @@ export default function BookingsRowStylePage() {
       </div>
 
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
-
-      {/* Debug Info (Development Only) */}
-      {/* {process.env.NODE_ENV === "development" && (
-        <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-          <p>
-            🔧 Debug: Last refetch: {new Date(lastRefetch).toLocaleTimeString()}
-          </p>
-          <p>🔧 Debug: Is refetching: {isRefetching ? "Yes" : "No"}</p>
-          <p>🔧 Debug: Events count: {events.length}</p>
-        </div>
-      )} */}
     </div>
   );
 }

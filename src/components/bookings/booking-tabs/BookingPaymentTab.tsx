@@ -38,7 +38,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   // Create payment intent when card payment is selected
   const createPaymentIntent = useCallback(
     async (amount: number) => {
-      console.log("🚀 Creating PaymentIntent for amount:", amount);
       setIsCreatingPaymentIntent(true);
       try {
         const requestBody = {
@@ -55,8 +54,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
           }
         };
 
-        console.log("📤 Request body:", requestBody);
-
         const response = await fetch("/api/test/create-payment-intent", {
           method: "POST",
           headers: {
@@ -65,28 +62,23 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
           body: JSON.stringify(requestBody)
         });
 
-        console.log("📥 Response status:", response.status);
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ Response error:", errorText);
+
           throw new Error(
             `Failed to create payment intent: ${response.status} ${errorText}`
           );
         }
 
         const data = await response.json();
-        console.log("✅ PaymentIntent created:", data);
 
         if (data.clientSecret) {
           setClientSecret(data.clientSecret);
-          console.log("🔑 Client secret set:", data.clientSecret);
         } else {
-          console.error("❌ No clientSecret in response:", data);
           throw new Error("No clientSecret received from server");
         }
       } catch (error) {
-        console.error("💥 Error creating payment intent:", error);
+        console.error("Error creating payment intent:", error);
         toast.error("Failed to initialize payment. Please try again.");
         setClientSecret(null); // Clear any existing client secret
       } finally {
@@ -146,10 +138,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
 
   // Handle payment method selection
   const handlePaymentMethodChange = async (method: string) => {
-    console.log("� HANDLER CALLED - Payment method changed to:", method);
-    console.log("�💳 Payment method changed to:", method);
-    console.log("📊 Rates loading:", ratesLoading);
-
     // Update form data
     updateFormData({
       payment: {
@@ -162,22 +150,12 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
     // Auto-initialize PaymentIntent when card is selected (better UX)
     if (method === "card" && !ratesLoading) {
       const totals = calculateTotals();
-      console.log("💰 Calculated totals:", totals);
 
       if (totals.subtotal > 0) {
-        console.log("🎯 Creating PaymentIntent for subtotal:", totals.subtotal);
         // Auto-create PaymentIntent immediately for smooth UX
         await createPaymentIntent(totals.subtotal);
-      } else {
-        console.warn("⚠️ Subtotal is 0, not creating PaymentIntent");
       }
     } else {
-      console.log(
-        "🚫 Not creating PaymentIntent - method:",
-        method,
-        "ratesLoading:",
-        ratesLoading
-      );
       // Clear payment intent for non-card payments
       setClientSecret(null);
       setPaymentStatus("idle");
@@ -188,7 +166,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
 
   // Create PaymentIntent on mount if card is already selected
   useEffect(() => {
-    console.log("🔄 useEffect triggered - checking if PaymentIntent needed");
     if (
       formData.payment.paymentMethod === "card" &&
       !clientSecret &&
@@ -196,9 +173,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       !ratesLoading &&
       totals.subtotal > 0
     ) {
-      console.log(
-        "🚀 Auto-creating PaymentIntent on mount for existing card selection"
-      );
       createPaymentIntent(totals.subtotal);
     }
   }, [
@@ -210,26 +184,13 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
     createPaymentIntent
   ]);
 
-  // Debug current state
-  console.log("🔍 Current state:", {
-    paymentMethod: formData.payment.paymentMethod,
-    clientSecret: !!clientSecret,
-    isCreatingPaymentIntent,
-    ratesLoading,
-    totals: totals.subtotal
-  });
-
   // Handle payment success
   const handlePaymentSuccess = (result: PaymentResult) => {
     setPaymentStatus("succeeded");
     toast.success("Payment successful! Creating your reservation...");
 
-    console.log("Payment succeeded with result:", result);
-    console.log("PaymentIntent ID:", result.paymentIntentId);
-
     // Validate payment result
     if (!result.success || !result.paymentIntentId) {
-      console.error("Payment result invalid:", result);
       toast.error("Payment data incomplete. Please try again.");
       setPaymentStatus("idle");
       return;
@@ -253,12 +214,6 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
         }
       }
     };
-
-    console.log("Creating booking with payment data:", updatedFormData.payment);
-    console.log(
-      "Credit card data being sent:",
-      updatedFormData.payment.creditCard
-    );
 
     // Create the booking
     handleCreate(updatedFormData);

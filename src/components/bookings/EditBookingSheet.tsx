@@ -22,6 +22,7 @@ import {
   ChevronDownIcon
 } from "@heroicons/react/24/outline";
 import EditTabNavigation from "./edit-tabs/EditTabNavigation";
+import { toast } from "sonner";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
@@ -160,7 +161,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       setEditingReservation(null);
     } catch (error) {
       console.error("Failed to update reservation:", error);
-      // Handle error (show toast, etc.)
+      toast.error("Failed to update reservation. Please try again.");
     }
   };
 
@@ -177,7 +178,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       setEditingReservation(null);
     } catch (error) {
       console.error("Failed to delete reservation:", error);
-      // Handle error (show toast, etc.)
+      toast.error("Failed to delete reservation. Please try again.");
     }
   };
 
@@ -271,34 +272,44 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                   sideOffset={5}
                 >
                   <DropdownMenuItem
-                    onClick={() => console.log("Status changed to: CONFIRMED")}
+                    onClick={() => {
+                      /* TODO: Implement status change to CONFIRMED */
+                    }}
                   >
                     Confirmed
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => console.log("Status changed to: PENDING")}
+                    onClick={() => {
+                      /* TODO: Implement status change to PENDING */
+                    }}
                   >
                     Pending
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => console.log("Status changed to: CANCELED")}
+                    onClick={() => {
+                      /* TODO: Implement status change to CANCELED */
+                    }}
                   >
                     Canceled
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => console.log("Status changed to: IN_HOUSE")}
+                    onClick={() => {
+                      /* TODO: Implement status change to IN_HOUSE */
+                    }}
                   >
                     In-House
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() =>
-                      console.log("Status changed to: CHECKED_OUT")
-                    }
+                    onClick={() => {
+                      /* TODO: Implement status change to CHECKED_OUT */
+                    }}
                   >
                     Checked Out
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => console.log("Status changed to: NO_SHOW")}
+                    onClick={() => {
+                      /* TODO: Implement status change to NO_SHOW */
+                    }}
                   >
                     No-Show
                   </DropdownMenuItem>

@@ -31,8 +31,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
 }) => {
   if (!viewReservation) return null;
 
-  console.log("ViewDetailsModal reservation:", viewReservation);
-
   const nights = Math.ceil(
     (new Date(viewReservation.checkOut).getTime() -
       new Date(viewReservation.checkIn).getTime()) /
