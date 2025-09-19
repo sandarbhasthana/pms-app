@@ -481,7 +481,7 @@
 .fc-icon-minus-square:before {
   content: "▼" !important;
   font-size: 12px !important;
-  color: #121212 !important; /* Black color for light theme */
+  color: #121212 !important;
   display: inline-block !important;
   transition: all 0.2s ease !important;
 }
