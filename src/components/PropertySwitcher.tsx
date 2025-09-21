@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Building2, Check, ChevronDown } from "lucide-react";
+import { Building2, Check, ChevronDown, Plus } from "lucide-react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -170,13 +171,41 @@ export function PropertySwitcher({
     }
   };
 
-  // Don't render if user has no properties or only one property
-  if (!properties.length || properties.length === 1) {
+  // Don't render if session is loading
+  if (!session) {
     return null;
   }
 
-  // Don't render if session is loading
-  if (!session) {
+  // Show "Add First Property" button if no properties exist
+  if (!properties.length) {
+    return (
+      <div className={`flex items-center space-x-2 ${className}`}>
+        {showLabel && (
+          <span className="text-sm text-gray-600 dark:text-gray-400 hidden md:block">
+            Property:
+          </span>
+        )}
+
+        <Link href="/admin/settings/properties">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 justify-between min-w-[160px] max-w-[200px] border-dashed border-2 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+          >
+            <div className="flex items-center space-x-2 truncate">
+              <Plus className="h-4 w-4 flex-shrink-0 text-purple-600" />
+              <span className="truncate text-purple-600 font-medium">
+                Add First Property
+              </span>
+            </div>
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Don't render if only one property (no need for switcher)
+  if (properties.length === 1) {
     return null;
   }
 

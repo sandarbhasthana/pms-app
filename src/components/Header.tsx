@@ -65,8 +65,8 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
 
       {/* Right-side controls */}
       <div className="flex items-center space-x-2 md:space-x-4">
-        {/* Property switcher */}
-        <PropertySwitcher />
+        {/* Property switcher - only for non-SUPER_ADMIN users */}
+        {role !== "SUPER_ADMIN" && <PropertySwitcher />}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}

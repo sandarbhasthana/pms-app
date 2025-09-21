@@ -6,6 +6,7 @@ import type { JWT } from "next-auth/jwt";
 // import type { Profile } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { compare } from "bcryptjs";
 import prisma from "@/lib/prisma";
 import { getUserProperties } from "@/lib/property-context";
 
@@ -94,11 +95,64 @@ function FirebaseProvider(options: {
 }
 */
 
+// Helper function to build user session (shared between providers)
+async function buildUserSession(user: {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+}) {
+  // Check if user has any organization memberships
+  const membership = await prisma.userOrg.findFirst({
+    where: { userId: user.id }
+  });
+
+  // SUPER_ADMIN users might not have organization memberships
+  // They should access the platform dashboard, not organization context
+  if (!membership) {
+    // Return minimal session for SUPER_ADMIN or users without org memberships
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      orgId: null,
+      role: "SUPER_ADMIN", // Assume SUPER_ADMIN if no org membership
+      currentPropertyId: null,
+      availableProperties: [],
+      defaultProperty: null
+    } as never;
+  }
+
+  // For users with organization memberships (regular org users)
+  // Fetch user's available properties
+  const availableProperties = await getUserProperties(user.id);
+
+  // Determine default property
+  const defaultProperty =
+    availableProperties.find((p) => p.isDefault) || availableProperties[0];
+
+  // Return the shape NextAuth expects
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    orgId: membership.organizationId,
+    role: membership.role,
+    currentPropertyId: defaultProperty?.id,
+    availableProperties,
+    defaultProperty
+  } as never;
+}
+
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   providers: [
+    // Dev Login Provider (email-only, unchanged)
     CredentialsProvider({
+      id: "dev-login",
       name: "Dev Login",
       credentials: {
         email: {
@@ -116,32 +170,44 @@ export const authOptions: AuthOptions = {
         });
         if (!user) return null;
 
-        // 2. fetch ONE membership for org context in JWT
-        const membership = await prisma.userOrg.findFirst({
-          where: { userId: user.id }
+        // 2. build and return user session
+        return await buildUserSession(user);
+      }
+    }),
+
+    // Password Login Provider (email + password)
+    CredentialsProvider({
+      id: "password-login",
+      name: "Password Login",
+      credentials: {
+        email: {
+          label: "Email",
+          type: "email",
+          placeholder: "admin@example.com"
+        },
+        password: {
+          label: "Password",
+          type: "password"
+        }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        // 1. lookup user
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
         });
-        if (!membership) return null;
+        if (!user || !user.password) return null;
 
-        // 3. fetch user's available properties
-        const availableProperties = await getUserProperties(user.id);
+        // 2. verify password
+        const isValidPassword = await compare(
+          credentials.password,
+          user.password
+        );
+        if (!isValidPassword) return null;
 
-        // 4. determine default property
-        const defaultProperty =
-          availableProperties.find((p) => p.isDefault) ||
-          availableProperties[0];
-
-        // 5. return the shape NextAuth expects
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          orgId: membership.organizationId,
-          role: membership.role,
-          currentPropertyId: defaultProperty?.id,
-          availableProperties,
-          defaultProperty
-        } as never;
+        // 3. build and return user session
+        return await buildUserSession(user);
       }
     })
 
