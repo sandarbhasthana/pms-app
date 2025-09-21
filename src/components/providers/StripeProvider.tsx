@@ -32,7 +32,7 @@ export function StripeProvider({
         colorText: theme === "dark" ? "#f0f8ff" : "#1e1e1e",
         colorDanger: "#df1b41",
         colorSuccess: "#059669",
-        fontFamily: "Inter, system-ui, sans-serif",
+        fontFamily: "Jost, system-ui, sans-serif",
         spacingUnit: "4px",
         borderRadius: "6px",
         // Input styling
@@ -172,7 +172,7 @@ export function useStripeTheme() {
         colorPrimary: "#7210a2",
         colorBackground: theme === "dark" ? "#1e1e1e" : "#ffffff",
         colorText: theme === "dark" ? "#f0f8ff" : "#1e1e1e",
-        fontFamily: "Inter, system-ui, sans-serif"
+        fontFamily: "Jost, system-ui, sans-serif"
       }
     }),
     [theme]

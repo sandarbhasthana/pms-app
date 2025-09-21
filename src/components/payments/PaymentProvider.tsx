@@ -36,7 +36,7 @@ export function PaymentProvider({
         colorText: theme === "dark" ? "#f0f8ff" : "#1e1e1e",
         colorDanger: "#df1b41",
         colorSuccess: "#059669",
-        fontFamily: "Inter, system-ui, sans-serif",
+        fontFamily: "Jost, system-ui, sans-serif",
         spacingUnit: "4px",
         borderRadius: "6px",
         // Input styling
