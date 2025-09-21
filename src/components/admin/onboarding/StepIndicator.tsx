@@ -49,24 +49,25 @@ export function StepIndicator({
                     onClick={() => clickable && onStepClick?.(step)}
                     disabled={!clickable}
                     className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-medium transition-all duration-200",
+                      // Base styles
+                      "flex items-center justify-center w-10 h-10 rounded-full border-2",
+                      "text-sm font-medium transition-all duration-200",
+                      // Status-based styles (mutually exclusive)
                       {
-                        // Completed step
+                        // Completed step styles
                         "bg-purple-600 border-purple-600 text-white hover:bg-purple-700":
                           status === "completed",
-
-                        // Current step
+                        // Current step styles
                         "bg-white border-purple-600 text-purple-600 ring-4 ring-purple-100 dark:bg-gray-900 dark:ring-purple-900/20":
                           status === "current",
-
-                        // Upcoming step
+                        // Upcoming step styles
                         "bg-white border-gray-300 text-gray-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400":
-                          status === "upcoming",
-
-                        // Clickable states
+                          status === "upcoming"
+                      },
+                      // Interactive states
+                      {
                         "cursor-pointer hover:border-purple-500":
                           clickable && status !== "current",
-
                         "cursor-not-allowed": !clickable
                       }
                     )}
@@ -207,14 +208,23 @@ export function HorizontalStepIndicator({
                 onClick={() => clickable && onStepClick?.(step)}
                 disabled={!clickable}
                 className={cn(
-                  "w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200",
+                  // Base styles
+                  "w-10 h-10 rounded-full border-2 flex items-center justify-center",
+                  "text-sm font-medium transition-all duration-200",
+                  // Status-based styles (mutually exclusive)
                   {
+                    // Completed step styles
                     "bg-purple-600 border-purple-600 text-white":
                       status === "completed",
+                    // Current step styles
                     "bg-white border-purple-600 text-purple-600 ring-4 ring-purple-100 dark:bg-gray-900":
                       status === "current",
+                    // Upcoming step styles
                     "bg-white border-gray-300 text-gray-500 dark:bg-gray-800 dark:border-gray-600":
-                      status === "upcoming",
+                      status === "upcoming"
+                  },
+                  // Interactive states
+                  {
                     "cursor-pointer hover:border-purple-500":
                       clickable && status !== "current",
                     "cursor-not-allowed": !clickable
