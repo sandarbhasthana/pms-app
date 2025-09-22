@@ -30,6 +30,8 @@ declare module "next-auth" {
       availableProperties: PropertyInfo[];
       /** Default property for this user */
       defaultProperty?: PropertyInfo;
+      /** Number of properties user has access to */
+      propertyCount: number;
     };
   }
 
@@ -44,6 +46,8 @@ declare module "next-auth" {
     availableProperties?: PropertyInfo[];
     /** Default property for this user */
     defaultProperty?: PropertyInfo;
+    /** Number of properties user has access to */
+    propertyCount?: number;
   }
 }
 
@@ -61,5 +65,7 @@ declare module "next-auth/jwt" {
     availableProperties?: PropertyInfo[];
     /** Default property for this user */
     defaultProperty?: PropertyInfo;
+    /** Number of properties user has access to */
+    propertyCount?: number;
   }
 }

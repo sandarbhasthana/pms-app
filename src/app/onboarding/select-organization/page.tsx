@@ -21,8 +21,11 @@ export default function SelectOrganizationPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
+      console.log("🔍 Property Selector: Fetching user properties...");
+
       fetch("/api/onboarding/memberships")
         .then((res) => {
+          console.log("📡 API Response status:", res.status);
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
           }
@@ -33,33 +36,58 @@ export default function SelectOrganizationPage() {
           return res.json();
         })
         .then((data) => {
+          console.log("📋 Received properties data:", data);
+
           if (data.properties && data.properties.length === 1) {
             // Auto-select if only one property
-            document.cookie = `orgId=${data.properties[0].organizationId}; path=/`;
-            document.cookie = `propertyId=${data.properties[0].propertyId}; path=/`;
+            const property = data.properties[0];
+            console.log(
+              "🎯 Auto-selecting single property:",
+              property.propertyName
+            );
+            document.cookie = `orgId=${property.organizationId}; path=/`;
+            document.cookie = `propertyId=${property.propertyId}; path=/`;
+            console.log("🔄 Auto-navigating to dashboard...");
             router.replace("/dashboard");
           } else if (data.properties && data.properties.length > 0) {
+            console.log(
+              `📝 Setting ${data.properties.length} properties for selection`
+            );
             setProperties(data.properties);
           } else {
-            console.error("No properties found for user");
+            console.error("❌ No properties found for user");
             setProperties([]);
           }
         })
         .catch((error) => {
-          console.error("Error fetching properties:", error);
+          console.error("💥 Error fetching properties:", error);
           setProperties([]);
         });
     }
   }, [status, router]);
 
   const handleSelect = () => {
+    console.log("🎯 Handle Select clicked", { selectedProperty, properties });
+
     const selectedProp = properties.find(
       (p) => p.propertyId === selectedProperty
     );
+
+    console.log("🏠 Selected property:", selectedProp);
+
     if (selectedProp) {
+      console.log("🍪 Setting cookies:", {
+        orgId: selectedProp.organizationId,
+        propertyId: selectedProp.propertyId
+      });
+
       document.cookie = `orgId=${selectedProp.organizationId}; path=/`;
       document.cookie = `propertyId=${selectedProp.propertyId}; path=/`;
+
+      console.log("🔄 Navigating to dashboard...");
       router.replace("/dashboard");
+    } else {
+      console.error("❌ No property found for selection:", selectedProperty);
     }
   };
 

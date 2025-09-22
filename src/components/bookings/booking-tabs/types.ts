@@ -97,6 +97,14 @@ export interface TabNavigationProps {
   setActiveTab: (tab: BookingTab) => void;
   completedTabs: Set<BookingTab>;
   formData: BookingFormData;
+  onCustomerSelect?: (customer: {
+    guestName: string;
+    email: string;
+    phone: string;
+    idNumber?: string;
+    idType?: string;
+    issuingCountry?: string;
+  }) => void;
 }
 
 export interface BookingTabProps {

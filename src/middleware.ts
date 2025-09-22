@@ -20,18 +20,99 @@ export async function middleware(req: NextRequest) {
 
     if (token) {
       // SUPER_ADMIN goes to platform dashboard
-      if (token.role === "SUPER_ADMIN" || !token.orgId) {
+      if (token.role === "SUPER_ADMIN") {
+        console.log("🔄 Middleware: SUPER_ADMIN -> /admin/organizations");
         return NextResponse.redirect(new URL("/admin/organizations", req.url));
       }
-      // Regular users go to organization selection or their org dashboard
-      else {
+
+      // For ORG_ADMIN and other roles, check if they have completed property selection
+      const propertyIdCookie = req.cookies.get("propertyId")?.value;
+      const orgIdCookie = req.cookies.get("orgId")?.value;
+
+      console.log("🔄 Middleware: Dashboard access check", {
+        role: token.role,
+        sessionOrgId: token.orgId,
+        sessionPropertyId: token.currentPropertyId,
+        propertyCount: token.propertyCount,
+        cookieOrgId: orgIdCookie,
+        cookiePropertyId: propertyIdCookie,
+        pathname,
+        // Additional debugging
+        hasPropertyCount: typeof token.propertyCount !== "undefined",
+        propertyCountType: typeof token.propertyCount,
+        shouldShowSelector: token.propertyCount !== 1
+      });
+
+      // Handle single-property organizations: auto-select and allow dashboard access
+      if (token.propertyCount === 1 && token.currentPropertyId && token.orgId) {
+        console.log(
+          "✅ Middleware: Single property org, auto-allowing dashboard access",
+          {
+            propertyId: token.currentPropertyId,
+            orgId: token.orgId
+          }
+        );
+
+        // Set cookies for consistency with property selector flow
+        const response = NextResponse.next();
+        response.cookies.set("orgId", token.orgId, { path: "/" });
+        response.cookies.set("propertyId", token.currentPropertyId, {
+          path: "/"
+        });
+        return response;
+      }
+
+      // For multi-property orgs, check if user has made an explicit selection
+      // We need both orgId and propertyId cookies to be set by the property selector
+      if (token.propertyCount && token.propertyCount > 1) {
+        // Multi-property org: require explicit selection (both cookies must be set)
+        if (propertyIdCookie && orgIdCookie) {
+          console.log(
+            "✅ Middleware: Multi-property org with explicit selection, allowing dashboard access",
+            {
+              propertyIdCookie,
+              orgIdCookie,
+              sessionPropertyId: token.currentPropertyId,
+              orgId: token.orgId
+            }
+          );
+          return NextResponse.next();
+        } else {
+          console.log(
+            "🔄 Middleware: Multi-property org needs explicit selection -> /onboarding/select-organization",
+            {
+              propertyIdCookie: !!propertyIdCookie,
+              orgIdCookie: !!orgIdCookie,
+              propertyCount: token.propertyCount
+            }
+          );
+          return NextResponse.redirect(
+            new URL("/onboarding/select-organization", req.url)
+          );
+        }
+      }
+
+      // Fallback: if user has orgId but we couldn't determine property count, redirect to selector
+      if (token.orgId || orgIdCookie) {
+        console.log(
+          "🔄 Middleware: Unknown property count, redirecting to selector"
+        );
         return NextResponse.redirect(
           new URL("/onboarding/select-organization", req.url)
         );
       }
+
+      // If user has no orgId, they need to select organization first
+      console.log(
+        "🔄 Middleware: No organization context -> /onboarding/select-organization"
+      );
+      return NextResponse.redirect(
+        new URL("/onboarding/select-organization", req.url)
+      );
     }
     // Not authenticated, redirect to signin
     else {
+      console.log("🔄 Middleware: Not authenticated -> /auth/signin");
       return NextResponse.redirect(new URL("/auth/signin", req.url));
     }
   }

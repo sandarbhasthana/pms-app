@@ -10,6 +10,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { BookingTab, TabNavigationProps } from "./types";
+import { CustomerSearchDropdown } from "../CustomerSearchDropdown";
+import {
+  useCustomerSearch,
+  CustomerSearchResult
+} from "@/hooks/useCustomerSearch";
 
 const tabConfig = {
   details: {
@@ -36,8 +41,32 @@ export const BookingTabNavigation: React.FC<TabNavigationProps> = ({
   activeTab,
   setActiveTab,
   completedTabs,
-  formData
+  formData,
+  onCustomerSelect
 }) => {
+  // Customer search functionality
+  const handleCustomerSelect = React.useCallback(
+    (customer: CustomerSearchResult) => {
+      if (onCustomerSelect) {
+        onCustomerSelect({
+          guestName: customer.guestName,
+          email: customer.email,
+          phone: customer.phone,
+          idNumber: customer.idNumber,
+          idType: customer.idType,
+          issuingCountry: customer.issuingCountry
+        });
+      }
+    },
+    [onCustomerSelect]
+  );
+
+  const customerSearch = useCustomerSearch({
+    onCustomerSelect: handleCustomerSelect,
+    debounceMs: 500,
+    minQueryLength: 3
+  });
+
   const isTabCompleted = (tab: BookingTab): boolean => {
     return completedTabs.has(tab);
   };
@@ -66,14 +95,27 @@ export const BookingTabNavigation: React.FC<TabNavigationProps> = ({
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Booking Information
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-3">
           Complete all sections to finalize your reservation
         </p>
+
+        {/* Customer Search - Mobile */}
+        <CustomerSearchDropdown
+          query={customerSearch.query}
+          onQueryChange={customerSearch.setQuery}
+          results={customerSearch.results}
+          isLoading={customerSearch.isLoading}
+          isOpen={customerSearch.isOpen}
+          onClose={() => customerSearch.setIsOpen(false)}
+          onSelectCustomer={customerSearch.selectCustomer}
+          placeholder="Search Customer's Name, Email or Phone..."
+        />
       </div>
 
-      {/* Desktop: Header with Tabs and Progress side-by-side */}
-      <div className="hidden md:flex justify-between items-start mb-4">
-        <div>
+      {/* Desktop: Header with Search and Tabs */}
+      <div className="hidden md:flex items-start mb-4">
+        {/* Left: Title and Description */}
+        <div className="flex-shrink-0 w-64">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Booking Information
           </h2>
@@ -82,8 +124,24 @@ export const BookingTabNavigation: React.FC<TabNavigationProps> = ({
           </p>
         </div>
 
-        {/* Tabs and Progress in top-right - Desktop only */}
-        <div className="flex flex-col items-end gap-3">
+        {/* Center: Customer Search - Desktop */}
+        <div className="flex-1 flex justify-center px-8">
+          <div className="w-full max-w-md">
+            <CustomerSearchDropdown
+              query={customerSearch.query}
+              onQueryChange={customerSearch.setQuery}
+              results={customerSearch.results}
+              isLoading={customerSearch.isLoading}
+              isOpen={customerSearch.isOpen}
+              onClose={() => customerSearch.setIsOpen(false)}
+              onSelectCustomer={customerSearch.selectCustomer}
+              placeholder="Search Customer's Name, Email or Phone..."
+            />
+          </div>
+        </div>
+
+        {/* Right: Tabs and Progress */}
+        <div className="flex-shrink-0 flex flex-col items-end gap-3">
           {/* Tab Navigation - Compact horizontal layout */}
           <Tabs
             value={activeTab}

@@ -247,6 +247,45 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     }
   }, []);
 
+  // Handle customer selection from search
+  const handleCustomerSelect = useCallback(
+    (customer: {
+      guestName: string;
+      email: string;
+      phone: string;
+      idNumber?: string;
+      idType?: string;
+      issuingCountry?: string;
+    }) => {
+      // Update form data with customer information
+      updateFormData({
+        fullName: customer.guestName,
+        email: customer.email,
+        phone: customer.phone,
+        idNumber: customer.idNumber || "",
+        idType: customer.idType || "passport",
+        issuingCountry: customer.issuingCountry || ""
+      });
+
+      // Also update the legacy state props for backward compatibility
+      setFullName(customer.guestName);
+      setEmail(customer.email);
+      setPhone(customer.phone);
+      if (customer.idNumber) setIdNumber(customer.idNumber);
+      if (customer.idType) setIdType(customer.idType);
+      if (customer.issuingCountry) setIssuingCountry(customer.issuingCountry);
+    },
+    [
+      updateFormData,
+      setFullName,
+      setEmail,
+      setPhone,
+      setIdNumber,
+      setIdType,
+      setIssuingCountry
+    ]
+  );
+
   if (!selectedSlot) return null;
 
   return (
@@ -292,6 +331,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
               setActiveTab={setActiveTab}
               completedTabs={completedTabs}
               formData={formData}
+              onCustomerSelect={handleCustomerSelect}
             />
 
             <TabsContent value="details" className="mt-0">

@@ -51,10 +51,41 @@ export function PropertyDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const currentPropertyId = session?.user?.currentPropertyId;
+  // Get property ID from session or cookie
+  const getPropertyId = () => {
+    // First try session
+    if (session?.user?.currentPropertyId) {
+      console.log(
+        "📱 Using property ID from session:",
+        session.user.currentPropertyId
+      );
+      return session.user.currentPropertyId;
+    }
+
+    // Fallback to cookie
+    const propertyIdFromCookie =
+      typeof window !== "undefined"
+        ? document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("propertyId="))
+            ?.split("=")[1]
+        : null;
+
+    console.log("🍪 Using property ID from cookie:", propertyIdFromCookie);
+    return propertyIdFromCookie;
+  };
+
+  const currentPropertyId = getPropertyId();
   const currentProperty = session?.user?.availableProperties?.find(
     (p) => p.id === currentPropertyId
   );
+
+  console.log("🏠 PropertyDashboard state:", {
+    currentPropertyId,
+    currentProperty: currentProperty?.name,
+    sessionLoaded: !!session,
+    availablePropertiesCount: session?.user?.availableProperties?.length || 0
+  });
 
   const loadDashboardData = useCallback(async () => {
     try {

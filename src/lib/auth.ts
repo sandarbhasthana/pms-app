@@ -120,7 +120,8 @@ async function buildUserSession(user: {
       role: "SUPER_ADMIN", // Assume SUPER_ADMIN if no org membership
       currentPropertyId: null,
       availableProperties: [],
-      defaultProperty: null
+      defaultProperty: null,
+      propertyCount: 0
     } as never;
   }
 
@@ -142,7 +143,8 @@ async function buildUserSession(user: {
     role: membership.role,
     currentPropertyId: defaultProperty?.id,
     availableProperties,
-    defaultProperty
+    defaultProperty,
+    propertyCount: availableProperties.length
   } as never;
 }
 
@@ -230,6 +232,7 @@ export const authOptions: AuthOptions = {
         token.currentPropertyId = u.currentPropertyId;
         token.availableProperties = u.availableProperties;
         token.defaultProperty = u.defaultProperty;
+        token.propertyCount = u.propertyCount;
       }
 
       if (trigger === "update" && session?.currentPropertyId) {
@@ -249,6 +252,8 @@ export const authOptions: AuthOptions = {
         session.user.availableProperties = token.availableProperties;
       if (token.defaultProperty)
         session.user.defaultProperty = token.defaultProperty;
+      if (typeof token.propertyCount === "number")
+        session.user.propertyCount = token.propertyCount;
       return session;
     }
   }
