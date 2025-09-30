@@ -266,24 +266,8 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
         idType: customer.idType || "passport",
         issuingCountry: customer.issuingCountry || ""
       });
-
-      // Also update the legacy state props for backward compatibility
-      setFullName(customer.guestName);
-      setEmail(customer.email);
-      setPhone(customer.phone);
-      if (customer.idNumber) setIdNumber(customer.idNumber);
-      if (customer.idType) setIdType(customer.idType);
-      if (customer.issuingCountry) setIssuingCountry(customer.issuingCountry);
     },
-    [
-      updateFormData,
-      setFullName,
-      setEmail,
-      setPhone,
-      setIdNumber,
-      setIdType,
-      setIssuingCountry
-    ]
+    [updateFormData]
   );
 
   if (!selectedSlot) return null;

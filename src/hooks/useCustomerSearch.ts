@@ -43,7 +43,7 @@ export const useCustomerSearch = (
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Debounced search function
@@ -82,7 +82,7 @@ export const useCustomerSearch = (
 
         // Only update if this is still the current search
         if (!abortControllerRef.current.signal.aborted) {
-          setResults(data || []);
+          setResults(data.results || []);
           setIsOpen(true);
         }
       } catch (error) {
@@ -107,7 +107,7 @@ export const useCustomerSearch = (
 
       // Clear previous timeout
       if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+        window.clearTimeout(debounceTimeoutRef.current);
       }
 
       // If query is empty, clear results immediately
@@ -122,7 +122,7 @@ export const useCustomerSearch = (
       setIsOpen(true);
 
       // Set new timeout for debounced search
-      debounceTimeoutRef.current = setTimeout(() => {
+      debounceTimeoutRef.current = window.setTimeout(() => {
         performSearch(newQuery.trim());
       }, debounceMs);
     },
@@ -143,7 +143,7 @@ export const useCustomerSearch = (
 
     // Clear timeout
     if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+      window.clearTimeout(debounceTimeoutRef.current);
     }
   }, []);
 
@@ -155,8 +155,10 @@ export const useCustomerSearch = (
         onCustomerSelect(customer);
       }
 
-      // Clear search after selection
-      clearSearch();
+      // Close dropdown and clear search after a small delay to ensure form updates complete
+      setTimeout(() => {
+        clearSearch();
+      }, 100);
     },
     [onCustomerSelect, clearSearch]
   );
@@ -165,7 +167,7 @@ export const useCustomerSearch = (
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+        window.clearTimeout(debounceTimeoutRef.current);
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();

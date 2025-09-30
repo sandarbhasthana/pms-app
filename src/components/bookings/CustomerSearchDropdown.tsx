@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useRef, useEffect } from "react";
 import {
   MagnifyingGlassIcon,
   UserIcon,
@@ -35,43 +34,12 @@ export const CustomerSearchDropdown: React.FC<CustomerSearchDropdownProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Calculate dropdown position when opened
+  // Handle click outside to close dropdown - DISABLED
   useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
-    } else {
-      setDropdownPosition(null);
-    }
-  }, [isOpen]);
-
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
+    // Click-outside handler disabled because it interferes with button clicks
+    // The dropdown will close when a customer is selected via the selectCustomer function
   }, [isOpen, onClose]);
 
   // Handle keyboard navigation
@@ -155,90 +123,87 @@ export const CustomerSearchDropdown: React.FC<CustomerSearchDropdownProps> = ({
         )}
       </div>
 
-      {/* Dropdown Results - Rendered via Portal */}
-      {isOpen &&
-        dropdownPosition &&
-        typeof window !== "undefined" &&
-        createPortal(
-          <div
-            className="fixed z-[10000] bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
-            style={{
-              top: dropdownPosition.top,
-              left: dropdownPosition.left,
-              width: dropdownPosition.width
-            }}
-          >
-            {isLoading && results.length === 0 && query.length >= 2 && (
-              <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent" />
-                  Searching...
-                </div>
+      {/* Dropdown Results */}
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1"
+        >
+          {isLoading && results.length === 0 && query.length >= 2 && (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent" />
+                Searching...
               </div>
-            )}
+            </div>
+          )}
 
-            {!isLoading && results.length === 0 && query.length >= 2 && (
-              <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                No customers found for &quot;{query}&quot;
+          {!isLoading && results.length === 0 && query.length >= 2 && (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              No customers found for &quot;{query}&quot;
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <>
+              <div className="px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-700/50">
+                {results.length} customer{results.length > 1 ? "s" : ""} found
               </div>
-            )}
 
-            {results.length > 0 && (
-              <>
-                <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  {results.length} customer{results.length > 1 ? "s" : ""} found
-                </div>
-
-                {results.map((customer) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => onSelectCustomer(customer)}
-                    className={cn(
-                      "w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800",
-                      "focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-800",
-                      "border-b border-gray-100 dark:border-gray-700 last:border-b-0",
-                      "transition-colors duration-150"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-                          <UserIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {customer.guestName}
-                        </div>
-
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          {customer.email && (
-                            <div className="truncate">{customer.email}</div>
-                          )}
-                          {customer.phone && (
-                            <div className="truncate">{customer.phone}</div>
-                          )}
-                        </div>
-
-                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          {formatLastStay(customer)}
-                        </div>
+              {results.map((customer) => (
+                <button
+                  key={customer.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelectCustomer(customer);
+                  }}
+                  className={cn(
+                    "w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800",
+                    "focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-800",
+                    "border-b border-gray-100 dark:border-gray-700 last:border-b-0",
+                    "transition-colors duration-150"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       </div>
                     </div>
-                  </button>
-                ))}
-              </>
-            )}
 
-            {query.length > 0 && query.length < 3 && (
-              <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                Type at least 3 characters to search
-              </div>
-            )}
-          </div>,
-          document.body
-        )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {customer.guestName}
+                      </div>
+
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {customer.email && (
+                          <div className="truncate">{customer.email}</div>
+                        )}
+                        {customer.phone && (
+                          <div className="truncate">{customer.phone}</div>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        {formatLastStay(customer)}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+
+          {query.length > 0 && query.length < 3 && (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              Type at least 3 characters to search
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
