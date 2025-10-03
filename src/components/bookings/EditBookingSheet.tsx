@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef
+} from "react";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +29,14 @@ import {
 } from "@heroicons/react/24/outline";
 import EditTabNavigation from "./edit-tabs/EditTabNavigation";
 import { toast } from "sonner";
+import { ReservationStatus } from "@prisma/client";
+import {
+  getStatusConfig,
+  validateStatusTransition,
+  getAllowedNextStatuses
+} from "@/lib/reservation-status/utils";
+import StatusBadge from "@/components/reservation-status/StatusBadge";
+import { useRenderLogger } from "@/lib/debug/render-logger";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
@@ -74,66 +88,99 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
     }
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Initialize form data when reservation changes
+  // Track the last reservation ID to prevent unnecessary form resets
+  const lastReservationIdRef = useRef<string | null>(null);
+
+  // Debug: Log renders for performance testing
+  useRenderLogger("EditBookingSheet", {
+    reservationId: editingReservation?.id,
+    hasUnsavedChanges
+  });
+
+  // Initialize form data when reservation ID actually changes (prevents unnecessary resets)
   useEffect(() => {
-    if (editingReservation) {
-      setFormData({
-        guestName: editingReservation.guestName || "",
-        email: editingReservation.email || "",
-        phone: editingReservation.phone || "",
-        idType: editingReservation.idType || "passport",
-        idNumber: editingReservation.idNumber || "",
-        issuingCountry: editingReservation.issuingCountry || "",
-        roomId: editingReservation.roomId || "",
-        checkIn: editingReservation.checkIn || "",
-        checkOut: editingReservation.checkOut || "",
-        adults: editingReservation.adults || 1,
-        children: editingReservation.children || 0,
-        notes: editingReservation.notes || "",
-        addons: {
-          extraBed: false, // Will be populated from backend when available
-          extraBedQuantity: 1,
-          breakfast: false,
-          breakfastQuantity: 1,
-          customAddons: (editingReservation.addons || []).map((addon) => ({
-            id: addon.id,
-            name: addon.name,
-            description: addon.description,
-            price: addon.price,
-            quantity: addon.quantity,
-            perNight: addon.nights ? addon.nights > 1 : false // Convert nights to perNight boolean
-          }))
-        },
-        payment: {
-          totalAmount: editingReservation.totalAmount || 0,
-          paidAmount: editingReservation.paidAmount || 0,
-          paymentMethod: "cash", // Default method
-          paymentStatus: editingReservation.paymentStatus || "UNPAID"
-        }
-      });
-      setActiveTab("details");
-      setHasUnsavedChanges(false);
+    const currentReservationId = editingReservation?.id || null;
+
+    // Only initialize if the reservation ID has actually changed
+    if (currentReservationId !== lastReservationIdRef.current) {
+      lastReservationIdRef.current = currentReservationId;
+
+      if (editingReservation) {
+        setFormData({
+          guestName: editingReservation.guestName || "",
+          email: editingReservation.email || "",
+          phone: editingReservation.phone || "",
+          idType: editingReservation.idType || "passport",
+          idNumber: editingReservation.idNumber || "",
+          issuingCountry: editingReservation.issuingCountry || "",
+          roomId: editingReservation.roomId || "",
+          checkIn: editingReservation.checkIn || "",
+          checkOut: editingReservation.checkOut || "",
+          adults: editingReservation.adults || 1,
+          children: editingReservation.children || 0,
+          notes: editingReservation.notes || "",
+          addons: {
+            extraBed: false, // Will be populated from backend when available
+            extraBedQuantity: 1,
+            breakfast: false,
+            breakfastQuantity: 1,
+            customAddons: (editingReservation.addons || []).map((addon) => ({
+              id: addon.id,
+              name: addon.name,
+              description: addon.description,
+              price: addon.price,
+              quantity: addon.quantity,
+              perNight: addon.nights ? addon.nights > 1 : false // Convert nights to perNight boolean
+            }))
+          },
+          payment: {
+            totalAmount: editingReservation.totalAmount || 0,
+            paidAmount: editingReservation.paidAmount || 0,
+            paymentMethod: "cash", // Default method
+            paymentStatus: editingReservation.paymentStatus || "UNPAID"
+          }
+        });
+        setActiveTab("details");
+        setHasUnsavedChanges(false);
+      }
+    }
+  }, [editingReservation]); // Safe to depend on entire object now since we check ID internally
+
+  // Helper function to check for changes (moved outside to avoid recreating)
+  const checkForChanges = useCallback(() => {
+    if (!editingReservation) return false;
+
+    return (
+      formData.guestName !== (editingReservation.guestName || "") ||
+      formData.email !== (editingReservation.email || "") ||
+      formData.phone !== (editingReservation.phone || "") ||
+      formData.roomId !== (editingReservation.roomId || "") ||
+      formData.checkIn !== (editingReservation.checkIn || "") ||
+      formData.checkOut !== (editingReservation.checkOut || "") ||
+      formData.adults !== (editingReservation.adults || 1) ||
+      formData.children !== (editingReservation.children || 0) ||
+      formData.notes !== (editingReservation.notes || "")
+    );
+  }, [formData, editingReservation]);
+
+  // Calculate if there are unsaved changes (using callback to avoid dependency issues)
+  const hasChanges = useMemo(() => {
+    return checkForChanges();
+  }, [checkForChanges]);
+
+  // Update hasUnsavedChanges state only when hasChanges actually changes
+  useEffect(() => {
+    setHasUnsavedChanges(hasChanges);
+  }, [hasChanges]);
+
+  // Reset ref when reservation is cleared
+  useEffect(() => {
+    if (!editingReservation) {
+      lastReservationIdRef.current = null;
     }
   }, [editingReservation]);
-
-  // Track changes to form data
-  useEffect(() => {
-    if (editingReservation) {
-      const hasChanges =
-        formData.guestName !== (editingReservation.guestName || "") ||
-        formData.email !== (editingReservation.email || "") ||
-        formData.phone !== (editingReservation.phone || "") ||
-        formData.roomId !== (editingReservation.roomId || "") ||
-        formData.checkIn !== (editingReservation.checkIn || "") ||
-        formData.checkOut !== (editingReservation.checkOut || "") ||
-        formData.adults !== (editingReservation.adults || 1) ||
-        formData.children !== (editingReservation.children || 0) ||
-        formData.notes !== (editingReservation.notes || "");
-
-      setHasUnsavedChanges(hasChanges);
-    }
-  }, [formData, editingReservation]);
 
   const updateFormData = useCallback(
     (updates: Partial<EditBookingFormData>) => {
@@ -162,6 +209,67 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
     } catch (error) {
       console.error("Failed to update reservation:", error);
       toast.error("Failed to update reservation. Please try again.");
+    }
+  };
+
+  const handleStatusUpdate = async (
+    newStatus: ReservationStatus,
+    reason?: string
+  ) => {
+    if (!editingReservation) return;
+
+    // Validate the status transition
+    const currentStatus = editingReservation.status as ReservationStatus;
+    const validation = validateStatusTransition(currentStatus, newStatus);
+
+    if (!validation.isValid) {
+      toast.error(validation.reason || "Invalid status transition");
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+
+    try {
+      const response = await fetch(
+        `/api/reservations/${editingReservation.id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            newStatus,
+            reason,
+            updatedBy: "user", // This should come from session
+            isAutomatic: false
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update status");
+      }
+
+      await response.json();
+
+      // Update the local reservation data
+      setEditingReservation({
+        ...editingReservation,
+        status: newStatus,
+        statusUpdatedAt: new Date().toISOString(),
+        statusChangeReason: reason
+      });
+
+      toast.success(`Status updated to ${getStatusConfig(newStatus).label}`);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update status"
+      );
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -246,22 +354,15 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                    className="h-8 w-auto min-w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                    disabled={isUpdatingStatus}
                   >
                     <span>
-                      {editingReservation.status === "CONFIRMED"
-                        ? "Confirmed"
-                        : editingReservation.status === "PENDING"
-                        ? "Pending"
-                        : editingReservation.status === "CANCELED"
-                        ? "Canceled"
-                        : editingReservation.status === "IN_HOUSE"
-                        ? "In-House"
-                        : editingReservation.status === "CHECKED_OUT"
-                        ? "Checked Out"
-                        : editingReservation.status === "NO_SHOW"
-                        ? "No-Show"
-                        : "Confirmed"}
+                      {
+                        getStatusConfig(
+                          editingReservation.status as ReservationStatus
+                        ).label
+                      }
                     </span>
                     <ChevronDownIcon className="h-3 w-3 opacity-50" />
                   </Button>
@@ -271,48 +372,37 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
                   className="z-[10000]"
                   sideOffset={5}
                 >
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to CONFIRMED */
-                    }}
-                  >
-                    Confirmed
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to PENDING */
-                    }}
-                  >
-                    Pending
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to CANCELED */
-                    }}
-                  >
-                    Canceled
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to IN_HOUSE */
-                    }}
-                  >
-                    In-House
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to CHECKED_OUT */
-                    }}
-                  >
-                    Checked Out
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      /* TODO: Implement status change to NO_SHOW */
-                    }}
-                  >
-                    No-Show
-                  </DropdownMenuItem>
+                  {getAllowedNextStatuses(
+                    editingReservation.status as ReservationStatus
+                  ).map((status) => {
+                    const config = getStatusConfig(status);
+                    return (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => handleStatusUpdate(status)}
+                        disabled={isUpdatingStatus}
+                        className="flex items-center gap-2"
+                      >
+                        <StatusBadge
+                          status={status}
+                          size="sm"
+                          showIcon={true}
+                          showLabel={false}
+                        />
+                        <span>{config.label}</span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {config.description}
+                        </span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  {getAllowedNextStatuses(
+                    editingReservation.status as ReservationStatus
+                  ).length === 0 && (
+                    <DropdownMenuItem disabled>
+                      No status changes available
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -403,17 +493,10 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
             <SheetTitle className="text-3xl flex items-center gap-3">
               {formData.guestName || editingReservation.guestName}
               <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    editingReservation.status === "CONFIRMED"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                      : editingReservation.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-                  }`}
-                >
-                  {editingReservation.status || "UNKNOWN"}
-                </span>
+                <StatusBadge
+                  status={editingReservation.status as ReservationStatus}
+                  size="sm"
+                />
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     editingReservation.paymentStatus === "PAID"

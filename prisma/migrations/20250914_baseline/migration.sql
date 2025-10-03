@@ -11,7 +11,7 @@ CREATE TYPE "public"."UserRole" AS ENUM ('SUPER_ADMIN', 'ORG_ADMIN', 'PROPERTY_M
 CREATE TYPE "public"."ReservationSource" AS ENUM ('WEBSITE', 'PHONE', 'WALK_IN', 'CHANNEL');
 
 -- CreateEnum
-CREATE TYPE "public"."ReservationStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'CHECKED_IN', 'CHECKED_OUT', 'NO_SHOW');
+CREATE TYPE "public"."ReservationStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'CHECKED_IN', 'CHECKED_OUT', 'NO_SHOW', 'CONFIRMATION_PENDING', 'IN_HOUSE');
 
 -- CreateEnum
 CREATE TYPE "public"."ChannelType" AS ENUM ('BOOKING_COM', 'EXPEDIA', 'AIRBNB', 'VRBO', 'OTHER');
@@ -193,7 +193,7 @@ CREATE TABLE "public"."Reservation" (
     "checkOut" TIMESTAMP(3) NOT NULL,
     "source" "public"."ReservationSource" NOT NULL,
     "channelId" TEXT,
-    "status" "public"."ReservationStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "public"."ReservationStatus" NOT NULL DEFAULT 'CONFIRMATION_PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "adults" INTEGER NOT NULL DEFAULT 1,

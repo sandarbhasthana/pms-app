@@ -23,6 +23,13 @@ export interface EditReservationData {
   ratePlan?: string;
   notes?: string;
 
+  // New status-related fields
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  statusUpdatedBy?: string | null;
+  statusUpdatedAt?: string;
+  statusChangeReason?: string | null;
+
   // Add-ons (when backend support is added)
   addons?: ReservationAddon[];
 

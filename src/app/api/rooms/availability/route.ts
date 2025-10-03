@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
                   // Only check active reservations
                   {
                     status: {
-                      in: ["CONFIRMED", "CHECKED_IN", "PENDING"]
+                      in: ["CONFIRMED", "IN_HOUSE", "CONFIRMATION_PENDING"]
                     }
                   }
                 ]

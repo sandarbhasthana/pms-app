@@ -1,3 +1,6 @@
+// Re-export reservation status types
+export * from "./reservation-status";
+
 export interface Reservation {
   id: string;
   roomId: string;
@@ -6,11 +9,17 @@ export interface Reservation {
   checkOut: string;
   adults: number;
   children: number;
-  status?: string;
+  status?: string; // Keep as string for backward compatibility, but prefer ReservationStatus
   ratePlan?: string;
   notes?: string;
   roomNumber?: string;
   paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID";
+  // New status-related fields
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  statusUpdatedBy?: string | null;
+  statusUpdatedAt?: string;
+  statusChangeReason?: string | null;
 }
 
 export interface RoomType {

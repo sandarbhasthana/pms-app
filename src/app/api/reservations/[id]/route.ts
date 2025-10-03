@@ -165,7 +165,7 @@ export async function PATCH(
                 roomId: currentReservation.roomId,
                 propertyId: reservation.propertyId,
                 id: { not: id }, // Exclude current reservation
-                status: { in: ["CONFIRMED", "CHECKED_IN"] },
+                status: { in: ["CONFIRMED", "IN_HOUSE"] },
                 OR: [
                   {
                     AND: [
@@ -281,7 +281,7 @@ export async function DELETE(
     }
 
     // Check if reservation can be deleted (e.g., not checked in)
-    if (reservation.status === "CHECKED_IN") {
+    if (reservation.status === "IN_HOUSE") {
       return NextResponse.json(
         { error: "Cannot delete a checked-in reservation" },
         { status: 400 }

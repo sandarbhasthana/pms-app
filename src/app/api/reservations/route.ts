@@ -276,7 +276,7 @@ export async function POST(req: NextRequest) {
           where: {
             roomId: roomId,
             propertyId: propertyId,
-            status: { in: ["CONFIRMED", "CHECKED_IN"] },
+            status: { in: ["CONFIRMED", "IN_HOUSE"] },
             OR: [
               {
                 AND: [

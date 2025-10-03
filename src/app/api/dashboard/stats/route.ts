@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       const occupiedRooms = await tx.reservation.count({
         where: {
           propertyId: propertyId,
-          status: "CHECKED_IN",
+          status: "IN_HOUSE",
           checkIn: { lte: today },
           checkOut: { gt: today }
         }
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         where: {
           propertyId: propertyId,
           status: {
-            in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"]
+            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
         }
       });
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
       const pendingReservations = await tx.reservation.count({
         where: {
           propertyId: propertyId,
-          status: "PENDING"
+          status: "CONFIRMATION_PENDING"
         }
       });
 
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
             lt: endOfToday
           },
           status: {
-            in: ["CONFIRMED", "CHECKED_IN"]
+            in: ["CONFIRMED", "IN_HOUSE"]
           }
         }
       });
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
             lt: endOfToday
           },
           status: {
-            in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"]
+            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
         }
       });
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
             gte: startOfMonth
           },
           status: {
-            in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"]
+            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
         }
       });
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
             lt: startOfMonth
           },
           status: {
-            in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"]
+            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
         }
       });

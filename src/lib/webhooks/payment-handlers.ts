@@ -1,6 +1,8 @@
 // src/lib/webhooks/payment-handlers.ts
 import Stripe from "stripe";
 import prisma from "@/lib/prisma";
+import { addJobToQueue } from "@/lib/queue/queues";
+import { PaymentStatusJobData } from "@/lib/queue/types";
 
 // Payment Intent Event Handlers
 export async function handlePaymentIntentSucceeded(
@@ -45,6 +47,14 @@ export async function handlePaymentIntentSucceeded(
           paymentMethod: paymentIntent.payment_method_types[0]
         }
       });
+
+      // Trigger payment-based status update
+      await triggerPaymentStatusUpdate(
+        reservationId,
+        paymentIntent.amount / 100,
+        paymentIntent.id,
+        propertyId
+      );
 
       // TODO: Send confirmation email to guest
       // TODO: Notify property manager
@@ -297,9 +307,76 @@ export async function handlePaymentIntentPartiallyFunded(
       }
     });
 
+    // Trigger payment-based status update for partial payments too
+    await triggerPaymentStatusUpdate(
+      reservationId,
+      paymentIntent.amount / 100,
+      paymentIntent.id,
+      propertyId
+    );
+
     console.log(`Payment partially funded for reservation ${reservationId}`);
   } catch (error) {
     console.error("Error handling partial funding:", error);
+  }
+}
+
+/**
+ * Trigger payment-based status update via queue system
+ */
+async function triggerPaymentStatusUpdate(
+  reservationId: string,
+  paymentAmount: number,
+  paymentIntentId: string,
+  propertyId?: string
+): Promise<void> {
+  try {
+    if (!propertyId) {
+      // Get propertyId from reservation if not provided
+      const reservation = await prisma.reservation.findUnique({
+        where: { id: reservationId },
+        select: { propertyId: true }
+      });
+
+      if (!reservation?.propertyId) {
+        console.warn(
+          `Cannot trigger payment status update: propertyId not found for reservation ${reservationId}`
+        );
+        return;
+      }
+
+      propertyId = reservation.propertyId;
+    }
+
+    const jobData: PaymentStatusJobData = {
+      jobType: "payment-status-update",
+      propertyId,
+      reservationId,
+      paymentAmount,
+      paymentIntentId,
+      timestamp: new Date(),
+      triggeredBy: "payment-webhook"
+    };
+
+    await addJobToQueue(
+      "reservation-automation",
+      `payment-status-${reservationId}-${Date.now()}`,
+      jobData,
+      {
+        priority: 1, // High priority for payment-triggered updates
+        delay: 2000 // Small delay to ensure payment data is fully processed
+      }
+    );
+
+    console.log(
+      `✅ Payment status update job queued for reservation ${reservationId}`
+    );
+  } catch (error) {
+    console.error(
+      `❌ Failed to queue payment status update for ${reservationId}:`,
+      error
+    );
+    // Don't throw - payment processing should continue even if status update fails
   }
 }
 

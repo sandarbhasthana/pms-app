@@ -9,19 +9,19 @@ datasource db {
 
 /// Tenant entity representing an organization that can have multiple properties
 model Organization {
-  id                       String            @id @default(cuid())
+  id                       String               @id @default(cuid())
   name                     String
-  domain                   String?           @unique
-  industry                 String?           // Hotel, Resort, etc.
-  size                     String?           // Small, Medium, Large, etc.
-  contactPhone             String?
-  contactAddress           String?
-  isActive                 Boolean           @default(true)
-  createdAt                DateTime          @default(now())
-  updatedAt                DateTime          @updatedAt
+  domain                   String?              @unique
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
   stripeAccountId          String?
-  stripeChargesEnabled     Boolean           @default(false)
-  stripeOnboardingComplete Boolean           @default(false)
+  stripeChargesEnabled     Boolean              @default(false)
+  stripeOnboardingComplete Boolean              @default(false)
+  contactAddress           String?
+  contactPhone             String?
+  industry                 String?
+  size                     String?
+  isActive                 Boolean              @default(true)
   channels                 Channel[]
   invitations              InvitationToken[]
   properties               Property[]
@@ -29,11 +29,9 @@ model Organization {
   rooms                    Room[]
   roomTypes                RoomType[]
   users                    UserOrg[]
-
-  // Analytics relationships
+  onboardingTracking       OnboardingTracking?
   metrics                  OrganizationMetrics?
   activities               SystemActivity[]
-  onboardingTracking       OnboardingTracking?
 
   @@index([domain])
   @@index([stripeAccountId])
@@ -68,23 +66,21 @@ model Property {
 
 /// Application user
 model User {
-  id              String            @id @default(cuid())
-  email           String            @unique
-  name            String?
-  image           String?
-  password        String?           // Hashed password for standard login
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  phone           String?
-  favorites       Favorite[]
-  sentInvitations InvitationToken[] @relation("InvitationCreator")
-  rateChangeLogs  RateChangeLog[]
-  reservations    Reservation[]
-  memberships     UserOrg[]
-  userProperties  UserProperty[]
-
-  // Analytics relationships
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  image            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  phone            String?
+  password         String?
+  isActive         Boolean           @default(true)
+  favorites        Favorite[]
+  sentInvitations  InvitationToken[] @relation("InvitationCreator")
+  rateChangeLogs   RateChangeLog[]
+  reservations     Reservation[]
+  memberships      UserOrg[]
+  userProperties   UserProperty[]
   systemActivities SystemActivity[]
 }
 
@@ -94,9 +90,9 @@ model UserOrg {
   userId         String
   organizationId String
   role           UserRole
-  isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  isActive       Boolean      @default(true)
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
 
@@ -238,7 +234,7 @@ model RoomImage {
 
 /// Reservation or booking entity
 model Reservation {
-  id                    String               @id @default(cuid())
+  id                    String                     @id @default(cuid())
   organizationId        String
   roomId                String
   userId                String?
@@ -247,11 +243,16 @@ model Reservation {
   checkOut              DateTime
   source                ReservationSource
   channelId             String?
-  status                ReservationStatus    @default(PENDING)
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
-  adults                Int                  @default(1)
-  children              Int                  @default(0)
+  status                ReservationStatus          @default(CONFIRMATION_PENDING)
+  checkedInAt           DateTime?
+  checkedOutAt          DateTime?
+  statusUpdatedBy       String?
+  statusUpdatedAt       DateTime                   @default(now()) @updatedAt
+  statusChangeReason    String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  adults                Int                        @default(1)
+  children              Int                        @default(0)
   notes                 String?
   email                 String?
   idNumber              String?
@@ -267,23 +268,44 @@ model Reservation {
   paymentStatus         String?
   paymentTerms          String?
   stripeCustomerId      String?
-  stripePaymentIntentId String?              @unique
+  stripePaymentIntentId String?                    @unique
   paidAmount            Float?
   refundedAmount        Float?
   payments              Payment[]
   paymentTransactions   PaymentTransaction[]
   Refund                Refund[]
-  channel               Channel?             @relation(fields: [channelId], references: [id])
-  organization          Organization         @relation(fields: [organizationId], references: [id])
-  property              Property             @relation(fields: [propertyId], references: [id])
-  room                  Room                 @relation(fields: [roomId], references: [id])
-  user                  User?                @relation(fields: [userId], references: [id])
+  statusHistory         ReservationStatusHistory[]
+  channel               Channel?                   @relation(fields: [channelId], references: [id])
+  organization          Organization               @relation(fields: [organizationId], references: [id])
+  property              Property                   @relation(fields: [propertyId], references: [id])
+  room                  Room                       @relation(fields: [roomId], references: [id])
+  user                  User?                      @relation(fields: [userId], references: [id])
 
   @@index([organizationId])
   @@index([propertyId])
   @@index([roomId])
   @@index([userId])
   @@index([channelId])
+  @@index([status])
+  @@index([statusUpdatedAt])
+}
+
+/// Audit trail for reservation status changes
+model ReservationStatusHistory {
+  id             String             @id @default(cuid())
+  reservationId  String
+  previousStatus ReservationStatus?
+  newStatus      ReservationStatus
+  changedBy      String?
+  changeReason   String?
+  changedAt      DateTime           @default(now())
+  isAutomatic    Boolean            @default(false)
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([changedAt])
+  @@index([newStatus])
 }
 
 /// Property settings scoped to a tenant or specific property
@@ -313,6 +335,26 @@ model PropertySettings {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   propertyId           String?   @unique
+
+  // Automation Settings
+  checkInTime                    String  @default("15:00")
+  checkOutTime                   String  @default("11:00")
+  noShowGraceHours              Int     @default(6)
+  lateCheckoutGraceHours        Int     @default(1)
+  autoConfirmThreshold          Int     @default(50)
+  sameDayPaymentRequired        Int     @default(100)
+
+  // Automation Toggles
+  enableNoShowDetection         Boolean @default(true)
+  enableLateCheckoutDetection   Boolean @default(true)
+  enableAutoCheckin             Boolean @default(true)
+  enableAutoConfirmation        Boolean @default(true)
+
+  // Notification Settings
+  notifyOnNoShow                Boolean @default(true)
+  notifyOnLateCheckout          Boolean @default(true)
+  notifyOnAutomationFailure     Boolean @default(true)
+
   property             Property? @relation(fields: [propertyId], references: [id])
 
   @@index([orgId])
@@ -522,6 +564,142 @@ model RateChangeLog {
   @@index([createdAt])
 }
 
+/// System-wide metrics for SUPER_ADMIN dashboard
+model SystemMetrics {
+  id                 String   @id @default(cuid())
+  date               DateTime @unique @default(now()) @db.Date
+  totalOrganizations Int      @default(0)
+  totalUsers         Int      @default(0)
+  totalProperties    Int      @default(0)
+  totalReservations  Int      @default(0)
+  activeUsers        Int      @default(0)
+  revenue            Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([date])
+  @@map("system_metrics")
+}
+
+/// Per-organization metrics tracking
+model OrganizationMetrics {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+  totalUsers           Int          @default(0)
+  totalProperties      Int          @default(0)
+  totalReservations    Int          @default(0)
+  totalRevenue         Decimal      @default(0) @db.Decimal(10, 2)
+  lastActivity         DateTime?
+  monthlyActiveUsers   Int          @default(0)
+  onboardingCompleted  Boolean      @default(false)
+  firstPropertyCreated Boolean      @default(false)
+  firstReservationMade Boolean      @default(false)
+  stripeConnected      Boolean      @default(false)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_metrics")
+}
+
+/// System activity audit trail
+model SystemActivity {
+  id             String             @id @default(cuid())
+  activityType   SystemActivityType
+  description    String
+  metadata       Json?
+  performedBy    String?
+  organizationId String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime           @default(now())
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+  user           User?              @relation(fields: [performedBy], references: [id])
+
+  @@index([activityType])
+  @@index([organizationId])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("system_activities")
+}
+
+/// Detailed onboarding flow tracking
+model OnboardingTracking {
+  id                     String       @id @default(cuid())
+  organizationId         String       @unique
+  startedAt              DateTime     @default(now())
+  completedAt            DateTime?
+  orgDetailsCompleted    Boolean      @default(false)
+  orgDetailsCompletedAt  DateTime?
+  adminUserCompleted     Boolean      @default(false)
+  adminUserCompletedAt   DateTime?
+  reviewCompleted        Boolean      @default(false)
+  reviewCompletedAt      DateTime?
+  firstLoginAt           DateTime?
+  firstPropertyCreatedAt DateTime?
+  firstReservationAt     DateTime?
+  stripeConnectedAt      DateTime?
+  timeToComplete         Int?
+  timeToFirstProperty    Int?
+  timeToFirstReservation Int?
+  isAbandoned            Boolean      @default(false)
+  abandonedAt            DateTime?
+  abandonedStep          String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@map("onboarding_tracking")
+}
+
+/// System health and performance monitoring
+model SystemHealth {
+  id                  String   @id @default(cuid())
+  timestamp           DateTime @default(now())
+  avgResponseTime     Float
+  errorRate           Float
+  uptime              Float
+  dbConnections       Int
+  dbQueryTime         Float
+  memoryUsage         Float
+  cpuUsage            Float
+  activeUsers         Int
+  ongoingReservations Int
+  createdAt           DateTime @default(now())
+
+  @@index([timestamp])
+  @@map("system_health")
+}
+
+/// Error tracking and resolution
+model ErrorLog {
+  id             String    @id @default(cuid())
+  errorType      String
+  errorMessage   String
+  stackTrace     String?
+  userId         String?
+  organizationId String?
+  endpoint       String?
+  method         String?
+  userAgent      String?
+  ipAddress      String?
+  requestBody    Json?
+  isResolved     Boolean   @default(false)
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  resolution     String?
+  createdAt      DateTime  @default(now())
+
+  @@index([errorType])
+  @@index([createdAt])
+  @@index([isResolved])
+  @@map("error_logs")
+}
+
 enum PropertyRole {
   PROPERTY_MGR
   FRONT_DESK
@@ -554,12 +732,12 @@ enum ReservationSource {
 }
 
 enum ReservationStatus {
-  PENDING
+  CONFIRMATION_PENDING
   CONFIRMED
-  CANCELLED
-  CHECKED_IN
+  IN_HOUSE
   CHECKED_OUT
   NO_SHOW
+  CANCELLED
 }
 
 enum ChannelType {
@@ -575,186 +753,6 @@ enum ShiftType {
   EVENING
   NIGHT
   FLEXIBLE
-}
-
-/// System-wide metrics for SUPER_ADMIN dashboard
-model SystemMetrics {
-  id                String   @id @default(cuid())
-  date              DateTime @default(now()) @db.Date
-  totalOrganizations Int     @default(0)
-  totalUsers        Int      @default(0)
-  totalProperties   Int      @default(0)
-  totalReservations Int      @default(0)
-  activeUsers       Int      @default(0)  // Last 30 days
-  revenue           Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@unique([date])
-  @@index([date])
-  @@map("system_metrics")
-}
-
-/// Per-organization metrics tracking
-model OrganizationMetrics {
-  id               String       @id @default(cuid())
-  organizationId   String       @unique
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  // Usage metrics
-  totalUsers       Int          @default(0)
-  totalProperties  Int          @default(0)
-  totalReservations Int         @default(0)
-  totalRevenue     Decimal      @default(0) @db.Decimal(10, 2)
-
-  // Activity metrics
-  lastActivity     DateTime?
-  monthlyActiveUsers Int        @default(0)
-
-  // Onboarding status
-  onboardingCompleted Boolean   @default(false)
-  firstPropertyCreated Boolean  @default(false)
-  firstReservationMade Boolean  @default(false)
-  stripeConnected  Boolean      @default(false)
-
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-
-  @@index([organizationId])
-  @@map("organization_metrics")
-}
-
-/// System activity audit trail
-model SystemActivity {
-  id             String            @id @default(cuid())
-  activityType   SystemActivityType
-  description    String
-  metadata       Json?             // Additional context data
-
-  // Who performed the action
-  performedBy    String?           // User ID
-  user           User?             @relation(fields: [performedBy], references: [id])
-
-  // What organization was affected
-  organizationId String?
-  organization   Organization?     @relation(fields: [organizationId], references: [id])
-
-  // System context
-  ipAddress      String?
-  userAgent      String?
-
-  createdAt      DateTime          @default(now())
-
-  @@index([activityType])
-  @@index([organizationId])
-  @@index([performedBy])
-  @@index([createdAt])
-  @@map("system_activities")
-}
-
-/// Detailed onboarding flow tracking
-model OnboardingTracking {
-  id               String       @id @default(cuid())
-  organizationId   String       @unique
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  // Onboarding flow tracking
-  startedAt        DateTime     @default(now())
-  completedAt      DateTime?
-
-  // Step completion tracking
-  orgDetailsCompleted    Boolean @default(false)
-  orgDetailsCompletedAt  DateTime?
-
-  adminUserCompleted     Boolean @default(false)
-  adminUserCompletedAt   DateTime?
-
-  reviewCompleted        Boolean @default(false)
-  reviewCompletedAt      DateTime?
-
-  // Post-onboarding tracking
-  firstLoginAt           DateTime?
-  firstPropertyCreatedAt DateTime?
-  firstReservationAt     DateTime?
-  stripeConnectedAt      DateTime?
-
-  // Metrics
-  timeToComplete         Int?     // Minutes to complete onboarding
-  timeToFirstProperty    Int?     // Minutes from completion to first property
-  timeToFirstReservation Int?     // Minutes from completion to first reservation
-
-  // Flags
-  isAbandoned           Boolean  @default(false)
-  abandonedAt           DateTime?
-  abandonedStep         String?  // Which step they abandoned at
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([organizationId])
-  @@index([startedAt])
-  @@index([completedAt])
-  @@map("onboarding_tracking")
-}
-
-/// System health and performance monitoring
-model SystemHealth {
-  id                String   @id @default(cuid())
-  timestamp         DateTime @default(now())
-
-  // Performance metrics
-  avgResponseTime   Float    // Average API response time (ms)
-  errorRate         Float    // Error rate percentage
-  uptime            Float    // Uptime percentage
-
-  // Database metrics
-  dbConnections     Int      // Active DB connections
-  dbQueryTime       Float    // Average query time (ms)
-
-  // Resource usage
-  memoryUsage       Float    // Memory usage percentage
-  cpuUsage          Float    // CPU usage percentage
-
-  // Business metrics
-  activeUsers       Int      // Currently active users
-  ongoingReservations Int    // Active reservations
-
-  createdAt         DateTime @default(now())
-
-  @@index([timestamp])
-  @@map("system_health")
-}
-
-/// Error tracking and resolution
-model ErrorLog {
-  id            String   @id @default(cuid())
-  errorType     String   // Error category
-  errorMessage  String   // Error description
-  stackTrace    String?  // Full stack trace
-
-  // Context
-  userId        String?
-  organizationId String?
-  endpoint      String?  // API endpoint where error occurred
-  method        String?  // HTTP method
-
-  // Request context
-  userAgent     String?
-  ipAddress     String?
-  requestBody   Json?
-
-  // Resolution
-  isResolved    Boolean  @default(false)
-  resolvedAt    DateTime?
-  resolvedBy    String?  // Admin who resolved
-  resolution    String?  // How it was resolved
-
-  createdAt     DateTime @default(now())
-
-  @@index([errorType])
-  @@index([createdAt])
-  @@index([isResolved])
-  @@map("error_logs")
 }
 
 /// System activity types enum
