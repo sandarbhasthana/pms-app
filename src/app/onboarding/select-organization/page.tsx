@@ -66,7 +66,7 @@ export default function SelectOrganizationPage() {
     }
   }, [status, router]);
 
-  const handleSelect = () => {
+  const handleSelect = async () => {
     console.log("🎯 Handle Select clicked", { selectedProperty, properties });
 
     const selectedProp = properties.find(
@@ -81,11 +81,17 @@ export default function SelectOrganizationPage() {
         propertyId: selectedProp.propertyId
       });
 
-      document.cookie = `orgId=${selectedProp.organizationId}; path=/`;
-      document.cookie = `propertyId=${selectedProp.propertyId}; path=/`;
+      // Set cookies with proper expiration
+      const maxAge = 60 * 60 * 24 * 30; // 30 days
+      document.cookie = `orgId=${selectedProp.organizationId}; path=/; max-age=${maxAge}`;
+      document.cookie = `propertyId=${selectedProp.propertyId}; path=/; max-age=${maxAge}`;
+
+      // Small delay to ensure cookies are set before navigation
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       console.log("🔄 Navigating to dashboard...");
-      router.replace("/dashboard");
+      // Use window.location.href for a full page reload to ensure middleware sees the cookies
+      window.location.href = "/dashboard";
     } else {
       console.error("❌ No property found for selection:", selectedProperty);
     }
