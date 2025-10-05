@@ -32,6 +32,15 @@ model Organization {
   onboardingTracking       OnboardingTracking?
   metrics                  OrganizationMetrics?
   activities               SystemActivity[]
+  businessRules            BusinessRule[]
+  notificationRules        NotificationRule[]
+  notificationLogs         NotificationLog[]
+  errorLogs                ErrorLog[]
+  errorAlerts              ErrorAlert[]
+
+  // Performance Monitoring Relations
+  performanceMetrics PerformanceMetric[]
+  queueMetrics       QueueMetric[]
 
   @@index([domain])
   @@index([stripeAccountId])
@@ -39,25 +48,34 @@ model Organization {
 
 /// Property entity representing individual properties within an organization
 model Property {
-  id             String            @id @default(cuid())
-  organizationId String
-  name           String
-  address        String?
-  phone          String?
-  email          String?
-  timezone       String            @default("UTC")
-  currency       String            @default("USD")
-  isActive       Boolean           @default(true)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  isDefault      Boolean           @default(false)
-  invitations    InvitationToken[]
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  settings       PropertySettings?
-  reservations   Reservation[]
-  rooms          Room[]
-  roomTypes      RoomType[]
-  userProperties UserProperty[]
+  id                String             @id @default(cuid())
+  organizationId    String
+  name              String
+  address           String?
+  phone             String?
+  email             String?
+  timezone          String             @default("UTC")
+  currency          String             @default("USD")
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isDefault         Boolean            @default(false)
+  invitations       InvitationToken[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  settings          PropertySettings?
+  reservations      Reservation[]
+  rooms             Room[]
+  roomTypes         RoomType[]
+  userProperties    UserProperty[]
+  businessRules     BusinessRule[]
+  notificationRules NotificationRule[]
+  notificationLogs  NotificationLog[]
+  errorLogs         ErrorLog[]
+  errorAlerts       ErrorAlert[]
+
+  // Performance Monitoring Relations
+  performanceMetrics PerformanceMetric[]
+  queueMetrics       QueueMetric[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -82,6 +100,24 @@ model User {
   memberships      UserOrg[]
   userProperties   UserProperty[]
   systemActivities SystemActivity[]
+  createdRules     BusinessRule[]    @relation("BusinessRuleCreator")
+  updatedRules     BusinessRule[]    @relation("BusinessRuleUpdater")
+
+  // Notification System Relations
+  createdNotificationRules NotificationRule[]           @relation("NotificationRuleCreator")
+  updatedNotificationRules NotificationRule[]           @relation("NotificationRuleUpdater")
+  notificationLogs         NotificationLog[]
+  notificationPreferences  UserNotificationPreferences?
+
+  // Error Tracking Relations
+  errorLogs          ErrorLog[]        @relation("ErrorLogUser")
+  assignedErrors     ErrorLog[]        @relation("ErrorLogAssignee")
+  resolvedErrors     ErrorLog[]        @relation("ErrorLogResolver")
+  errorOccurrences   ErrorOccurrence[]
+  createdErrorAlerts ErrorAlert[]      @relation("ErrorAlertCreator")
+
+  // Performance Monitoring Relations
+  performanceMetrics PerformanceMetric[]
 }
 
 /// Join table: user membership in a tenant with a role
@@ -310,8 +346,8 @@ model ReservationStatusHistory {
 
 /// Property settings scoped to a tenant or specific property
 model PropertySettings {
-  id                   String    @id @default(cuid())
-  orgId                String?   @unique
+  id                   String   @id @default(cuid())
+  orgId                String?  @unique
   propertyType         String
   propertyName         String
   propertyPhone        String
@@ -327,35 +363,35 @@ model PropertySettings {
   zip                  String
   latitude             Float
   longitude            Float
-  isManuallyPositioned Boolean   @default(false)
+  isManuallyPositioned Boolean  @default(false)
   photos               Json?
   printHeader          String?
   printHeaderImage     String?
   description          Json
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  propertyId           String?   @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  propertyId           String?  @unique
 
   // Automation Settings
-  checkInTime                    String  @default("15:00")
-  checkOutTime                   String  @default("11:00")
-  noShowGraceHours              Int     @default(6)
-  lateCheckoutGraceHours        Int     @default(1)
-  autoConfirmThreshold          Int     @default(50)
-  sameDayPaymentRequired        Int     @default(100)
+  checkInTime            String @default("15:00")
+  checkOutTime           String @default("11:00")
+  noShowGraceHours       Int    @default(6)
+  lateCheckoutGraceHours Int    @default(1)
+  autoConfirmThreshold   Int    @default(50)
+  sameDayPaymentRequired Int    @default(100)
 
   // Automation Toggles
-  enableNoShowDetection         Boolean @default(true)
-  enableLateCheckoutDetection   Boolean @default(true)
-  enableAutoCheckin             Boolean @default(true)
-  enableAutoConfirmation        Boolean @default(true)
+  enableNoShowDetection       Boolean @default(true)
+  enableLateCheckoutDetection Boolean @default(true)
+  enableAutoCheckin           Boolean @default(true)
+  enableAutoConfirmation      Boolean @default(true)
 
   // Notification Settings
-  notifyOnNoShow                Boolean @default(true)
-  notifyOnLateCheckout          Boolean @default(true)
-  notifyOnAutomationFailure     Boolean @default(true)
+  notifyOnNoShow            Boolean @default(true)
+  notifyOnLateCheckout      Boolean @default(true)
+  notifyOnAutomationFailure Boolean @default(true)
 
-  property             Property? @relation(fields: [propertyId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
 
   @@index([orgId])
   @@index([propertyId])
@@ -564,6 +600,478 @@ model RateChangeLog {
   @@index([createdAt])
 }
 
+/// Business rules for dynamic pricing and automation
+model BusinessRule {
+  id             String               @id @default(cuid())
+  name           String
+  description    String?
+  category       BusinessRuleCategory @default(PRICING)
+  priority       Int                  @default(100)
+  isActive       Boolean              @default(true)
+  isAIGenerated  Boolean              @default(false)
+  propertyId     String?
+  organizationId String
+  createdBy      String
+  updatedBy      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  // JSON fields for flexible rule definition
+  conditions Json // Array of RuleCondition objects
+  actions    Json // Array of RuleAction objects
+  metadata   Json? // Additional rule metadata
+
+  // Relations
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property?        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  creator      User             @relation("BusinessRuleCreator", fields: [createdBy], references: [id])
+  updater      User?            @relation("BusinessRuleUpdater", fields: [updatedBy], references: [id])
+  executions   RuleExecution[]
+  performance  RulePerformance?
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([category])
+  @@index([isActive])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+/// Rule execution history and performance tracking
+model RuleExecution {
+  id              String   @id @default(cuid())
+  ruleId          String
+  executedAt      DateTime @default(now())
+  context         Json // Execution context (occupancy, date, etc.)
+  result          Json // Execution result (price changes, etc.)
+  success         Boolean  @default(true)
+  errorMessage    String?
+  executionTimeMs Int?
+
+  // Relations
+  rule BusinessRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([executedAt])
+  @@index([success])
+}
+
+/// Rule performance metrics and analytics
+model RulePerformance {
+  id                   String    @id @default(cuid())
+  ruleId               String    @unique
+  totalExecutions      Int       @default(0)
+  successfulExecutions Int       @default(0)
+  failedExecutions     Int       @default(0)
+  avgExecutionTimeMs   Float?
+  totalRevenueImpact   Float?    @default(0)
+  lastExecutedAt       DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Performance metrics (JSON for flexibility)
+  metrics Json? // Additional performance data
+
+  // Relations
+  rule BusinessRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([totalExecutions])
+  @@index([totalRevenueImpact])
+  @@index([lastExecutedAt])
+}
+
+/// Enum for business rule categories
+enum BusinessRuleCategory {
+  PRICING
+  AVAILABILITY
+  RESTRICTIONS
+  NOTIFICATIONS
+  AUTOMATION
+  REVENUE_OPTIMIZATION
+}
+
+// Notification System Models
+model NotificationRule {
+  id          String                @id @default(cuid())
+  eventType   NotificationEventType
+  priority    NotificationPriority  @default(immediate)
+  targetRoles Json // Array of EmployeeRole
+  channels    Json // Array of NotificationChannel
+  isActive    Boolean               @default(true)
+  conditions  Json? // Array of NotificationCondition
+  template    Json // NotificationTemplate object
+  throttling  Json? // ThrottlingConfig object
+
+  propertyId     String?
+  organizationId String
+  createdBy      String
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  creator      User         @relation("NotificationRuleCreator", fields: [createdBy], references: [id])
+  updater      User?        @relation("NotificationRuleUpdater", fields: [updatedBy], references: [id])
+
+  @@map("notification_rules")
+}
+
+model NotificationLog {
+  id            String                @id @default(cuid())
+  eventType     NotificationEventType
+  priority      NotificationPriority
+  recipientId   String
+  recipientRole EmployeeRole
+  channel       NotificationChannel
+  subject       String
+  message       String                @db.Text
+  data          Json?
+
+  propertyId     String
+  organizationId String
+  ruleId         String?
+
+  createdAt    DateTime           @default(now())
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  status       NotificationStatus @default(pending)
+  errorMessage String?
+
+  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipient    User         @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("notification_logs")
+}
+
+model UserNotificationPreferences {
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  channels           Json // { inApp: boolean, email: boolean, sms: boolean }
+  eventSubscriptions Json // Event subscription preferences
+  quietHours         Json? // Quiet hours configuration
+  phoneNumber        String?
+  isActive           Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
+}
+
+enum NotificationEventType {
+  // Room Requests
+  room_service_request
+  room_change_request
+  special_accommodation_request
+  room_maintenance_request
+
+  // Reservation Changes
+  reservation_status_change
+  booking_modification
+  reservation_cancellation
+  no_show_detected
+  checkin_time_change
+  checkout_time_change
+
+  // Payment Issues
+  payment_failure
+  credit_card_declined
+  refund_processing_issue
+  chargeback_notification
+
+  // Service Requests/Housekeeping
+  cleaning_request
+  housekeeping_status_update
+  supply_request
+  lost_found_item
+
+  // Maintenance
+  equipment_failure
+  repair_request
+  safety_issue
+  preventive_maintenance_due
+
+  // Daily Summary Events
+  daily_revenue_summary
+  booking_performance_summary
+  guest_satisfaction_summary
+  staff_performance_summary
+  room_occupancy_summary
+}
+
+enum NotificationPriority {
+  immediate
+  daily_summary
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+}
+
+enum EmployeeRole {
+  front_desk
+  housekeeping
+  maintenance
+  manager
+  admin
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+// Error Tracking System Models
+model ErrorLog {
+  id         String        @id @default(cuid())
+  errorCode  String? // Custom error codes (E001, E002, etc.)
+  severity   ErrorSeverity @default(medium)
+  category   ErrorCategory @default(system)
+  title      String
+  message    String        @db.Text
+  stackTrace String?       @db.Text
+  context    Json? // Additional context data
+
+  // Location information
+  service        String? // Which service/module
+  endpoint       String? // API endpoint if applicable
+  userId         String? // User who triggered the error
+  propertyId     String?
+  organizationId String?
+
+  // Error metadata
+  userAgent String?
+  ipAddress String?
+  requestId String? // Correlation ID
+  sessionId String?
+
+  // Resolution tracking
+  status     ErrorStatus @default(open)
+  assignedTo String? // User assigned to fix
+  resolvedAt DateTime?
+  resolvedBy String?
+  resolution String?     @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  property     Property?     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?         @relation("ErrorLogUser", fields: [userId], references: [id])
+  assignee     User?         @relation("ErrorLogAssignee", fields: [assignedTo], references: [id])
+  resolver     User?         @relation("ErrorLogResolver", fields: [resolvedBy], references: [id])
+
+  // Error occurrences (for grouping similar errors)
+  occurrences ErrorOccurrence[]
+
+  @@index([severity, createdAt])
+  @@index([category, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([propertyId, createdAt])
+  @@index([status])
+  @@map("error_logs")
+}
+
+model ErrorOccurrence {
+  id         String   @id @default(cuid())
+  errorLogId String
+  occurredAt DateTime @default(now())
+  context    Json? // Specific context for this occurrence
+  userId     String?
+  requestId  String?
+
+  errorLog ErrorLog @relation(fields: [errorLogId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([errorLogId, occurredAt])
+  @@map("error_occurrences")
+}
+
+model ErrorAlert {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  // Alert conditions
+  severity ErrorSeverity[] // Which severities to alert on
+  category ErrorCategory[] // Which categories to alert on
+  services String[] // Which services to monitor
+
+  // Alert thresholds
+  threshold  Int @default(1) // Number of occurrences
+  timeWindow Int @default(300) // Time window in seconds
+  cooldown   Int @default(3600) // Cooldown period in seconds
+
+  // Notification settings
+  channels   Json // Notification channels
+  recipients Json // Who to notify
+
+  // Metadata
+  propertyId     String?
+  organizationId String
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastTriggered  DateTime?
+
+  // Relations
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation("ErrorAlertCreator", fields: [createdBy], references: [id])
+
+  @@map("error_alerts")
+}
+
+/// Performance monitoring and metrics
+model PerformanceMetric {
+  id         String                @id @default(cuid())
+  metricType PerformanceMetricType
+  name       String // "api_response_time", "db_query_time", etc.
+  value      Float // Metric value (time in ms, count, percentage, etc.)
+  unit       String // "ms", "count", "percent", "bytes", etc.
+  tags       Json? // Additional metadata (endpoint, query, etc.)
+
+  // Context
+  service   String? // "api", "database", "queue", "system"
+  endpoint  String? // API endpoint or database table
+  operation String? // "GET", "POST", "SELECT", "INSERT", etc.
+
+  // Timing
+  timestamp DateTime @default(now())
+  duration  Int? // Duration in milliseconds
+
+  // Organization context
+  organizationId String?
+  propertyId     String?
+  userId         String?
+
+  // Relationships
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  property     Property?     @relation(fields: [propertyId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@index([metricType, timestamp])
+  @@index([service, timestamp])
+  @@index([organizationId, timestamp])
+  @@index([propertyId, timestamp])
+  @@map("performance_metrics")
+}
+
+/// Queue job monitoring and statistics
+model QueueMetric {
+  id        String         @id @default(cuid())
+  queueName String // "reservation-status", "notifications", etc.
+  jobId     String? // BullMQ job ID
+  jobType   String // Job type/name
+  status    QueueJobStatus
+
+  // Timing metrics
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  failedAt    DateTime?
+  duration    Int? // Processing time in milliseconds
+  waitTime    Int? // Time in queue before processing
+
+  // Job details
+  attempts    Int  @default(1)
+  maxAttempts Int  @default(3)
+  priority    Int  @default(0)
+  delay       Int? // Delay before processing
+
+  // Error tracking
+  errorMessage String? @db.Text
+  stackTrace   String? @db.Text
+
+  // Context
+  data   Json? // Job data (sanitized)
+  result Json? // Job result
+
+  // Organization context
+  organizationId String?
+  propertyId     String?
+
+  // Relationships
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  property     Property?     @relation(fields: [propertyId], references: [id])
+
+  @@index([queueName, status, createdAt])
+  @@index([status, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("queue_metrics")
+}
+
+enum PerformanceMetricType {
+  api_response_time
+  api_throughput
+  db_query_time
+  db_connection_count
+  queue_processing_time
+  queue_wait_time
+  memory_usage
+  cpu_usage
+  disk_usage
+  error_rate
+  cache_hit_rate
+  custom
+}
+
+enum QueueJobStatus {
+  waiting
+  active
+  completed
+  failed
+  delayed
+  paused
+  stuck
+}
+
+enum ErrorSeverity {
+  critical
+  high
+  medium
+  low
+  info
+}
+
+enum ErrorCategory {
+  system
+  database
+  payment
+  queue
+  api
+  validation
+  authentication
+  authorization
+  business_logic
+  integration
+  notification
+  reservation
+  user_action
+}
+
+enum ErrorStatus {
+  open
+  in_progress
+  resolved
+  ignored
+  duplicate
+}
+
 /// System-wide metrics for SUPER_ADMIN dashboard
 model SystemMetrics {
   id                 String   @id @default(cuid())
@@ -673,31 +1181,6 @@ model SystemHealth {
 
   @@index([timestamp])
   @@map("system_health")
-}
-
-/// Error tracking and resolution
-model ErrorLog {
-  id             String    @id @default(cuid())
-  errorType      String
-  errorMessage   String
-  stackTrace     String?
-  userId         String?
-  organizationId String?
-  endpoint       String?
-  method         String?
-  userAgent      String?
-  ipAddress      String?
-  requestBody    Json?
-  isResolved     Boolean   @default(false)
-  resolvedAt     DateTime?
-  resolvedBy     String?
-  resolution     String?
-  createdAt      DateTime  @default(now())
-
-  @@index([errorType])
-  @@index([createdAt])
-  @@index([isResolved])
-  @@map("error_logs")
 }
 
 enum PropertyRole {
