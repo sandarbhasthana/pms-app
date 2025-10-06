@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { notificationService } from "@/lib/notifications/notification-service";
 import { createDefaultNotificationRules } from "@/lib/notifications/default-rules";
 import { prisma } from "@/lib/prisma";
@@ -36,16 +38,36 @@ export async function GET(request: NextRequest) {
       case "preferences":
         return await getUserPreferences(organizationId);
 
+      case "test-realtime":
+        return await testRealtimeNotification();
+
+      case "test-email":
+        return await testEmailNotification();
+
+      case "email-config":
+        return await testEmailConfiguration();
+
+      case "config-check":
+        return await checkEmailConfigurationStatus();
+
+      case "stream-stats":
+        return await getStreamStats();
+
       default:
         return NextResponse.json({
           message: "Notification System Test API",
           actions: [
             "setup - Create default notification rules",
             "test-immediate - Test immediate notifications",
+            "test-realtime - Test real-time SSE notifications",
+            "test-email - Test email notifications",
+            "email-config - Test email configuration",
+            "config-check - Check email configuration status",
             "test-daily-summary - Test daily summary",
             "rules - Get notification rules",
             "logs - Get notification logs",
-            "preferences - Get user preferences"
+            "preferences - Get user preferences",
+            "stream-stats - Get SSE connection statistics"
           ]
         });
     }
@@ -409,6 +431,191 @@ async function getUserPreferences(organizationId: string) {
     return NextResponse.json(
       {
         error: "Failed to get preferences",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Test email notifications
+ */
+async function testEmailNotification() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Send a test email notification
+    await notificationService.sendNotification({
+      eventType: NotificationEventType.PAYMENT_FAILURE,
+      recipientId: session.user.id,
+      recipientRole: EmployeeRole.FRONT_DESK,
+      propertyId: "test-property",
+      organizationId: "test-org",
+      data: {
+        guestName: "John Doe",
+        reservationId: "RES-12345",
+        amount: "5000",
+        errorMessage: "Credit card declined - insufficient funds"
+      },
+      subject: "⚠️ Test Email Notification",
+      message: "This is a test email notification to verify email delivery"
+    });
+
+    return NextResponse.json({
+      message: "Test email notification sent successfully",
+      recipient: session.user.id,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Email notification test error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to send email notification",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Test email configuration
+ */
+async function testEmailConfiguration() {
+  try {
+    const { sendGridEmailService } = await import(
+      "@/lib/notifications/sendgrid-email-service"
+    );
+
+    const result = await sendGridEmailService.testConfiguration();
+
+    if (result.success) {
+      return NextResponse.json({
+        message: "SendGrid configuration is valid",
+        configured: !!process.env.SENDGRID_API_KEY,
+        emailFrom: process.env.EMAIL_FROM || "Not configured",
+        emailReplyTo: process.env.EMAIL_REPLY_TO || "Not configured",
+        provider: "SendGrid",
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      return NextResponse.json(
+        {
+          error: "SendGrid configuration test failed",
+          details: result.error,
+          configured: !!process.env.SENDGRID_API_KEY,
+          provider: "SendGrid"
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error("Email configuration test error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to test email configuration",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Check email configuration status
+ */
+async function checkEmailConfigurationStatus() {
+  try {
+    const { checkEmailConfiguration } = await import(
+      "@/lib/config/email-config-checker"
+    );
+
+    const config = checkEmailConfiguration();
+
+    return NextResponse.json({
+      message: "Email configuration status retrieved",
+      ...config,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Email configuration check error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to check email configuration",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Test real-time notifications via SSE
+ */
+async function testRealtimeNotification() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Send a test real-time notification
+    await notificationService.sendNotification({
+      eventType: NotificationEventType.ROOM_SERVICE_REQUEST,
+      recipientId: session.user.id,
+      recipientRole: EmployeeRole.FRONT_DESK,
+      propertyId: "test-property",
+      organizationId: "test-org",
+      data: {
+        roomNumber: "101",
+        requestDetails: "Extra towels needed",
+        guestName: "Test Guest",
+        requestTime: new Date().toISOString()
+      },
+      subject: "🛎️ Test Real-time Notification",
+      message: "This is a test real-time notification sent via SSE"
+    });
+
+    return NextResponse.json({
+      message: "Real-time notification sent successfully",
+      recipient: session.user.id,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Real-time notification test error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to send real-time notification",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+/**
+ * Get SSE stream statistics
+ */
+async function getStreamStats() {
+  try {
+    const { notificationStreamManager } = await import(
+      "@/lib/notifications/stream-manager"
+    );
+    const stats = notificationStreamManager.getStats();
+
+    return NextResponse.json({
+      message: "Stream statistics retrieved successfully",
+      stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Stream stats error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to get stream statistics",
         details: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }

@@ -13,6 +13,7 @@ import {
   UserNotificationPreferences,
   DailySummaryData
 } from "@/types/notifications";
+import { EmailDeliveryMetadata } from "./email-delivery-tracker";
 
 export class NotificationService {
   /**
@@ -447,8 +448,31 @@ ${
   private async sendInAppNotification(
     payload: Omit<NotificationPayload, "id" | "createdAt">
   ): Promise<void> {
-    // TODO: Implement WebSocket/SSE for real-time notifications
-    console.log("In-app notification:", payload.subject);
+    const { notificationStreamManager } = await import("./stream-manager");
+
+    // Send real-time notification via SSE
+    const sent = await notificationStreamManager.sendToUser(
+      payload.recipientId,
+      {
+        eventType: payload.eventType,
+        priority: payload.priority,
+        subject: payload.subject,
+        message: payload.message,
+        data: payload.data,
+        organizationId: payload.organizationId,
+        propertyId: payload.propertyId
+      }
+    );
+
+    if (!sent) {
+      console.log(
+        `User ${payload.recipientId} not connected, notification stored as pending`
+      );
+    } else {
+      console.log(
+        `Real-time notification sent to user ${payload.recipientId}: ${payload.subject}`
+      );
+    }
   }
 
   /**
@@ -457,8 +481,72 @@ ${
   private async sendEmailNotification(
     payload: Omit<NotificationPayload, "id" | "createdAt">
   ): Promise<void> {
-    // TODO: Implement email sending (SendGrid/SMTP)
-    console.log("Email notification:", payload.subject);
+    try {
+      // Get recipient user details
+      const user = await prisma.user.findUnique({
+        where: { id: payload.recipientId },
+        select: { email: true, name: true }
+      });
+
+      if (!user?.email) {
+        console.error(`User ${payload.recipientId} not found or has no email`);
+        return;
+      }
+
+      // Import SendGrid email service dynamically to avoid circular dependencies
+      const { sendGridEmailService } = await import("./sendgrid-email-service");
+
+      // Send email notification via SendGrid
+      const result = await sendGridEmailService.sendNotification(
+        payload,
+        user.email,
+        user.name || undefined
+      );
+
+      if (!result.success) {
+        console.error(`Failed to send email notification: ${result.error}`);
+      } else {
+        console.log(
+          `Email notification sent to ${user.email}: ${payload.subject}`
+        );
+
+        // Store message ID in notification log for delivery tracking
+        if (result.messageId) {
+          try {
+            // Find the most recent notification log entry for this recipient
+            const recentLog = await prisma.notificationLog.findFirst({
+              where: {
+                recipientId: payload.recipientId,
+                eventType: payload.eventType,
+                subject: payload.subject
+              },
+              orderBy: { createdAt: "desc" }
+            });
+
+            if (recentLog) {
+              // Parse existing data as EmailDeliveryMetadata
+              const existingData =
+                (recentLog.data as EmailDeliveryMetadata) || {};
+
+              await prisma.notificationLog.update({
+                where: { id: recentLog.id },
+                data: {
+                  data: JSON.stringify({
+                    ...existingData,
+                    messageId: result.messageId,
+                    emailSentAt: new Date().toISOString()
+                  })
+                }
+              });
+            }
+          } catch (error) {
+            console.error("Error storing message ID for tracking:", error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error sending email notification:", error);
+    }
   }
 
   /**
