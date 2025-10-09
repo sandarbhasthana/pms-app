@@ -24,11 +24,13 @@ This guide will help you set up Twilio SMS integration for the PMS notification 
 ## 📱 Step 3: Get a Twilio Phone Number
 
 ### For Development (Free Trial):
+
 1. **Go to Phone Numbers**: Navigate to Phone Numbers > Manage > Buy a number
 2. **Choose a number**: Select a number from your country
 3. **Configure capabilities**: Ensure SMS is enabled
 
 ### For Production:
+
 1. **Upgrade account**: Add payment method to remove trial limitations
 2. **Buy a dedicated number**: Purchase a number for production use
 3. **Consider toll-free**: For better deliverability and professional appearance
@@ -45,8 +47,9 @@ TWILIO_PHONE_NUMBER="+1234567890"  # Your Twilio phone number with country code
 ```
 
 ### Example:
+
 ```bash
-TWILIO_ACCOUNT_SID="AC1234567890abcdef1234567890abcdef"
+TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_AUTH_TOKEN="your_auth_token_here"
 TWILIO_PHONE_NUMBER="+15551234567"
 ```
@@ -56,11 +59,13 @@ TWILIO_PHONE_NUMBER="+15551234567"
 Webhooks allow you to track SMS delivery status:
 
 1. **Set Webhook URL**: In your Twilio phone number configuration, set:
+
    ```
    https://yourdomain.com/api/webhooks/twilio
    ```
 
 2. **For Development**: Use ngrok or similar tool:
+
    ```bash
    ngrok http 3000
    # Then use: https://your-ngrok-url.ngrok.io/api/webhooks/twilio
@@ -76,6 +81,7 @@ Webhooks allow you to track SMS delivery status:
 ### Using the Test API:
 
 1. **Check Configuration**:
+
    ```bash
    curl "http://localhost:3000/api/notifications/test?action=sms-config-check"
    ```
@@ -94,11 +100,13 @@ Webhooks allow you to track SMS delivery status:
 ## 📊 Step 7: Monitor Usage and Costs
 
 ### Twilio Console Monitoring:
+
 1. **Usage Dashboard**: Monitor SMS volume and costs
 2. **Logs**: Check message delivery status
 3. **Alerts**: Set up usage alerts to avoid unexpected charges
 
 ### Application Monitoring:
+
 - Check notification logs in your database
 - Monitor delivery rates and failure reasons
 - Use the SMS analytics endpoints for insights
@@ -106,11 +114,13 @@ Webhooks allow you to track SMS delivery status:
 ## 💰 Pricing Information
 
 ### Trial Account:
+
 - **Free credit**: $15.50 trial credit
 - **SMS cost**: ~$0.0075 per SMS segment
 - **Limitations**: Can only send to verified numbers
 
 ### Production Account:
+
 - **SMS cost**: Varies by country (~$0.0075 - $0.05 per segment)
 - **Phone number**: ~$1/month for local numbers
 - **No sending restrictions**: Can send to any valid number
@@ -126,10 +136,12 @@ Webhooks allow you to track SMS delivery status:
 ## 🌍 International Considerations
 
 ### Phone Number Format:
+
 - Always use E.164 format: `+[country code][number]`
 - Example: `+1234567890` (US), `+919876543210` (India)
 
 ### Country-Specific Rules:
+
 - **India**: Requires DLT registration for commercial SMS
 - **US/Canada**: TCPA compliance required
 - **EU**: GDPR compliance required
@@ -140,14 +152,17 @@ Webhooks allow you to track SMS delivery status:
 ### Common Issues:
 
 1. **"Invalid phone number"**:
+
    - Ensure E.164 format with country code
    - Verify the number is valid and can receive SMS
 
 2. **"Authentication failed"**:
+
    - Check Account SID and Auth Token
    - Ensure no extra spaces in environment variables
 
 3. **"Insufficient funds"**:
+
    - Add credit to your Twilio account
    - Check current balance in console
 
@@ -159,11 +174,13 @@ Webhooks allow you to track SMS delivery status:
 ### Debug Steps:
 
 1. **Check Configuration**:
+
    ```bash
    curl "http://localhost:3000/api/notifications/test?action=sms-config-check"
    ```
 
 2. **Test with Known Number**:
+
    - Use your own verified phone number first
    - Check Twilio console logs
 
