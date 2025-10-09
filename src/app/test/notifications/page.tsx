@@ -151,6 +151,33 @@ export default function NotificationTestPage() {
     }
   };
 
+  // Test SMS notification
+  const testSMSNotification = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/notifications/test?action=test-sms", {
+        method: "GET"
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success("Test Twilio SMS sent!");
+        setLastTestResult(`SMS: ${result.message} (${result.messageId})`);
+      } else {
+        toast.error(`SMS Error: ${result.error}`);
+        setLastTestResult(`SMS Error: ${result.error}`);
+      }
+    } catch (error) {
+      toast.error("Failed to send SMS notification");
+      setLastTestResult(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Setup notification system
   const setupNotificationSystem = async () => {
     setIsLoading(true);
@@ -303,6 +330,14 @@ export default function NotificationTestPage() {
               variant="outline"
             >
               Send SendGrid Email
+            </Button>
+
+            <Button
+              onClick={testSMSNotification}
+              disabled={isLoading}
+              variant="outline"
+            >
+              Send Twilio SMS
             </Button>
 
             <Button

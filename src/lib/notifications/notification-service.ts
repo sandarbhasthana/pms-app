@@ -555,8 +555,80 @@ ${
   private async sendSMSNotification(
     payload: Omit<NotificationPayload, "id" | "createdAt">
   ): Promise<void> {
-    // TODO: Implement Twilio SMS
-    console.log("SMS notification:", payload.subject);
+    try {
+      // Get recipient user details including phone number
+      const user = await prisma.user.findUnique({
+        where: { id: payload.recipientId },
+        select: {
+          phone: true,
+          name: true,
+          email: true // Fallback for logging
+        }
+      });
+
+      if (!user?.phone) {
+        console.error(
+          `User ${payload.recipientId} not found or has no phone number`
+        );
+        return;
+      }
+
+      // Import Twilio SMS service dynamically to avoid circular dependencies
+      const { twilioSMSService } = await import("./twilio-sms-service");
+
+      // Send SMS notification via Twilio
+      const result = await twilioSMSService.sendNotification(
+        payload.eventType,
+        user.phone,
+        {
+          subject: payload.subject,
+          message: payload.message,
+          priority: payload.priority,
+          organizationId: payload.organizationId,
+          propertyId: payload.propertyId,
+          ...payload.data
+        }
+      );
+
+      if (result.success && result.messageId) {
+        // Store message ID for tracking
+        const recentLog = await prisma.notificationLog.findFirst({
+          where: {
+            recipientId: payload.recipientId,
+            eventType: payload.eventType,
+            subject: payload.subject,
+            channel: NotificationChannel.SMS
+          },
+          orderBy: { createdAt: "desc" }
+        });
+
+        if (recentLog) {
+          await prisma.notificationLog.update({
+            where: { id: recentLog.id },
+            data: {
+              data: JSON.stringify({
+                ...((recentLog.data as Record<string, unknown>) || {}),
+                messageId: result.messageId,
+                segmentCount: result.segmentCount,
+                estimatedCost: result.estimatedCost,
+                smsSentAt: new Date().toISOString(),
+                recipientPhone: user.phone
+              })
+            }
+          });
+        }
+
+        console.log(
+          `📱 SMS sent successfully: ${result.messageId} to ${user.phone}`
+        );
+      } else {
+        console.error(`📱 SMS sending failed: ${result.error}`);
+        throw new Error(result.error || "SMS sending failed");
+      }
+    } catch (error) {
+      console.error("SMS notification error:", error);
+      throw error;
+    }
   }
 
   /**

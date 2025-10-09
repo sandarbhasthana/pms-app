@@ -6,6 +6,8 @@ import { ReservationStatus } from "@prisma/client";
 import { validatePropertyAccess } from "@/lib/property-context";
 import { withPropertyContext } from "@/lib/property-context";
 import { validateStatusTransition } from "@/lib/reservation-status/utils";
+import { statusTransitionValidator } from "@/lib/reservation-status/advanced-validation";
+import { statusBusinessRulesService } from "@/lib/reservation-status/business-rules-service";
 
 /**
  * PATCH /api/reservations/[id]/status
@@ -60,7 +62,15 @@ export async function PATCH(
           status: true,
           guestName: true,
           checkIn: true,
-          checkOut: true
+          checkOut: true,
+          paymentStatus: true,
+          paidAmount: true,
+          amountCaptured: true,
+          depositAmount: true,
+          roomId: true,
+          adults: true,
+          children: true,
+          createdAt: true
         }
       });
     });
@@ -72,16 +82,130 @@ export async function PATCH(
       );
     }
 
-    // Validate status transition
-    const transitionValidation = validateStatusTransition(
+    // Basic status transition validation
+    const basicValidation = validateStatusTransition(
       reservation.status,
       newStatus
     );
 
-    if (!transitionValidation.isValid) {
+    if (!basicValidation.isValid) {
       return NextResponse.json(
-        { error: transitionValidation.reason },
+        { error: basicValidation.reason },
         { status: 400 }
+      );
+    }
+
+    // Get user's property role for advanced validation
+    const userProperty = await withPropertyContext(propertyId!, async (tx) => {
+      return await tx.userProperty.findFirst({
+        where: {
+          userId: userId,
+          propertyId: propertyId
+        },
+        select: {
+          role: true
+        }
+      });
+    });
+
+    if (!userProperty) {
+      return NextResponse.json(
+        { error: "User property access not found" },
+        { status: 403 }
+      );
+    }
+
+    // Get organizationId from property
+    const property = await withPropertyContext(propertyId!, async (tx) => {
+      return await tx.property.findUnique({
+        where: { id: propertyId! },
+        select: { organizationId: true }
+      });
+    });
+
+    if (!property) {
+      return NextResponse.json(
+        { error: "Property not found" },
+        { status: 404 }
+      );
+    }
+
+    // Advanced validation with business rules
+    const advancedValidationContext = {
+      reservationId: id,
+      currentStatus: reservation.status,
+      newStatus,
+      reason: reason || "Status update",
+      userId: userId!,
+      userRole: userProperty.role,
+      propertyId: propertyId!,
+      organizationId: property.organizationId,
+      isAutomatic,
+      reservation: {
+        guestName: reservation.guestName || "Unknown Guest",
+        checkIn: reservation.checkIn,
+        checkOut: reservation.checkOut,
+        paymentStatus: reservation.paymentStatus || "UNPAID",
+        paidAmount: reservation.paidAmount || 0,
+        amountCaptured: reservation.amountCaptured || 0,
+        depositAmount: reservation.depositAmount || 0,
+        roomId: reservation.roomId,
+        adults: reservation.adults || 1,
+        children: reservation.children || 0,
+        createdAt: reservation.createdAt
+      }
+    };
+
+    const advancedValidation =
+      await statusTransitionValidator.validateTransition(
+        advancedValidationContext
+      );
+
+    // Check business rules
+    const businessRulesValidation =
+      await statusBusinessRulesService.evaluateRules(advancedValidationContext);
+
+    // Combine validation results
+    const combinedErrors = [
+      ...advancedValidation.errors,
+      ...businessRulesValidation.errors
+    ];
+
+    const combinedWarnings = [
+      ...advancedValidation.warnings,
+      ...businessRulesValidation.warnings
+    ];
+
+    const requiresApproval =
+      advancedValidation.requiresApproval ||
+      businessRulesValidation.requiresApproval;
+
+    // If there are errors, return them
+    if (combinedErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: combinedErrors,
+          warnings: combinedWarnings,
+          businessRuleViolations: advancedValidation.businessRuleViolations,
+          dataIntegrityIssues: advancedValidation.dataIntegrityIssues
+        },
+        { status: 400 }
+      );
+    }
+
+    // If approval is required and not explicitly requested, return approval requirement
+    if (requiresApproval && !isAutomatic) {
+      return NextResponse.json(
+        {
+          error: "Approval required",
+          requiresApproval: true,
+          approvalReason:
+            advancedValidation.approvalReason ||
+            businessRulesValidation.approvalReason,
+          warnings: combinedWarnings
+        },
+        { status: 403 }
       );
     }
 
@@ -134,7 +258,13 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       reservation: updatedReservation,
-      message: `Status updated to ${newStatus}`
+      message: `Status updated to ${newStatus}`,
+      validation: {
+        warnings: combinedWarnings,
+        businessRuleViolations: advancedValidation.businessRuleViolations,
+        dataIntegrityIssues: advancedValidation.dataIntegrityIssues,
+        requiresApproval: requiresApproval
+      }
     });
   } catch (error) {
     console.error("PATCH /api/reservations/[id]/status error:", error);

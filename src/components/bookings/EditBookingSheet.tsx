@@ -35,7 +35,9 @@ import {
   validateStatusTransition,
   getAllowedNextStatuses
 } from "@/lib/reservation-status/utils";
-import StatusBadge from "@/components/reservation-status/StatusBadge";
+import {
+  StatusBadge
+} from "@/components/reservation-status";
 import { useRenderLogger } from "@/lib/debug/render-logger";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";

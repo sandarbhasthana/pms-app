@@ -23,6 +23,8 @@
     "migrate:deploy": "tsx scripts/database-migrate.ts deploy",
     "migrate:reset": "tsx scripts/database-migrate.ts reset",
     "migrate:push": "tsx scripts/database-migrate.ts push",
+    "test:redis": "tsx scripts/test-redis-connection.ts",
+    "test:upstash": "tsx scripts/test-upstash-connection.ts",
     "migrate:seed": "tsx scripts/database-migrate.ts seed",
     "migrate:generate": "tsx scripts/database-migrate.ts generate",
     "migrate:validate": "tsx scripts/database-migrate.ts validate",
@@ -114,6 +116,7 @@
     "swr": "^2.3.4",
     "tailwind-merge": "^3.3.0",
     "tesseract.js": "^6.0.1",
+    "twilio": "^5.10.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

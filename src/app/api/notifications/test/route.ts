@@ -44,11 +44,20 @@ export async function GET(request: NextRequest) {
       case "test-email":
         return await testEmailNotification();
 
+      case "test-sms":
+        return await testSMSNotification();
+
       case "email-config":
         return await testEmailConfiguration();
 
+      case "sms-config":
+        return await testSMSConfiguration();
+
       case "config-check":
         return await checkEmailConfigurationStatus();
+
+      case "sms-config-check":
+        return await checkSMSConfigurationStatus();
 
       case "stream-stats":
         return await getStreamStats();
@@ -61,8 +70,11 @@ export async function GET(request: NextRequest) {
             "test-immediate - Test immediate notifications",
             "test-realtime - Test real-time SSE notifications",
             "test-email - Test email notifications",
+            "test-sms - Test SMS notifications",
             "email-config - Test email configuration",
+            "sms-config - Test SMS configuration",
             "config-check - Check email configuration status",
+            "sms-config-check - Check SMS configuration status",
             "test-daily-summary - Test daily summary",
             "rules - Get notification rules",
             "logs - Get notification logs",
@@ -616,6 +628,147 @@ async function getStreamStats() {
     return NextResponse.json(
       {
         error: "Failed to get stream statistics",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Test SMS notification
+ */
+async function testSMSNotification() {
+  try {
+    // Get a test user with phone number
+    const testUser = await prisma.user.findFirst({
+      where: {
+        phone: { not: null }
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true
+      }
+    });
+
+    if (!testUser?.phone) {
+      return NextResponse.json(
+        {
+          error: "No test user found with phone number",
+          suggestion: "Add a phone number to a user in the database for testing"
+        },
+        { status: 400 }
+      );
+    }
+
+    // Import SMS service
+    const { twilioSMSService } = await import(
+      "@/lib/notifications/twilio-sms-service"
+    );
+
+    // Send test SMS
+    const result = await twilioSMSService.sendNotification(
+      NotificationEventType.BOOKING_MODIFICATION,
+      testUser.phone,
+      {
+        guestName: testUser.name || "Test User",
+        amount: "1,250",
+        reservationId: "TEST-12345",
+        paymentStatus: "Confirmed"
+      }
+    );
+
+    if (result.success) {
+      return NextResponse.json({
+        message: "SMS sent successfully",
+        recipient: {
+          name: testUser.name,
+          phone: testUser.phone
+        },
+        messageId: result.messageId,
+        segmentCount: result.segmentCount,
+        estimatedCost: result.estimatedCost,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      return NextResponse.json(
+        {
+          error: "SMS sending failed",
+          details: result.error
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error("SMS test error:", error);
+    return NextResponse.json(
+      {
+        error: "SMS test failed",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Test SMS configuration
+ */
+async function testSMSConfiguration() {
+  try {
+    const { TwilioSMSService } = await import(
+      "@/lib/notifications/twilio-sms-service"
+    );
+    const config = TwilioSMSService.validateConfiguration();
+
+    return NextResponse.json({
+      message: "SMS configuration checked",
+      configuration: config,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("SMS config test error:", error);
+    return NextResponse.json(
+      {
+        error: "SMS configuration test failed",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Check SMS configuration status
+ */
+async function checkSMSConfigurationStatus() {
+  try {
+    const { TwilioSMSService } = await import(
+      "@/lib/notifications/twilio-sms-service"
+    );
+    const config = TwilioSMSService.validateConfiguration();
+
+    const status = config.isConfigured ? "configured" : "not_configured";
+    const statusCode = config.isConfigured ? 200 : 400;
+
+    return NextResponse.json(
+      {
+        status,
+        isConfigured: config.isConfigured,
+        missingVariables: config.missingVars,
+        recommendations: config.recommendations,
+        timestamp: new Date().toISOString()
+      },
+      { status: statusCode }
+    );
+  } catch (error) {
+    console.error("SMS config check error:", error);
+    return NextResponse.json(
+      {
+        status: "error",
+        error: "Configuration check failed",
         details: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }
