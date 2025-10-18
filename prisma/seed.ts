@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting database seeding...");
 
-  // Clear existing data (order matters due to foreign key constraints)
+  // Clear only transactional data (order matters due to foreign key constraints)
   await prisma.payment.deleteMany();
   await prisma.reservation.deleteMany();
   await prisma.rateChangeLog.deleteMany();
@@ -15,28 +15,39 @@ async function main() {
   await prisma.roomPricing.deleteMany();
   await prisma.room.deleteMany();
   await prisma.roomType.deleteMany();
-  await prisma.userProperty.deleteMany(); // NEW: Clear property-level user access
-  await prisma.property.deleteMany(); // NEW: Clear properties
-  await prisma.userOrg.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.organization.deleteMany();
+  await prisma.userProperty.deleteMany(); // Clear property-level user access
 
-  console.log("🗑️ Cleared existing data");
+  console.log("🗑️ Cleared transactional data");
 
-  // Create Organization
-  const organization = await prisma.organization.create({
-    data: {
-      name: "Grand Palace Hotel",
-      domain: "example.com"
+  // Get or create Organization (preserve existing org to keep sessions valid)
+  // First, try to find an existing organization
+  let organization = await prisma.organization.findFirst();
+
+  if (!organization) {
+    // If no organization exists, create one
+    organization = await prisma.organization.create({
+      data: {
+        name: "Grand Palace Hotel",
+        domain: "example.com"
+      }
+    });
+    console.log("✅ Organization created");
+  } else {
+    console.log(
+      `✅ Organization found (reusing existing): ${organization.name}`
+    );
+  }
+
+  // Get or create Properties for the organization
+  let mainProperty = await prisma.property.findFirst({
+    where: {
+      organizationId: organization.id,
+      name: "Grand Palace Hotel - Main Property"
     }
   });
 
-  console.log("✅ Organization created");
-
-  // Create Properties for the organization
-  const properties = await Promise.all([
-    // Main Property (Default)
-    prisma.property.create({
+  if (!mainProperty) {
+    mainProperty = await prisma.property.create({
       data: {
         organizationId: organization.id,
         name: "Grand Palace Hotel - Main Property",
@@ -46,11 +57,20 @@ async function main() {
         timezone: "America/New_York",
         currency: "USD",
         isActive: true,
-        isDefault: true // Mark as default property
+        isDefault: true
       }
-    }),
-    // Beach Resort Property
-    prisma.property.create({
+    });
+  }
+
+  let beachProperty = await prisma.property.findFirst({
+    where: {
+      organizationId: organization.id,
+      name: "Grand Palace Beach Resort"
+    }
+  });
+
+  if (!beachProperty) {
+    beachProperty = await prisma.property.create({
       data: {
         organizationId: organization.id,
         name: "Grand Palace Beach Resort",
@@ -62,135 +82,117 @@ async function main() {
         isActive: true,
         isDefault: false
       }
+    });
+  }
+
+  console.log("✅ Properties created/found");
+
+  // Create or update Users with all roles using upsert
+  const userConfigs = [
+    {
+      name: "Super Administrator",
+      email: "superadmin@example.com",
+      role: "SUPER_ADMIN" as const
+    },
+    {
+      name: "Organization Admin",
+      email: "admin@example.com",
+      role: "ORG_ADMIN" as const
+    },
+    {
+      name: "John Property Manager",
+      email: "manager@example.com",
+      role: "PROPERTY_MGR" as const
+    },
+    {
+      name: "Sarah",
+      email: "frontdesk@example.com",
+      role: "FRONT_DESK" as const
+    },
+    {
+      name: "Maria Housekeeping",
+      email: "housekeeping@example.com",
+      role: "HOUSEKEEPING" as const
+    },
+    {
+      name: "Mike Maintenance",
+      email: "maintenance@example.com",
+      role: "MAINTENANCE" as const
+    },
+    {
+      name: "Lisa Accountant",
+      email: "accountant@example.com",
+      role: "ACCOUNTANT" as const
+    },
+    {
+      name: "Robert Owner",
+      email: "owner@example.com",
+      role: "OWNER" as const
+    },
+    {
+      name: "Alex IT Support",
+      email: "it@example.com",
+      role: "IT_SUPPORT" as const
+    }
+  ];
+
+  const users = await Promise.all(
+    userConfigs.map(async (config) => {
+      const user = await prisma.user.upsert({
+        where: { email: config.email },
+        update: { name: config.name },
+        create: {
+          name: config.name,
+          email: config.email
+        }
+      });
+
+      // Ensure user has membership in organization
+      const existingMembership = await prisma.userOrg.findFirst({
+        where: {
+          userId: user.id,
+          organizationId: organization.id
+        }
+      });
+
+      if (!existingMembership) {
+        await prisma.userOrg.create({
+          data: {
+            userId: user.id,
+            organizationId: organization.id,
+            role: config.role
+          }
+        });
+      }
+
+      return user;
     })
-  ]);
-
-  const [mainProperty, beachProperty] = properties;
-
-  console.log("✅ Properties created");
-
-  // Create Users with all roles
-  const users = await Promise.all([
-    // Super Admin
-    prisma.user.create({
-      data: {
-        name: "Super Administrator",
-        email: "superadmin@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "SUPER_ADMIN"
-          }
-        }
-      }
-    }),
-    // Org Admin
-    prisma.user.create({
-      data: {
-        name: "Organization Admin",
-        email: "admin@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "ORG_ADMIN"
-          }
-        }
-      }
-    }),
-    // Property Manager
-    prisma.user.create({
-      data: {
-        name: "John Property Manager",
-        email: "manager@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "PROPERTY_MGR"
-          }
-        }
-      }
-    }),
-    // Front Desk
-    prisma.user.create({
-      data: {
-        name: "Sarah",
-        email: "frontdesk@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "FRONT_DESK"
-          }
-        }
-      }
-    }),
-    // Housekeeping
-    prisma.user.create({
-      data: {
-        name: "Maria Housekeeping",
-        email: "housekeeping@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "HOUSEKEEPING"
-          }
-        }
-      }
-    }),
-    // Maintenance
-    prisma.user.create({
-      data: {
-        name: "Mike Maintenance",
-        email: "maintenance@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "MAINTENANCE"
-          }
-        }
-      }
-    }),
-    // Accountant
-    prisma.user.create({
-      data: {
-        name: "Lisa Accountant",
-        email: "accountant@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "ACCOUNTANT"
-          }
-        }
-      }
-    }),
-    // Owner
-    prisma.user.create({
-      data: {
-        name: "Robert Owner",
-        email: "owner@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "OWNER"
-          }
-        }
-      }
-    }),
-    // IT Support
-    prisma.user.create({
-      data: {
-        name: "Alex IT Support",
-        email: "it@example.com",
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            role: "IT_SUPPORT"
-          }
-        }
-      }
-    })
-  ]);
+  );
 
   console.log("✅ Users with all roles created");
+
+  // Also ensure any existing users in the database are added to the organization
+  const allUsers = await prisma.user.findMany();
+  for (const user of allUsers) {
+    const existingMembership = await prisma.userOrg.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: organization.id
+      }
+    });
+
+    if (!existingMembership) {
+      // Add user to organization with ORG_ADMIN role by default
+      await prisma.userOrg.create({
+        data: {
+          userId: user.id,
+          organizationId: organization.id,
+          role: "ORG_ADMIN"
+        }
+      });
+      console.log(`✅ Added existing user ${user.email} to organization`);
+    }
+  }
 
   // Create property-level user assignments
   const propertyUserAssignments = await Promise.all([
@@ -347,110 +349,116 @@ async function main() {
 
   console.log("✅ Room types created");
 
+  // Helper function to batch create rooms
+  async function batchCreateRooms(
+    roomConfigs: Array<{
+      name: string;
+      type: string;
+      capacity: number;
+      roomTypeId: string;
+    }>,
+    propertyId: string,
+    organizationId: string,
+    batchSize: number = 5
+  ) {
+    const createdRooms = [];
+    for (let i = 0; i < roomConfigs.length; i += batchSize) {
+      const batch = roomConfigs.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map((config) =>
+          prisma.room.create({
+            data: {
+              name: config.name,
+              type: config.type,
+              capacity: config.capacity,
+              roomTypeId: config.roomTypeId,
+              organizationId,
+              propertyId
+            }
+          })
+        )
+      );
+      createdRooms.push(...batchResults);
+    }
+    return createdRooms;
+  }
+
   // Create Rooms for Main Property
-  const mainPropertyRooms = [];
+  const mainPropertyRoomConfigs = [];
 
   // Standard Rooms (101-110)
   for (let i = 101; i <= 110; i++) {
-    mainPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Room ${i}`,
-          type: "Standard",
-          capacity: 2,
-          roomTypeId: standardRoomType.id,
-          organizationId: organization.id,
-          propertyId: mainProperty.id // NEW: Associate with main property
-        }
-      })
-    );
+    mainPropertyRoomConfigs.push({
+      name: `Room ${i}`,
+      type: "Standard",
+      capacity: 2,
+      roomTypeId: standardRoomType.id
+    });
   }
 
   // Deluxe Rooms (201-208)
   for (let i = 201; i <= 208; i++) {
-    mainPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Room ${i}`,
-          type: "Deluxe",
-          capacity: 2,
-          roomTypeId: deluxeRoomType.id,
-          organizationId: organization.id,
-          propertyId: mainProperty.id // NEW: Associate with main property
-        }
-      })
-    );
+    mainPropertyRoomConfigs.push({
+      name: `Room ${i}`,
+      type: "Deluxe",
+      capacity: 2,
+      roomTypeId: deluxeRoomType.id
+    });
   }
 
   // Executive Suites (301-304)
   for (let i = 301; i <= 304; i++) {
-    mainPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Suite ${i}`,
-          type: "Suite",
-          capacity: 2,
-          roomTypeId: suiteRoomType.id,
-          organizationId: organization.id,
-          propertyId: mainProperty.id // NEW: Associate with main property
-        }
-      })
-    );
+    mainPropertyRoomConfigs.push({
+      name: `Suite ${i}`,
+      type: "Suite",
+      capacity: 2,
+      roomTypeId: suiteRoomType.id
+    });
   }
 
   // Presidential Suites (401-402)
   for (let i = 401; i <= 402; i++) {
-    mainPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Presidential Suite ${i}`,
-          type: "Presidential",
-          capacity: 4,
-          roomTypeId: presidentialRoomType.id,
-          organizationId: organization.id,
-          propertyId: mainProperty.id // NEW: Associate with main property
-        }
-      })
-    );
+    mainPropertyRoomConfigs.push({
+      name: `Presidential Suite ${i}`,
+      type: "Presidential",
+      capacity: 4,
+      roomTypeId: presidentialRoomType.id
+    });
   }
 
   // Create Rooms for Beach Property
-  const beachPropertyRooms = [];
+  const beachPropertyRoomConfigs = [];
 
   // Ocean View Rooms (501-506)
   for (let i = 501; i <= 506; i++) {
-    beachPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Ocean Room ${i}`,
-          type: "Ocean View",
-          capacity: 2,
-          roomTypeId: oceanViewRoomType.id,
-          organizationId: organization.id,
-          propertyId: beachProperty.id // NEW: Associate with beach property
-        }
-      })
-    );
+    beachPropertyRoomConfigs.push({
+      name: `Ocean Room ${i}`,
+      type: "Ocean View",
+      capacity: 2,
+      roomTypeId: oceanViewRoomType.id
+    });
   }
 
   // Beach Villas (601-603)
   for (let i = 601; i <= 603; i++) {
-    beachPropertyRooms.push(
-      prisma.room.create({
-        data: {
-          name: `Beach Villa ${i}`,
-          type: "Villa",
-          capacity: 4,
-          roomTypeId: beachVillaRoomType.id,
-          organizationId: organization.id,
-          propertyId: beachProperty.id // NEW: Associate with beach property
-        }
-      })
-    );
+    beachPropertyRoomConfigs.push({
+      name: `Beach Villa ${i}`,
+      type: "Villa",
+      capacity: 4,
+      roomTypeId: beachVillaRoomType.id
+    });
   }
 
-  const createdMainRooms = await Promise.all(mainPropertyRooms);
-  const createdBeachRooms = await Promise.all(beachPropertyRooms);
+  const createdMainRooms = await batchCreateRooms(
+    mainPropertyRoomConfigs,
+    mainProperty.id,
+    organization.id
+  );
+  const createdBeachRooms = await batchCreateRooms(
+    beachPropertyRoomConfigs,
+    beachProperty.id,
+    organization.id
+  );
   const createdRooms = [...createdMainRooms, ...createdBeachRooms];
   console.log("✅ Rooms created");
 
@@ -573,39 +581,45 @@ async function main() {
     }
   ];
 
-  // Create reservations
-  const reservations = await Promise.all(
-    reservationData.map((reservation) => {
-      const room = createdRooms[reservation.roomIndex];
-      // Determine property based on room
-      const propertyId =
-        reservation.roomIndex < createdMainRooms.length
-          ? mainProperty.id
-          : beachProperty.id;
+  // Create reservations with batching
+  const reservations = [];
+  const batchSize = 5;
+  for (let i = 0; i < reservationData.length; i += batchSize) {
+    const batch = reservationData.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((reservation) => {
+        const room = createdRooms[reservation.roomIndex];
+        // Determine property based on room
+        const propertyId =
+          reservation.roomIndex < createdMainRooms.length
+            ? mainProperty.id
+            : beachProperty.id;
 
-      return prisma.reservation.create({
-        data: {
-          organizationId: organization.id,
-          propertyId: propertyId, // NEW: Associate with appropriate property
-          roomId: room.id,
-          checkIn: reservation.checkIn,
-          checkOut: reservation.checkOut,
-          source: "WEBSITE",
-          status: "CONFIRMED",
-          adults: 2,
-          children: 0,
-          guestName: "Guest User",
-          email: "guest@example.com",
-          phone: "+1-555-0199"
-        }
-      });
-    })
-  );
+        return prisma.reservation.create({
+          data: {
+            organizationId: organization.id,
+            propertyId: propertyId, // NEW: Associate with appropriate property
+            roomId: room.id,
+            checkIn: reservation.checkIn,
+            checkOut: reservation.checkOut,
+            source: "WEBSITE",
+            status: "CONFIRMED",
+            adults: 2,
+            children: 0,
+            guestName: "Guest User",
+            email: "guest@example.com",
+            phone: "+1-555-0199"
+          }
+        });
+      })
+    );
+    reservations.push(...batchResults);
+  }
 
   console.log("✅ 15 Reservations created");
 
-  // Create payments based on payment status
-  const payments = [];
+  // Create payments based on payment status with batching
+  const paymentPromises = [];
 
   for (let i = 0; i < reservationData.length; i++) {
     const reservationInfo = reservationData[i];
@@ -613,7 +627,7 @@ async function main() {
 
     if (reservationInfo.paymentStatus === "PAID") {
       // Full payment
-      payments.push(
+      paymentPromises.push(
         prisma.payment.create({
           data: {
             reservationId: reservation.id,
@@ -629,7 +643,7 @@ async function main() {
     } else if (reservationInfo.paymentStatus === "PARTIALLY_PAID") {
       // Partial payment (50% paid)
       const partialAmount = reservationInfo.totalAmount * 0.5;
-      payments.push(
+      paymentPromises.push(
         prisma.payment.create({
           data: {
             reservationId: reservation.id,
@@ -646,7 +660,13 @@ async function main() {
     // For UNPAID status, we don't create any payment records
   }
 
-  await Promise.all(payments);
+  // Batch process payments
+  const paymentBatchSize = 5;
+  for (let i = 0; i < paymentPromises.length; i += paymentBatchSize) {
+    const batch = paymentPromises.slice(i, i + paymentBatchSize);
+    await Promise.all(batch);
+  }
+
   console.log("✅ Payment records created with varied status");
 
   console.log(

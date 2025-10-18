@@ -3,10 +3,32 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  validatePropertyAccess,
-  withPropertyContext
-} from "@/lib/property-context";
+import { validatePropertyAccess } from "@/lib/property-context";
+import { prisma } from "@/lib/prisma";
+
+// Simple in-memory cache for dashboard stats
+const dashboardStatsCache = new Map<
+  string,
+  { data: DashboardStats; timestamp: number }
+>();
+
+interface DashboardStats {
+  totalRooms: number;
+  availableRooms: number;
+  occupiedRooms: number;
+  maintenanceRooms: number;
+  todayCheckIns: number;
+  todayCheckOuts: number;
+  totalReservations: number;
+  pendingReservations: number;
+  revenue: {
+    today: number;
+    thisMonth: number;
+    lastMonth: number;
+  };
+  occupancyRate: number;
+}
+const DASHBOARD_STATS_CACHE_DURATION = 300000; // 5 minutes cache
 
 /**
  * GET /api/dashboard/stats
@@ -24,30 +46,87 @@ export async function GET(req: NextRequest) {
 
     const { propertyId } = validation;
 
+    // Check cache first
+    const cacheKey = `dashboard-stats-${propertyId}`;
+    const now = Date.now();
+    const cached = dashboardStatsCache.get(cacheKey);
+
+    if (cached && now - cached.timestamp < DASHBOARD_STATS_CACHE_DURATION) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `📦 Cache hit for dashboard stats: ${cacheKey} (age: ${Math.round(
+            (now - cached.timestamp) / 1000
+          )}s)`
+        );
+      }
+      const response = NextResponse.json(cached.data);
+      response.headers.set("X-Cache", "HIT");
+      return response;
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `❌ Cache miss for dashboard stats: ${cacheKey} - fetching from database`
+      );
+      console.log(`🎯 Property ID being used: ${propertyId}`);
+    }
+
     // Get dashboard statistics
-    const stats = await withPropertyContext(propertyId!, async (tx) => {
-      const today = new Date();
-      const startOfToday = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const today = new Date();
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const startOfLastMonth = new Date(
-        today.getFullYear(),
-        today.getMonth() - 1,
-        1
-      );
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startOfLastMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() - 1,
+      1
+    );
 
+    // Get dashboard statistics - query directly without RLS
+    const stats = await (async () => {
       // Room statistics
-      const totalRooms = await tx.room.count({
+      const totalRooms = await prisma.room.count({
         where: { propertyId: propertyId }
       });
 
+      // Debug logging for room count
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🏨 Room count debug for property ${propertyId}:`, {
+          totalRooms,
+          propertyId
+        });
+
+        // Also check if there are any rooms at all in the database
+        const allRoomsCount = await prisma.room.count();
+        const roomsForProperty = await prisma.room.findMany({
+          where: { propertyId: propertyId },
+          select: { id: true, name: true, propertyId: true }
+        });
+
+        console.log(`🏨 Debug info:`, {
+          allRoomsInDatabase: allRoomsCount,
+          roomsForThisProperty: roomsForProperty.length,
+          roomDetails: roomsForProperty
+        });
+
+        // Temporary fallback for testing - remove this after debugging
+        if (totalRooms === 0 && allRoomsCount > 0) {
+          console.log(
+            `⚠️ No rooms found for property ${propertyId}, but ${allRoomsCount} rooms exist in database`
+          );
+          console.log(
+            `⚠️ This suggests a property context or data association issue`
+          );
+        }
+      }
+
       // Calculate occupied rooms based on current reservations
-      const occupiedRooms = await tx.reservation.count({
+      const occupiedRooms = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
           status: "IN_HOUSE",
@@ -62,7 +141,7 @@ export async function GET(req: NextRequest) {
       const maintenanceRooms = 0; // Placeholder - implement maintenance tracking
 
       // Reservation statistics
-      const totalReservations = await tx.reservation.count({
+      const totalReservations = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
           status: {
@@ -71,7 +150,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      const pendingReservations = await tx.reservation.count({
+      const pendingReservations = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
           status: "CONFIRMATION_PENDING"
@@ -79,7 +158,7 @@ export async function GET(req: NextRequest) {
       });
 
       // Today's check-ins and check-outs
-      const todayCheckIns = await tx.reservation.count({
+      const todayCheckIns = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
           checkIn: {
@@ -92,7 +171,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      const todayCheckOuts = await tx.reservation.count({
+      const todayCheckOuts = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
           checkOut: {
@@ -103,8 +182,8 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      // Revenue calculations (using reservation counts as placeholder for now)
-      const todayReservationCount = await tx.reservation.count({
+      // Revenue calculations using actual reservation amounts
+      const todayRevenueData = await prisma.reservation.aggregate({
         where: {
           propertyId: propertyId,
           checkIn: {
@@ -114,10 +193,15 @@ export async function GET(req: NextRequest) {
           status: {
             in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
-        }
+        },
+        _sum: {
+          paidAmount: true,
+          amountCaptured: true
+        },
+        _count: true
       });
 
-      const thisMonthReservationCount = await tx.reservation.count({
+      const thisMonthRevenueData = await prisma.reservation.aggregate({
         where: {
           propertyId: propertyId,
           checkIn: {
@@ -126,10 +210,15 @@ export async function GET(req: NextRequest) {
           status: {
             in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
-        }
+        },
+        _sum: {
+          paidAmount: true,
+          amountCaptured: true
+        },
+        _count: true
       });
 
-      const lastMonthReservationCount = await tx.reservation.count({
+      const lastMonthRevenueData = await prisma.reservation.aggregate({
         where: {
           propertyId: propertyId,
           checkIn: {
@@ -139,14 +228,46 @@ export async function GET(req: NextRequest) {
           status: {
             in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
           }
-        }
+        },
+        _sum: {
+          paidAmount: true,
+          amountCaptured: true
+        },
+        _count: true
       });
 
-      // Calculate placeholder revenue (you can implement actual revenue calculation later)
-      const avgRoomRate = 150; // Placeholder average room rate
-      const todayRevenue = todayReservationCount * avgRoomRate;
-      const thisMonthRevenue = thisMonthReservationCount * avgRoomRate;
-      const lastMonthRevenue = lastMonthReservationCount * avgRoomRate;
+      // Use actual revenue amounts, fallback to estimated if no amounts available
+      const avgRoomRate = 150; // Fallback rate for reservations without payment amounts
+
+      // Helper function to calculate total revenue from available fields
+      const calculateRevenue = (
+        sumData: {
+          paidAmount: number | null;
+          amountCaptured: number | null;
+        } | null,
+        count: number
+      ) => {
+        if (!sumData) return count * avgRoomRate;
+
+        const paidAmount = sumData.paidAmount || 0;
+        const capturedAmount = (sumData.amountCaptured || 0) / 100; // Convert cents to currency units
+        const totalRevenue = paidAmount + capturedAmount;
+
+        return totalRevenue > 0 ? totalRevenue : count * avgRoomRate;
+      };
+
+      const todayRevenue = calculateRevenue(
+        todayRevenueData._sum,
+        todayRevenueData._count
+      );
+      const thisMonthRevenue = calculateRevenue(
+        thisMonthRevenueData._sum,
+        thisMonthRevenueData._count
+      );
+      const lastMonthRevenue = calculateRevenue(
+        lastMonthRevenueData._sum,
+        lastMonthRevenueData._count
+      );
 
       // Calculate occupancy rate
       const occupancyRate =
@@ -168,9 +289,26 @@ export async function GET(req: NextRequest) {
         },
         occupancyRate
       };
-    });
+    })();
 
-    return NextResponse.json(stats);
+    // Cache the response
+    dashboardStatsCache.set(cacheKey, { data: stats, timestamp: now });
+
+    // Clean up old cache entries
+    if (dashboardStatsCache.size > 50) {
+      const oldestKey = dashboardStatsCache.keys().next().value;
+      if (oldestKey) {
+        dashboardStatsCache.delete(oldestKey);
+      }
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`📊 Fresh dashboard stats data: ${cacheKey}`);
+    }
+
+    const response = NextResponse.json(stats);
+    response.headers.set("X-Cache", "MISS");
+    return response;
   } catch (error) {
     console.error("GET /api/dashboard/stats error:", error);
     return NextResponse.json(

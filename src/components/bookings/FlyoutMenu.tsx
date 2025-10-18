@@ -2,13 +2,20 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   EyeIcon,
   CheckIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  Cog6ToothIcon
 } from "@heroicons/react/24/outline";
+import { ReservationStatus } from "@prisma/client";
+import {
+  StatusBadge,
+  QuickStatusActions,
+  StatusUpdateModal
+} from "@/components/reservation-status";
 
 //import { useSession } from "next-auth/react";
 
@@ -20,7 +27,7 @@ interface Reservation {
   checkOut: string;
   adults: number;
   children: number;
-  status?: string;
+  status?: ReservationStatus | string;
   ratePlan?: string;
   notes?: string;
   roomNumber?: string;
@@ -44,6 +51,11 @@ interface FlyoutMenuProps {
   setViewReservation: React.Dispatch<React.SetStateAction<Reservation | null>>;
   handleCheckOut: (id: string) => void;
   handleDelete: (id: string) => void;
+  handleStatusUpdate?: (
+    reservationId: string,
+    newStatus: ReservationStatus,
+    reason: string
+  ) => Promise<void>;
 }
 
 const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
@@ -53,9 +65,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
   setEditingReservation,
   setViewReservation,
   handleCheckOut,
-  handleDelete
+  handleDelete,
+  handleStatusUpdate
 }) => {
   //const { data: session } = useSession();
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   if (!flyout) return null;
 
@@ -103,6 +117,54 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
             Edit Booking
           </button>
         </li>
+
+        {/* Status Management Section */}
+        {flyout.reservation.status && handleStatusUpdate && (
+          <>
+            <li className="px-4 py-2 border-t border-gray-200 dark:border-gray-600">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Current Status:
+                </span>
+                <StatusBadge
+                  status={flyout.reservation.status as ReservationStatus}
+                  size="sm"
+                />
+              </div>
+
+              {/* Quick Status Actions */}
+              <div className="flex flex-col gap-1">
+                <QuickStatusActions
+                  reservation={{
+                    id: flyout.reservation.id,
+                    guestName: flyout.reservation.guestName,
+                    checkIn: flyout.reservation.checkIn,
+                    checkOut: flyout.reservation.checkOut,
+                    status: flyout.reservation.status as ReservationStatus
+                  }}
+                  onStatusUpdate={handleStatusUpdate}
+                  onOpenFullModal={() => {
+                    setShowStatusModal(true);
+                    setFlyout(null);
+                  }}
+                  size="sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStatusModal(true);
+                    setFlyout(null);
+                  }}
+                  className="flex items-center w-full text-left px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                >
+                  <Cog6ToothIcon className="h-3 w-3 mr-1" />
+                  Manage Status
+                </button>
+              </div>
+            </li>
+          </>
+        )}
         <li>
           <button
             type="button"
@@ -130,6 +192,25 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
           </button>
         </li>
       </ul>
+
+      {/* Status Update Modal */}
+      {showStatusModal && handleStatusUpdate && (
+        <StatusUpdateModal
+          isOpen={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          reservation={{
+            id: flyout.reservation.id,
+            guestName: flyout.reservation.guestName,
+            roomNumber: flyout.reservation.roomNumber,
+            checkIn: flyout.reservation.checkIn,
+            checkOut: flyout.reservation.checkOut,
+            status: flyout.reservation.status as ReservationStatus,
+            paymentStatus: flyout.reservation.paymentStatus
+          }}
+          currentUserRole="FRONT_DESK" // This should come from user session
+          onStatusUpdate={handleStatusUpdate}
+        />
+      )}
     </div>
   );
 };

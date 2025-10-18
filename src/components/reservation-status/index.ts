@@ -13,6 +13,9 @@ export {
   default as QuickStatusActions,
   QuickActionButton
 } from "./QuickStatusActions";
+export { default as BulkStatusManager } from "./BulkStatusManager";
+export { default as EnhancedAuditTrail } from "./EnhancedAuditTrail";
+export { default as AdvancedStatusFilter } from "./AdvancedStatusFilter";
 
 // Re-export types and utilities for convenience
 export * from "@/types/reservation-status";

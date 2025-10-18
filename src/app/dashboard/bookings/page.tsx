@@ -625,6 +625,48 @@ export default function BookingsRowStylePage() {
   );
 
   // ------------------------
+  // Status update handler
+  // ------------------------
+  const handleStatusUpdate = useCallback(
+    async (reservationId: string, newStatus: string, reason: string) => {
+      try {
+        const response = await fetch(
+          `/api/reservations/${reservationId}/status`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              newStatus,
+              reason,
+              updatedBy: "user", // This should come from session
+              isAutomatic: false
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to update status");
+        }
+
+        // Refresh the calendar to show updated status
+        await debouncedRefetch();
+
+        toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
+      } catch (error) {
+        console.error("Failed to update status:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update status"
+        );
+      }
+    },
+    [debouncedRefetch]
+  );
+
+  // ------------------------
   // Click-outside listener for flyout
   // ------------------------
   useEffect(() => {
@@ -819,6 +861,7 @@ export default function BookingsRowStylePage() {
               await reload();
             })
           }
+          handleStatusUpdate={handleStatusUpdate}
         />
       )}
 

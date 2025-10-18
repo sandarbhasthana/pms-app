@@ -32,11 +32,12 @@ import { toast } from "sonner";
 import { ReservationStatus } from "@prisma/client";
 import {
   getStatusConfig,
-  validateStatusTransition,
-  getAllowedNextStatuses
+  validateStatusTransition
 } from "@/lib/reservation-status/utils";
 import {
-  StatusBadge
+  StatusBadge,
+  StatusUpdateModal,
+  QuickStatusActions
 } from "@/components/reservation-status";
 import { useRenderLogger } from "@/lib/debug/render-logger";
 
@@ -91,6 +92,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   // Track the last reservation ID to prevent unnecessary form resets
   const lastReservationIdRef = useRef<string | null>(null);
@@ -346,67 +348,47 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
         <SheetHeader className="relative">
           {/* Status and Action Dropdowns + Close button in top right */}
           <div className="absolute top-0 right-0 flex items-center gap-3">
-            {/* Status Dropdown */}
-            <div className="flex items-center gap-2">
+            {/* Enhanced Status Management */}
+            <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Status:
               </span>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-auto min-w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
-                    disabled={isUpdatingStatus}
-                  >
-                    <span>
-                      {
-                        getStatusConfig(
-                          editingReservation.status as ReservationStatus
-                        ).label
-                      }
-                    </span>
-                    <ChevronDownIcon className="h-3 w-3 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="z-[10000]"
-                  sideOffset={5}
-                >
-                  {getAllowedNextStatuses(
-                    editingReservation.status as ReservationStatus
-                  ).map((status) => {
-                    const config = getStatusConfig(status);
-                    return (
-                      <DropdownMenuItem
-                        key={status}
-                        onClick={() => handleStatusUpdate(status)}
-                        disabled={isUpdatingStatus}
-                        className="flex items-center gap-2"
-                      >
-                        <StatusBadge
-                          status={status}
-                          size="sm"
-                          showIcon={true}
-                          showLabel={false}
-                        />
-                        <span>{config.label}</span>
-                        <span className="text-xs text-gray-500 ml-auto">
-                          {config.description}
-                        </span>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  {getAllowedNextStatuses(
-                    editingReservation.status as ReservationStatus
-                  ).length === 0 && (
-                    <DropdownMenuItem disabled>
-                      No status changes available
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+
+              {/* Current Status Badge */}
+              <StatusBadge
+                status={editingReservation.status as ReservationStatus}
+                size="sm"
+                showIcon={true}
+                showLabel={true}
+              />
+
+              {/* Quick Status Actions */}
+              <QuickStatusActions
+                reservation={{
+                  id: editingReservation.id,
+                  guestName: editingReservation.guestName,
+                  checkIn: editingReservation.checkIn,
+                  checkOut: editingReservation.checkOut,
+                  status: editingReservation.status as ReservationStatus
+                }}
+                onStatusUpdate={(reservationId, newStatus, reason) =>
+                  handleStatusUpdate(newStatus, reason)
+                }
+                onOpenFullModal={() => setShowStatusModal(true)}
+                disabled={isUpdatingStatus}
+                size="sm"
+              />
+
+              {/* Advanced Status Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStatusModal(true)}
+                disabled={isUpdatingStatus}
+                className="h-8 text-xs px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30"
+              >
+                Manage Status
+              </Button>
             </div>
 
             {/* Actions Dropdown */}
@@ -617,6 +599,25 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
           </Tabs>
         </div>
       </SheetContent>
+
+      {/* Advanced Status Update Modal */}
+      <StatusUpdateModal
+        isOpen={showStatusModal}
+        onClose={() => setShowStatusModal(false)}
+        reservation={{
+          id: editingReservation.id,
+          guestName: editingReservation.guestName,
+          roomNumber: editingReservation.roomNumber,
+          checkIn: editingReservation.checkIn,
+          checkOut: editingReservation.checkOut,
+          status: editingReservation.status as ReservationStatus,
+          paymentStatus: editingReservation.paymentStatus
+        }}
+        currentUserRole="FRONT_DESK" // This should come from user session
+        onStatusUpdate={(reservationId, newStatus, reason) =>
+          handleStatusUpdate(newStatus, reason)
+        }
+      />
     </Sheet>
   );
 };
