@@ -49,9 +49,9 @@ Add the following variables to your `.env.local` file:
 ### Example:
 
 ```bash
-TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-TWILIO_AUTH_TOKEN="your_auth_token_here"
-TWILIO_PHONE_NUMBER="+15551234567"
+#TWILIO_ACCOUNT_SID=""
+#TWILIO_AUTH_TOKEN=""
+#WILIO_PHONE_NUMBER=""
 ```
 
 ## 🔧 Step 5: Configure Webhooks (Optional but Recommended)
