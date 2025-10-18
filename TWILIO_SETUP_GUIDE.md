@@ -41,9 +41,9 @@ Add the following variables to your `.env.local` file:
 
 ```bash
 # Twilio Configuration
-TWILIO_ACCOUNT_SID="your_account_sid_here"
-TWILIO_AUTH_TOKEN="your_auth_token_here"
-TWILIO_PHONE_NUMBER="+1234567890"  # Your Twilio phone number with country code
+#TWILIO_ACCOUNT_SID=""
+#TWILIO_AUTH_TOKEN=""
+#TWILIO_PHONE_NUMBER=""  # Your Twilio phone number with country code
 ```
 
 ### Example:
