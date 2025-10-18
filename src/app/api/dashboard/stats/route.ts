@@ -87,77 +87,44 @@ export async function GET(req: NextRequest) {
       1
     );
 
-    // Get dashboard statistics - query directly without RLS
+    // Get dashboard statistics - OPTIMIZED: Combine multiple queries into single aggregated queries
     const stats = await (async () => {
-      // Room statistics
+      // OPTIMIZATION: Get room count in single query
       const totalRooms = await prisma.room.count({
         where: { propertyId: propertyId }
       });
 
-      // Debug logging for room count
-      if (process.env.NODE_ENV === "development") {
-        console.log(`🏨 Room count debug for property ${propertyId}:`, {
-          totalRooms,
-          propertyId
-        });
-
-        // Also check if there are any rooms at all in the database
-        const allRoomsCount = await prisma.room.count();
-        const roomsForProperty = await prisma.room.findMany({
-          where: { propertyId: propertyId },
-          select: { id: true, name: true, propertyId: true }
-        });
-
-        console.log(`🏨 Debug info:`, {
-          allRoomsInDatabase: allRoomsCount,
-          roomsForThisProperty: roomsForProperty.length,
-          roomDetails: roomsForProperty
-        });
-
-        // Temporary fallback for testing - remove this after debugging
-        if (totalRooms === 0 && allRoomsCount > 0) {
-          console.log(
-            `⚠️ No rooms found for property ${propertyId}, but ${allRoomsCount} rooms exist in database`
-          );
-          console.log(
-            `⚠️ This suggests a property context or data association issue`
-          );
-        }
-      }
-
-      // Calculate occupied rooms based on current reservations
-      const occupiedRooms = await prisma.reservation.count({
-        where: {
-          propertyId: propertyId,
-          status: "IN_HOUSE",
-          checkIn: { lte: today },
-          checkOut: { gt: today }
-        }
+      // OPTIMIZATION: Get all reservation statistics in a single groupBy query
+      const reservationStats = await prisma.reservation.groupBy({
+        by: ["status"],
+        where: { propertyId: propertyId },
+        _count: { id: true }
       });
 
-      // For now, assume all non-occupied rooms are available
-      // In a real system, you'd track maintenance status separately
+      // Parse reservation counts from groupBy result
+      const statusCounts = {
+        CONFIRMED: 0,
+        IN_HOUSE: 0,
+        CHECKED_OUT: 0,
+        CONFIRMATION_PENDING: 0,
+        CANCELLED: 0,
+        NO_SHOW: 0
+      };
+
+      reservationStats.forEach((stat) => {
+        statusCounts[stat.status as keyof typeof statusCounts] = stat._count.id;
+      });
+
+      const totalReservations =
+        statusCounts.CONFIRMED +
+        statusCounts.IN_HOUSE +
+        statusCounts.CHECKED_OUT;
+      const pendingReservations = statusCounts.CONFIRMATION_PENDING;
+      const occupiedRooms = statusCounts.IN_HOUSE;
       const availableRooms = totalRooms - occupiedRooms;
       const maintenanceRooms = 0; // Placeholder - implement maintenance tracking
 
-      // Reservation statistics
-      const totalReservations = await prisma.reservation.count({
-        where: {
-          propertyId: propertyId,
-          status: {
-            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
-          }
-        }
-      });
-
-      const pendingReservations = await prisma.reservation.count({
-        where: {
-          propertyId: propertyId,
-          status: "CONFIRMATION_PENDING"
-        }
-      });
-
-      // Today's check-ins and check-outs
+      // Count check-ins and check-outs separately
       const todayCheckIns = await prisma.reservation.count({
         where: {
           propertyId: propertyId,
@@ -182,59 +149,61 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      // Revenue calculations using actual reservation amounts
-      const todayRevenueData = await prisma.reservation.aggregate({
-        where: {
-          propertyId: propertyId,
-          checkIn: {
-            gte: startOfToday,
-            lt: endOfToday
-          },
-          status: {
-            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
-          }
-        },
-        _sum: {
-          paidAmount: true,
-          amountCaptured: true
-        },
-        _count: true
-      });
-
-      const thisMonthRevenueData = await prisma.reservation.aggregate({
-        where: {
-          propertyId: propertyId,
-          checkIn: {
-            gte: startOfMonth
-          },
-          status: {
-            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
-          }
-        },
-        _sum: {
-          paidAmount: true,
-          amountCaptured: true
-        },
-        _count: true
-      });
-
-      const lastMonthRevenueData = await prisma.reservation.aggregate({
-        where: {
-          propertyId: propertyId,
-          checkIn: {
-            gte: startOfLastMonth,
-            lt: startOfMonth
-          },
-          status: {
-            in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
-          }
-        },
-        _sum: {
-          paidAmount: true,
-          amountCaptured: true
-        },
-        _count: true
-      });
+      // OPTIMIZATION: Get revenue data for all periods in parallel (still 3 queries but optimized)
+      // These cannot be combined into one query due to different date ranges
+      const [todayRevenueData, thisMonthRevenueData, lastMonthRevenueData] =
+        await Promise.all([
+          prisma.reservation.aggregate({
+            where: {
+              propertyId: propertyId,
+              checkIn: {
+                gte: startOfToday,
+                lt: endOfToday
+              },
+              status: {
+                in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
+              }
+            },
+            _sum: {
+              paidAmount: true,
+              amountCaptured: true
+            },
+            _count: true
+          }),
+          prisma.reservation.aggregate({
+            where: {
+              propertyId: propertyId,
+              checkIn: {
+                gte: startOfMonth
+              },
+              status: {
+                in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
+              }
+            },
+            _sum: {
+              paidAmount: true,
+              amountCaptured: true
+            },
+            _count: true
+          }),
+          prisma.reservation.aggregate({
+            where: {
+              propertyId: propertyId,
+              checkIn: {
+                gte: startOfLastMonth,
+                lt: startOfMonth
+              },
+              status: {
+                in: ["CONFIRMED", "IN_HOUSE", "CHECKED_OUT"]
+              }
+            },
+            _sum: {
+              paidAmount: true,
+              amountCaptured: true
+            },
+            _count: true
+          })
+        ]);
 
       // Use actual revenue amounts, fallback to estimated if no amounts available
       const avgRoomRate = 150; // Fallback rate for reservations without payment amounts

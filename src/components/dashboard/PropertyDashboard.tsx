@@ -203,31 +203,22 @@ export function PropertyDashboard() {
     }
   }, [currentPropertyId, currentProperty?.name, session]);
 
+  // OPTIMIZATION: Load only essential data on initial load
   const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Load property info, dashboard stats, reservations, and activities
-      const [
-        propertyResponse,
-        statsResponse,
-        reservationsResponse,
-        tomorrowReservationsResponse,
-        activitiesResponse
-      ] = await Promise.all([
-        fetch(`/api/properties/${currentPropertyId}`),
-        fetch(`/api/dashboard/stats?propertyId=${currentPropertyId}`),
-        fetch(
-          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=today`
-        ),
-        fetch(
-          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=tomorrow`
-        ),
-        fetch(
-          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${selectedActivityType}`
-        )
-      ]);
+      // Load only essential data: property info and stats
+      // Defer tomorrow reservations and activities to lazy loading
+      const [propertyResponse, statsResponse, reservationsResponse] =
+        await Promise.all([
+          fetch(`/api/properties/${currentPropertyId}`),
+          fetch(`/api/dashboard/stats?propertyId=${currentPropertyId}`),
+          fetch(
+            `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=today`
+          )
+        ]);
 
       if (!propertyResponse.ok || !statsResponse.ok) {
         throw new Error("Failed to load dashboard data");
@@ -241,26 +232,38 @@ export function PropertyDashboard() {
       setPropertyInfo(propertyData);
       setStats(statsData);
 
-      // Load reservations and activities data (optional - don't fail if these fail)
+      // Load today's reservations (essential data)
       try {
         if (reservationsResponse.ok) {
           const reservationsData = await reservationsResponse.json();
           setReservations(reservationsData);
         }
-
-        if (tomorrowReservationsResponse.ok) {
-          const tomorrowReservationsData =
-            await tomorrowReservationsResponse.json();
-          setTomorrowReservations(tomorrowReservationsData);
-        }
-
-        if (activitiesResponse.ok) {
-          const activitiesData = await activitiesResponse.json();
-          setActivities(activitiesData);
-        }
       } catch (error) {
-        console.warn("Failed to load reservations/activities data:", error);
+        console.warn("Failed to load today's reservations:", error);
       }
+
+      // OPTIMIZATION: Load tomorrow reservations and activities lazily (on demand)
+      // This defers non-essential data loading to improve initial load time
+      // Schedule these as background tasks after initial load completes
+      setTimeout(() => {
+        // Load tomorrow reservations in background
+        fetch(
+          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=tomorrow`
+        )
+          .then((res) => res.json())
+          .then((data) => setTomorrowReservations(data))
+          .catch((err) =>
+            console.warn("Failed to load tomorrow's reservations:", err)
+          );
+
+        // Load activities in background
+        fetch(
+          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${selectedActivityType}`
+        )
+          .then((res) => res.json())
+          .then((data) => setActivities(data))
+          .catch((err) => console.warn("Failed to load activities:", err));
+      }, 100); // Small delay to prioritize initial render
     } catch (error) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

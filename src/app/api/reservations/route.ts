@@ -64,6 +64,13 @@ type ReservationFromDB = {
   } | null;
 };
 
+// OPTIMIZATION: In-memory cache for reservations
+const reservationsCache = new Map<
+  string,
+  { data: unknown; timestamp: number }
+>();
+const RESERVATIONS_CACHE_DURATION = 300000; // 5 minutes
+
 export async function GET(req: NextRequest) {
   try {
     // console.log("🔍 GET /api/reservations - Starting request");
@@ -98,6 +105,22 @@ export async function GET(req: NextRequest) {
     const roomId = url.searchParams.get("roomId");
 
     // console.log("🔍 Query parameters:", { status, startDate, endDate, roomId });
+
+    // OPTIMIZATION: Check cache first
+    const cacheKey = `reservations-${propertyId}-${status || "all"}-${
+      startDate || "all"
+    }-${endDate || "all"}-${roomId || "all"}`;
+    const now = Date.now();
+    const cached = reservationsCache.get(cacheKey);
+
+    if (cached && now - cached.timestamp < RESERVATIONS_CACHE_DURATION) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`📦 Cache hit for reservations: ${cacheKey}`);
+      }
+      const response = NextResponse.json(cached.data);
+      response.headers.set("X-Cache", "HIT");
+      return response;
+    }
 
     const reservations: ReservationFromDB[] = await withPropertyContext(
       propertyId!,
@@ -169,10 +192,17 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({
+    const result = {
       count: enriched.length,
       reservations: enriched
-    });
+    };
+
+    // OPTIMIZATION: Store in cache
+    reservationsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+
+    const response = NextResponse.json(result);
+    response.headers.set("X-Cache", "MISS");
+    return response;
   } catch (error) {
     console.error("GET /api/reservations error:", error);
     return NextResponse.json(
@@ -468,6 +498,14 @@ export async function POST(req: NextRequest) {
 
       return newReservation;
     });
+
+    // OPTIMIZATION: Invalidate cache after creating new reservation
+    // Clear all cache entries for this property since we don't know which date ranges are affected
+    for (const key of reservationsCache.keys()) {
+      if (key.startsWith(`reservations-${propertyId}`)) {
+        reservationsCache.delete(key);
+      }
+    }
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {

@@ -31,6 +31,7 @@ import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
 import LegendModal from "@/components/bookings/LegendModal";
 import { LoadingSpinner } from "@/components/ui/spinner";
+import { apiDeduplicator } from "@/lib/api-deduplication";
 
 interface Reservation {
   id: string;
@@ -283,18 +284,24 @@ export default function BookingsRowStylePage() {
         success(wknd);
       }
     ];
-  }, [startOfToday, endOfToday]); // FIXED: Stable dependencies
+  }, [startOfToday, endOfToday]); // Include dependencies used in the memoized value
 
   // ------------------------
   // Load rooms function (separated for reuse)
   // ------------------------
   const loadRooms = useCallback(async () => {
     try {
-      const roomsRes = await fetch("/api/rooms", {
-        credentials: "include"
-      });
-      if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
-      const roomsJson = await roomsRes.json();
+      // OPTIMIZATION: Use request deduplication to prevent duplicate requests
+      const roomsJson = await apiDeduplicator.deduplicate(
+        "bookings-rooms",
+        async () => {
+          const roomsRes = await fetch("/api/rooms", {
+            credentials: "include"
+          });
+          if (!roomsRes.ok) throw new Error("Failed to fetch rooms");
+          return await roomsRes.json();
+        }
+      );
       type RawRoom = { id: string; name: string; type: string };
       const roomsData: RawRoom[] = Array.isArray(roomsJson)
         ? roomsJson
@@ -349,14 +356,20 @@ export default function BookingsRowStylePage() {
   // ------------------------
   const loadReservations = useCallback(async (showToast = false) => {
     try {
-      const res = await fetch("/api/reservations", {
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error("Failed to fetch reservations");
-      const { reservations, count } = (await res.json()) as {
-        reservations: Reservation[];
-        count: number;
-      };
+      // OPTIMIZATION: Use request deduplication to prevent duplicate requests
+      const { reservations, count } = await apiDeduplicator.deduplicate(
+        "bookings-reservations",
+        async () => {
+          const res = await fetch("/api/reservations", {
+            credentials: "include"
+          });
+          if (!res.ok) throw new Error("Failed to fetch reservations");
+          return (await res.json()) as {
+            reservations: Reservation[];
+            count: number;
+          };
+        }
+      );
       setEvents(reservations);
       if (showToast) {
         toast.success(`Loaded ${count} reservation(s)`);
@@ -441,12 +454,31 @@ export default function BookingsRowStylePage() {
 
   // ------------------------
   // Fetch holidays from Calendarific
+  // OPTIMIZATION: Load holidays with localStorage caching
   // ------------------------
   useEffect(() => {
     if (!country) return;
-    (async () => {
+
+    const loadHolidays = async () => {
       try {
         const year = new Date().getFullYear();
+        const cacheKey = `holidays-${country}-${year}`;
+
+        // OPTIMIZATION: Check localStorage first
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            setHolidays(JSON.parse(cached));
+            if (process.env.NODE_ENV === "development") {
+              console.log(`📦 Cache hit for holidays: ${cacheKey}`);
+            }
+            return;
+          } catch (error) {
+            console.warn("Failed to parse cached holidays:", error);
+          }
+        }
+
+        // Fetch from external API
         const apiKey = process.env.NEXT_PUBLIC_CALENDARIFIC_API_KEY!;
         const url = new URL("https://calendarific.com/api/v2/holidays");
         url.searchParams.set("api_key", apiKey);
@@ -461,12 +493,21 @@ export default function BookingsRowStylePage() {
         }>;
         if (!Array.isArray(list)) throw new Error("Invalid payload");
         const map = Object.fromEntries(list.map((h) => [h.date.iso, h.name]));
+
+        // OPTIMIZATION: Cache for entire year
+        localStorage.setItem(cacheKey, JSON.stringify(map));
         setHolidays(map);
       } catch (e) {
         console.error("Failed to fetch holidays:", e);
-        setHolidays({});
+        setHolidays({}); // Fallback to empty object
       }
-    })();
+    };
+
+    // OPTIMIZATION: Load holidays in background (non-blocking)
+    // This prevents blocking the initial calendar render
+    setTimeout(() => {
+      loadHolidays();
+    }, 500);
   }, [country]);
 
   // ------------------------

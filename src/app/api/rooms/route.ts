@@ -7,6 +7,10 @@ import {
 } from "@/lib/property-context";
 import { PropertyRole } from "@prisma/client";
 
+// OPTIMIZATION: In-memory cache for rooms
+const roomsCache = new Map<string, { data: unknown; timestamp: number }>();
+const ROOMS_CACHE_DURATION = 600000; // 10 minutes
+
 export async function GET(req: NextRequest) {
   try {
     // Validate property access
@@ -19,6 +23,20 @@ export async function GET(req: NextRequest) {
 
     const { propertyId } = validation;
     console.log("GET /api/rooms, resolved propertyId:", propertyId);
+
+    // OPTIMIZATION: Check cache first
+    const cacheKey = `rooms-${propertyId}`;
+    const now = Date.now();
+    const cached = roomsCache.get(cacheKey);
+
+    if (cached && now - cached.timestamp < ROOMS_CACHE_DURATION) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`📦 Cache hit for rooms: ${cacheKey}`);
+      }
+      const response = NextResponse.json(cached.data);
+      response.headers.set("X-Cache", "HIT");
+      return response;
+    }
 
     // Fetch rooms scoped to this property
     const rooms = await withPropertyContext(propertyId!, async (tx) => {
@@ -33,7 +51,12 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    return NextResponse.json(rooms);
+    // OPTIMIZATION: Store in cache
+    roomsCache.set(cacheKey, { data: rooms, timestamp: Date.now() });
+
+    const response = NextResponse.json(rooms);
+    response.headers.set("X-Cache", "MISS");
+    return response;
   } catch (error) {
     console.error("GET /api/rooms error:", error);
     return NextResponse.json(
@@ -133,6 +156,10 @@ export async function POST(req: NextRequest) {
 
       return newRoom;
     });
+
+    // OPTIMIZATION: Invalidate cache after creating new room
+    const cacheKey = `rooms-${propertyId}`;
+    roomsCache.delete(cacheKey);
 
     return NextResponse.json(room, { status: 201 });
   } catch (error) {
