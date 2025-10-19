@@ -8,6 +8,8 @@ import {
 } from "@/lib/property-context";
 import { addDays, format, isWeekend } from "date-fns";
 import { PropertyRole } from "@prisma/client";
+import { PricingIntegrationService } from "@/lib/business-rules/pricing-integration";
+import { prisma } from "@/lib/prisma";
 
 // Type definitions for API responses
 interface RateData {
@@ -27,6 +29,11 @@ interface RateData {
         closedToArrival: boolean;
         closedToDeparture: boolean;
       };
+      appliedRules?: Array<{
+        ruleName: string;
+        adjustment: string;
+      }>;
+      rulesApplied?: boolean;
     };
   };
 }
@@ -39,6 +46,7 @@ interface RatesResponse {
     endDate: string;
     dates: string[];
   };
+  businessRulesEnabled?: boolean;
 }
 
 /**
@@ -47,6 +55,7 @@ interface RatesResponse {
  * - startDate: ISO date string (default: today)
  * - days: number of days to fetch (default: 7)
  * - ratePlan: "base" | "promo" (default: "base")
+ * - applyRules: boolean (default: false) - Apply business rules to prices
  */
 export async function GET(req: NextRequest) {
   try {
@@ -65,10 +74,24 @@ export async function GET(req: NextRequest) {
     const startDateParam = searchParams.get("startDate");
     const daysParam = searchParams.get("days");
     const ratePlan = searchParams.get("ratePlan") || "base";
+    const applyRules = searchParams.get("applyRules") === "true";
 
     // TODO: Implement ratePlan support for "base" | "promo" rate plans
     // Currently only "base" rates are returned regardless of ratePlan value
     void ratePlan; // Suppress unused variable warning
+
+    // Initialize pricing service if rules should be applied
+    const pricingService = applyRules ? new PricingIntegrationService() : null;
+
+    // Get organization ID from property (needed for pricing service)
+    let organizationId: string | null = null;
+    if (applyRules) {
+      const property = await prisma.property.findUnique({
+        where: { id: propertyId! },
+        select: { organizationId: true, businessRulesEnabled: true }
+      });
+      organizationId = property?.organizationId || null;
+    }
 
     const startDate = startDateParam ? new Date(startDateParam) : new Date();
     const days = daysParam ? parseInt(daysParam) : 7;
@@ -80,7 +103,14 @@ export async function GET(req: NextRequest) {
 
     // Fetch data within property context
     const ratesData = await withPropertyContext(propertyId!, async (tx) => {
-      // 1. Get all room types with their rooms and base pricing
+      // 1. Get property to check if business rules are enabled
+      const property = await tx.property.findUnique({
+        where: { id: propertyId! }
+      });
+
+      const businessRulesEnabled = property?.businessRulesEnabled && applyRules;
+
+      // 3. Get all room types with their rooms and base pricing
       const roomTypes = await tx.roomType.findMany({
         where: { propertyId: propertyId },
         include: {
@@ -108,7 +138,7 @@ export async function GET(req: NextRequest) {
         orderBy: { name: "asc" }
       });
 
-      // 2. Process each room type
+      // 4. Process each room type
       const processedData: RateData[] = roomTypes.map((roomType) => {
         const roomsWithPricing = roomType.rooms.filter((room) => room.pricing);
         const totalRooms = roomType.rooms.length;
@@ -219,7 +249,8 @@ export async function GET(req: NextRequest) {
             availability: dailyOverride?.availability || totalAvailability,
             isOverride,
             isSeasonal,
-            restrictions
+            restrictions,
+            rulesApplied: false
           };
         });
 
@@ -231,17 +262,38 @@ export async function GET(req: NextRequest) {
         };
       });
 
-      return processedData;
+      return { processedData, businessRulesEnabled };
     });
+
+    // Apply business rules if enabled (with fallback to base prices on error)
+    let finalData = ratesData.processedData;
+    if (ratesData.businessRulesEnabled && pricingService) {
+      try {
+        finalData = await applyBusinessRulesToRates(
+          ratesData.processedData,
+          pricingService,
+          propertyId!,
+          organizationId!,
+          dates
+        );
+      } catch (error) {
+        console.error(
+          "❌ Error applying business rules, falling back to base prices:",
+          error
+        );
+        // Continue with base prices - no error thrown
+      }
+    }
 
     const response: RatesResponse = {
       success: true,
-      data: ratesData,
+      data: finalData,
       dateRange: {
         startDate: format(startDate, "yyyy-MM-dd"),
         endDate: format(endDate, "yyyy-MM-dd"),
         dates: dateStrings
-      }
+      },
+      businessRulesEnabled: ratesData.businessRulesEnabled
     };
 
     return NextResponse.json(response);
@@ -365,4 +417,73 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Helper function to apply business rules to rates
+ */
+async function applyBusinessRulesToRates(
+  ratesData: RateData[],
+  pricingService: PricingIntegrationService,
+  propertyId: string,
+  organizationId: string,
+  dates: Date[]
+): Promise<RateData[]> {
+  return Promise.all(
+    ratesData.map(async (roomData) => {
+      const updatedDates: RateData["dates"] = {};
+
+      for (const [dateString, priceData] of Object.entries(roomData.dates)) {
+        try {
+          const dateIndex = dates.findIndex(
+            (d) => format(d, "yyyy-MM-dd") === dateString
+          );
+          const date = dates[dateIndex];
+
+          // Apply business rules to get enhanced price
+          const pricingResult = await pricingService.calculateEnhancedPrice({
+            roomTypeId: roomData.roomTypeId,
+            propertyId,
+            organizationId,
+            date,
+            lengthOfStay: 1
+          });
+
+          // Calculate overall price change percentage
+          const priceChangePercentage =
+            priceData.basePrice > 0
+              ? ((pricingResult.finalPrice - priceData.basePrice) /
+                  priceData.basePrice) *
+                100
+              : 0;
+
+          updatedDates[dateString] = {
+            ...priceData,
+            finalPrice: Math.round(pricingResult.finalPrice * 100) / 100,
+            appliedRules: pricingResult.appliedRules
+              .filter((r) => r.executed && r.success)
+              .map((r) => ({
+                ruleName: r.ruleName,
+                adjustment: `${
+                  priceChangePercentage > 0 ? "+" : ""
+                }${Math.round(priceChangePercentage)}%`
+              })),
+            rulesApplied: pricingResult.appliedRules.some((r) => r.executed)
+          };
+        } catch (error) {
+          console.error(
+            `Error applying rules to ${roomData.roomTypeId} on ${dateString}:`,
+            error
+          );
+          // Fallback to original price
+          updatedDates[dateString] = priceData;
+        }
+      }
+
+      return {
+        ...roomData,
+        dates: updatedDates
+      };
+    })
+  );
 }

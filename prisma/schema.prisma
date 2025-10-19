@@ -46,32 +46,34 @@ model Organization {
 
 /// Property entity representing individual properties within an organization
 model Property {
-  id                 String              @id @default(cuid())
-  organizationId     String
-  name               String
-  address            String?
-  phone              String?
-  email              String?
-  timezone           String              @default("UTC")
-  currency           String              @default("USD")
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  isDefault          Boolean             @default(false)
-  businessRules      BusinessRule[]
-  invitations        InvitationToken[]
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  settings           PropertySettings?
-  reservations       Reservation[]
-  rooms              Room[]
-  roomTypes          RoomType[]
-  userProperties     UserProperty[]
-  errorAlerts        ErrorAlert[]
-  errorLogs          ErrorLog[]
-  notificationLogs   NotificationLog[]
-  notificationRules  NotificationRule[]
-  performanceMetrics PerformanceMetric[]
-  queueMetrics       QueueMetric[]
+  id                      String              @id @default(cuid())
+  organizationId          String
+  name                    String
+  address                 String?
+  phone                   String?
+  email                   String?
+  timezone                String              @default("UTC")
+  currency                String              @default("USD")
+  isActive                Boolean             @default(true)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  isDefault               Boolean             @default(false)
+  businessRulesEnabled    Boolean             @default(false)
+  businessRulesConfig     Json?               @default("{}")
+  businessRules           BusinessRule[]
+  invitations             InvitationToken[]
+  organization            Organization        @relation(fields: [organizationId], references: [id])
+  settings                PropertySettings?
+  reservations            Reservation[]
+  rooms                   Room[]
+  roomTypes               RoomType[]
+  userProperties          UserProperty[]
+  errorAlerts             ErrorAlert[]
+  errorLogs               ErrorLog[]
+  notificationLogs        NotificationLog[]
+  notificationRules       NotificationRule[]
+  performanceMetrics      PerformanceMetric[]
+  queueMetrics            QueueMetric[]
 
   @@unique([organizationId, name])
   @@index([organizationId])

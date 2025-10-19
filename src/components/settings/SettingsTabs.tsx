@@ -15,6 +15,7 @@ const tabs = [
   { label: "Policies & Taxes", href: "/settings/policies" },
   { label: "Channel Managers", href: "/settings/channels" },
   { label: "Pricing & Rates", href: "/settings/rates" },
+  { label: "Business Rules", href: "/settings/business-rules" },
   { label: "Import Reservations", href: "/settings/import" }
 ];
 

@@ -191,6 +191,60 @@ export async function PUT(
 }
 
 /**
+ * PATCH /api/properties/[id]
+ * Partially update property (e.g., businessRulesEnabled)
+ */
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const propertyId = id;
+
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Check if user has access to this property
+    const hasAccess = await hasPropertyAccess(session.user.id, propertyId);
+    if (!hasAccess) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    const body = await req.json();
+    const { businessRulesEnabled } = body;
+
+    // Update only the fields provided
+    const updateData: Record<string, unknown> = {};
+    if (businessRulesEnabled !== undefined) {
+      updateData.businessRulesEnabled = businessRulesEnabled;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "No fields to update" },
+        { status: 400 }
+      );
+    }
+
+    const updatedProperty = await prisma.property.update({
+      where: { id: propertyId },
+      data: updateData
+    });
+
+    return NextResponse.json(updatedProperty);
+  } catch (error) {
+    console.error(`PATCH /api/properties/${propertyId} error:`, error);
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * DELETE /api/properties/[id]
  * Delete property (ORG_ADMIN only, cannot delete default property)
  */

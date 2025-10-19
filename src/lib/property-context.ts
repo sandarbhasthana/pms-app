@@ -104,15 +104,6 @@ export function getPropertyIdFromRequest(req: Request): string | null {
   const finalPropertyId =
     propertyIdHeader || propertyIdQuery || propertyIdCookie || null;
 
-  // Debug: Log property ID resolution
-  console.log(`🔍 Property ID resolution:`, {
-    header: propertyIdHeader,
-    query: propertyIdQuery,
-    cookie: propertyIdCookie,
-    final: finalPropertyId,
-    cookieHeader: cookieHeader
-  });
-
   return finalPropertyId;
 }
 
@@ -353,14 +344,11 @@ export async function validatePropertyAccess(
     // If no property ID in request, fallback to session (for backward compatibility)
     if (!propertyId && session.user.currentPropertyId) {
       propertyId = session.user.currentPropertyId;
-      console.log(`⚠️ Using session fallback property ID: ${propertyId}`);
     }
 
     if (!propertyId) {
       return { success: false, error: "Property context missing" };
     }
-
-    console.log(`🎯 Final property ID for validation: ${propertyId}`);
 
     // Check access
     const hasAccess = await hasPropertyAccess(

@@ -8,7 +8,7 @@ export const SheetTrigger = Dialog.Trigger;
 export const SheetClose = Dialog.Close;
 
 export const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof Dialog.Overlay>,
+  HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof Dialog.Overlay>
 >(({ className, ...props }, ref) => (
   <Dialog.Overlay
@@ -20,7 +20,7 @@ export const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = "SheetOverlay";
 
 export const SheetContent = React.forwardRef<
-  React.ElementRef<typeof Dialog.Content>,
+  HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof Dialog.Content>
 >(({ className, children, ...props }, ref) => (
   <Dialog.Portal>
@@ -47,7 +47,7 @@ export const SheetHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 SheetHeader.displayName = "SheetHeader";
 
 export const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof Dialog.Title>,
+  HTMLHeadingElement,
   React.ComponentPropsWithoutRef<typeof Dialog.Title>
 >(({ className, ...props }, ref) => (
   <Dialog.Title
@@ -59,7 +59,7 @@ export const SheetTitle = React.forwardRef<
 SheetTitle.displayName = "SheetTitle";
 
 export const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof Dialog.Description>,
+  HTMLParagraphElement,
   React.ComponentPropsWithoutRef<typeof Dialog.Description>
 >(({ className, ...props }, ref) => (
   <Dialog.Description
@@ -70,5 +70,19 @@ export const SheetDescription = React.forwardRef<
 ));
 SheetDescription.displayName = "SheetDescription";
 
+export const SheetFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+  className,
+  ...props
+}) => (
+  <div
+    className={cn(
+      "flex gap-2 justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700",
+      className
+    )}
+    {...props}
+  />
+);
+SheetFooter.displayName = "SheetFooter";
+
 // Usage:
-// import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+// import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
