@@ -74,6 +74,7 @@ model Property {
   notificationRules       NotificationRule[]
   performanceMetrics      PerformanceMetric[]
   queueMetrics            QueueMetric[]
+  statusHistoryLogs       ReservationStatusHistory[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -110,6 +111,7 @@ model User {
   performanceMetrics       PerformanceMetric[]
   systemActivities         SystemActivity[]
   notificationPreferences  UserNotificationPreferences?
+  statusHistoryChanges     ReservationStatusHistory[]
 }
 
 /// Join table: user membership in a tenant with a role
@@ -322,17 +324,23 @@ model Reservation {
 model ReservationStatusHistory {
   id             String             @id @default(cuid())
   reservationId  String
+  propertyId     String
   previousStatus ReservationStatus?
   newStatus      ReservationStatus
   changedBy      String?
   changeReason   String?
+  notes          String?
   changedAt      DateTime           @default(now())
   isAutomatic    Boolean            @default(false)
   reservation    Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user           User?              @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+  property       Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([reservationId])
+  @@index([propertyId])
   @@index([changedAt])
   @@index([newStatus])
+  @@index([changedBy])
 }
 
 /// Property settings scoped to a tenant or specific property

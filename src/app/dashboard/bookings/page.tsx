@@ -32,6 +32,7 @@ import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
 import LegendModal from "@/components/bookings/LegendModal";
 import { LoadingSpinner } from "@/components/ui/spinner";
 import { apiDeduplicator } from "@/lib/api-deduplication";
+import { EditBookingFormData } from "@/components/bookings/edit-tabs/types";
 
 interface Reservation {
   id: string;
@@ -51,6 +52,21 @@ interface Room {
   id: string;
   title: string;
 }
+
+/**
+ * Get event color based on reservation status
+ */
+const getEventColor = (status?: string): string => {
+  const colorMap: Record<string, string> = {
+    CONFIRMED: "#14b8a6", // Teal
+    CONFIRMATION_PENDING: "#ec4899", // Pink
+    IN_HOUSE: "#22c55e", // Green
+    CANCELLED: "#6b7280", // Gray
+    CHECKED_OUT: "#8b5cf6", // Purple
+    NO_SHOW: "#f97316" // Orange
+  };
+  return colorMap[status || "CONFIRMED"] || "#14b8a6";
+};
 
 export default function BookingsRowStylePage() {
   const calendarRef = useRef<FullCalendar | null>(null);
@@ -216,6 +232,9 @@ export default function BookingsRowStylePage() {
               start: r.checkIn,
               end: r.checkOut,
               allDay: true,
+              backgroundColor: getEventColor(r.status), // Color based on status
+              borderColor: getEventColor(r.status),
+              textColor: "#ffffff", // White text for better contrast
               extendedProps: {
                 isPartialDay: true,
                 status: r.status,
@@ -711,6 +730,161 @@ export default function BookingsRowStylePage() {
   );
 
   // ------------------------
+  // Memoize availableRooms to prevent unnecessary re-renders of EditBookingSheet
+  const availableRooms = useMemo(() => {
+    return resources.map((room, index) => {
+      // Extract room type and number from title (e.g., "Presidential Suite - 101")
+      const titleParts = room.title.split(" - ");
+      const roomType = titleParts.length > 1 ? titleParts[0] : room.title;
+      const roomNumber =
+        titleParts.length > 1 ? titleParts[1] : `${index + 101}`;
+
+      // Create proper room data
+      return {
+        id: room.id,
+        name: room.title,
+        number: roomNumber,
+        type: roomType.toLowerCase().replace(/\s+/g, "_"),
+        typeDisplayName: roomType,
+        capacity: 4, // Placeholder - should come from room data
+        basePrice: 0, // No fallback prices in production
+        available: true, // Will be updated by availability check
+        isCurrentRoom: editingReservation?.roomId === room.id
+      };
+    });
+  }, [resources, editingReservation?.roomId]);
+
+  // Memoize onUpdate callback to prevent unnecessary re-renders
+  // Note: This depends on reload which is defined later, but we'll use a workaround
+  const handleEditBookingUpdate = useCallback(
+    async (reservationId: string, data: Partial<EditBookingFormData>) => {
+      // Get the current reload function from the component scope
+      const orgId = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("orgId="))
+        ?.split("=")[1];
+
+      // If data is empty, just refresh the calendar (e.g., after status change)
+      if (Object.keys(data).length === 0) {
+        try {
+          console.log(`🔄 Refreshing calendar after status change...`);
+          const timestamp = Date.now();
+          const res = await fetch(
+            `/api/reservations?orgId=${orgId}&t=${timestamp}`,
+            {
+              credentials: "include"
+            }
+          );
+
+          if (res.ok) {
+            const responseData = await res.json();
+            setEvents(responseData.reservations || []);
+            setResources(responseData.rooms || []);
+
+            // Force calendar refresh
+            const api = calendarRef.current?.getApi();
+            if (api) {
+              api.removeAllEvents();
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              api.refetchEvents();
+              console.log(`✅ Calendar refetch triggered`);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to refresh calendar:", error);
+          toast.error("Failed to refresh calendar data");
+        }
+        return;
+      }
+
+      await handleUpdateBooking({
+        reservationId,
+        data: {
+          guestName: data.guestName || "",
+          checkIn: data.checkIn || "",
+          checkOut: data.checkOut || "",
+          adults: data.adults || 1,
+          children: data.children || 0,
+          roomId: data.roomId,
+          notes: data.notes || ""
+        },
+        reload: async () => {
+          // Inline reload logic to avoid dependency on reload function
+          try {
+            console.log(`🔄 Reloading reservations...`);
+            const timestamp = Date.now();
+            const res = await fetch(
+              `/api/reservations?orgId=${orgId}&t=${timestamp}`,
+              {
+                credentials: "include"
+              }
+            );
+
+            if (res.ok) {
+              const data = await res.json();
+              setEvents(data.reservations || []);
+              setResources(data.rooms || []);
+
+              // Force calendar refresh
+              const api = calendarRef.current?.getApi();
+              if (api) {
+                api.removeAllEvents();
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                api.refetchEvents();
+                console.log(`✅ Calendar refetch triggered`);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to reload reservations:", error);
+            toast.error("Failed to refresh calendar data");
+          }
+        },
+        onClose: () => setEditingReservation(null)
+      });
+    },
+    []
+  );
+
+  // Memoize onDelete callback to prevent unnecessary re-renders
+  const handleEditBookingDelete = useCallback(async (reservationId: string) => {
+    const orgId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("orgId="))
+      ?.split("=")[1];
+
+    await handleDeleteBooking(reservationId, async () => {
+      try {
+        console.log(`🔄 Reloading reservations...`);
+        const timestamp = Date.now();
+        const res = await fetch(
+          `/api/reservations?orgId=${orgId}&t=${timestamp}`,
+          {
+            credentials: "include"
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data.reservations || []);
+          setResources(data.rooms || []);
+
+          // Force calendar refresh
+          const api = calendarRef.current?.getApi();
+          if (api) {
+            api.removeAllEvents();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            api.refetchEvents();
+            console.log(`✅ Calendar refetch triggered`);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to reload reservations:", error);
+        toast.error("Failed to refresh calendar data");
+      }
+    });
+    setEditingReservation(null);
+  }, []);
+
   // Click-outside listener for flyout
   // ------------------------
   useEffect(() => {
@@ -926,51 +1100,16 @@ export default function BookingsRowStylePage() {
         />
       )}
 
-      {/* Edit Booking Sheet */}
-      <EditBookingSheet
-        editingReservation={editingReservation}
-        setEditingReservation={setEditingReservation}
-        availableRooms={resources.map((room, index) => {
-          // Extract room type and number from title (e.g., "Presidential Suite - 101")
-          const titleParts = room.title.split(" - ");
-          const roomType = titleParts.length > 1 ? titleParts[0] : room.title;
-          const roomNumber =
-            titleParts.length > 1 ? titleParts[1] : `${index + 101}`;
-
-          // Create proper room data
-          return {
-            id: room.id,
-            name: room.title,
-            number: roomNumber,
-            type: roomType.toLowerCase().replace(/\s+/g, "_"),
-            typeDisplayName: roomType,
-            capacity: 4, // Placeholder - should come from room data
-            basePrice: 0, // No fallback prices in production
-            available: true, // Will be updated by availability check
-            isCurrentRoom: editingReservation?.roomId === room.id
-          };
-        })}
-        onUpdate={async (reservationId, data) => {
-          await handleUpdateBooking({
-            reservationId,
-            data: {
-              guestName: data.guestName || "",
-              checkIn: data.checkIn || "",
-              checkOut: data.checkOut || "",
-              adults: data.adults || 1,
-              children: data.children || 0,
-              roomId: data.roomId, // ✅ ADD ROOM ID TO UPDATE
-              notes: data.notes || ""
-            },
-            reload,
-            onClose: () => setEditingReservation(null)
-          });
-        }}
-        onDelete={async (reservationId) => {
-          await handleDeleteBooking(reservationId, reload);
-          setEditingReservation(null);
-        }}
-      />
+      {/* Edit Booking Sheet - Only render when editing a reservation */}
+      {editingReservation && (
+        <EditBookingSheet
+          editingReservation={editingReservation}
+          setEditingReservation={setEditingReservation}
+          availableRooms={availableRooms}
+          onUpdate={handleEditBookingUpdate}
+          onDelete={handleEditBookingDelete}
+        />
+      )}
 
       {/* View Booking Sheet */}
       <ViewBookingSheet

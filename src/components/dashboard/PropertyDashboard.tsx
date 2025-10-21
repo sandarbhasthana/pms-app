@@ -160,12 +160,6 @@ export function PropertyDashboard() {
   const currentPropertyId = useMemo(() => {
     // First try session
     if (session?.user?.currentPropertyId) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "📱 Using property ID from session:",
-          session.user.currentPropertyId
-        );
-      }
       return session.user.currentPropertyId;
     }
 
@@ -178,9 +172,6 @@ export function PropertyDashboard() {
             ?.split("=")[1]
         : null;
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("🍪 Using property ID from cookie:", propertyIdFromCookie);
-    }
     return propertyIdFromCookie;
   }, [session?.user?.currentPropertyId]);
 
@@ -189,19 +180,6 @@ export function PropertyDashboard() {
       (p) => p.id === currentPropertyId
     );
   }, [session?.user?.availableProperties, currentPropertyId]);
-
-  // Only log in development and reduce frequency
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("🏠 PropertyDashboard state:", {
-        currentPropertyId,
-        currentProperty: currentProperty?.name,
-        sessionLoaded: !!session,
-        availablePropertiesCount:
-          session?.user?.availableProperties?.length || 0
-      });
-    }
-  }, [currentPropertyId, currentProperty?.name, session]);
 
   // OPTIMIZATION: Load only essential data on initial load
   const loadDashboardData = useCallback(async () => {

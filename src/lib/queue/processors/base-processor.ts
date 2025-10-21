@@ -114,6 +114,7 @@ export abstract class BaseJobProcessor {
    */
   protected async createStatusHistory(
     reservationId: string,
+    propertyId: string,
     previousStatus: ReservationStatus | null,
     newStatus: ReservationStatus,
     reason: string,
@@ -123,6 +124,7 @@ export abstract class BaseJobProcessor {
       await prisma.reservationStatusHistory.create({
         data: {
           reservationId,
+          propertyId,
           previousStatus,
           newStatus,
           changedBy,
@@ -142,6 +144,7 @@ export abstract class BaseJobProcessor {
    */
   protected async updateReservationStatus(
     reservationId: string,
+    propertyId: string,
     newStatus: ReservationStatus,
     reason: string,
     additionalData: Record<string, unknown> = {}
@@ -173,6 +176,7 @@ export abstract class BaseJobProcessor {
       await tx.reservationStatusHistory.create({
         data: {
           reservationId,
+          propertyId,
           previousStatus: currentReservation.status,
           newStatus: newStatus,
           changedBy: "system-automation",

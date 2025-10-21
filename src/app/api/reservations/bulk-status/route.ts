@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
         await tx.reservationStatusHistory.create({
           data: {
             reservationId: reservation.id,
+            propertyId: propertyId!,
             previousStatus: reservation.status,
             newStatus: newStatus,
             changedBy: updatedBy || userId || "system",

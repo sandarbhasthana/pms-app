@@ -463,32 +463,10 @@ export default function CalendarViewRowStyle({
         info.el.style.padding = "2px 4px";
         info.el.style.marginTop = "20px";
       }}
-      eventClassNames={({ event }) => {
-        // Don't apply payment status classes to background events (weekend/today highlights)
-        if (event.display === "background") {
-          // Allow specific background event classes but no payment status classes
-          return [];
-        }
-
-        const status = event.extendedProps.status as string | undefined;
-        const paymentStatus = event.extendedProps.paymentStatus as
-          | "PAID"
-          | "PARTIALLY_PAID"
-          | "UNPAID"
-          | "UNKNOWN";
-
-        // Prioritize payment status over reservation status for color coding
-        if (paymentStatus === "PAID") return ["paid"];
-        if (paymentStatus === "PARTIALLY_PAID") return ["partially_paid"];
-        if (paymentStatus === "UNPAID") return ["unpaid"];
-
-        // Fallback to reservation status if no payment status
-        if (status === "CHECKED_IN") return ["checked_in_date"];
-        if (status === "CHECKED_OUT") return ["checked_out_date"];
-        if (status === "PENDING") return ["pending_booking"];
-
-        // Default fallback for non-background events only
-        return ["unpaid"];
+      eventClassNames={() => {
+        // Don't apply any classes - let the backgroundColor/borderColor from event source handle colors
+        // This ensures status colors are displayed correctly
+        return [];
       }}
       dayHeaderContent={(args) => (
         <span

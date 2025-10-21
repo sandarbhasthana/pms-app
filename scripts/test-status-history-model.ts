@@ -1,10 +1,16 @@
 /**
  * Test ReservationStatusHistory Model
- * 
+ *
  * Tests the new ReservationStatusHistory table and model functionality
  */
 
 import { prisma } from "../src/lib/prisma";
+
+interface TableColumnInfo {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+}
 
 async function testStatusHistoryModel() {
   console.log("🧪 Testing ReservationStatusHistory model...\n");
@@ -12,17 +18,21 @@ async function testStatusHistoryModel() {
   try {
     // Check if the table exists and its structure
     console.log("📋 Checking table structure...");
-    const tableInfo = await prisma.$queryRaw`
-      SELECT column_name, data_type, is_nullable 
-      FROM information_schema.columns 
-      WHERE table_name = 'ReservationStatusHistory' 
+    const tableInfo = await prisma.$queryRaw<TableColumnInfo[]>`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_name = 'ReservationStatusHistory'
       AND table_schema = 'public'
       ORDER BY ordinal_position;
     `;
 
     console.log("✅ ReservationStatusHistory table structure:");
-    (tableInfo as any[]).forEach(col => {
-      console.log(`  - ${col.column_name}: ${col.data_type} (${col.is_nullable === 'YES' ? 'nullable' : 'not null'})`);
+    tableInfo.forEach((col) => {
+      console.log(
+        `  - ${col.column_name}: ${col.data_type} (${
+          col.is_nullable === "YES" ? "nullable" : "not null"
+        })`
+      );
     });
 
     // Get a test reservation
@@ -36,11 +46,15 @@ async function testStatusHistoryModel() {
     });
 
     if (!reservation) {
-      console.log("⚠️  No test reservation found. Please run create-payment-test-data.ts first.");
+      console.log(
+        "⚠️  No test reservation found. Please run create-payment-test-data.ts first."
+      );
       return;
     }
 
-    console.log(`📋 Using reservation: ${reservation.id} (${reservation.guestName})`);
+    console.log(
+      `📋 Using reservation: ${reservation.id} (${reservation.guestName})`
+    );
     console.log(`📊 Current status: ${reservation.status}`);
 
     // Test creating a status history record
@@ -48,6 +62,7 @@ async function testStatusHistoryModel() {
     const statusHistory = await prisma.reservationStatusHistory.create({
       data: {
         reservationId: reservation.id,
+        propertyId: reservation.propertyId,
         previousStatus: "CONFIRMATION_PENDING",
         newStatus: "CONFIRMED",
         changedBy: "payment-processor",
@@ -76,27 +91,34 @@ async function testStatusHistoryModel() {
       }
     });
 
-    console.log(`✅ Found ${historyRecords.length} history records for this reservation`);
+    console.log(
+      `✅ Found ${historyRecords.length} history records for this reservation`
+    );
 
     // Test with reservation relation
     console.log("\n🔗 Testing relations...");
-    const historyWithReservation = await prisma.reservationStatusHistory.findMany({
-      where: {
-        reservationId: reservation.id
-      },
-      include: {
-        reservation: {
-          select: {
-            guestName: true,
-            status: true
+    const historyWithReservation =
+      await prisma.reservationStatusHistory.findMany({
+        where: {
+          reservationId: reservation.id
+        },
+        include: {
+          reservation: {
+            select: {
+              guestName: true,
+              status: true
+            }
           }
         }
-      }
-    });
+      });
 
     console.log("✅ History with reservation data:");
     historyWithReservation.forEach((record, i) => {
-      console.log(`  ${i + 1}. ${record.previousStatus} → ${record.newStatus} (${record.reservation.guestName})`);
+      console.log(
+        `  ${i + 1}. ${record.previousStatus} → ${record.newStatus} (${
+          record.reservation.guestName
+        })`
+      );
     });
 
     // Test filtering by status
@@ -108,7 +130,9 @@ async function testStatusHistoryModel() {
       take: 5
     });
 
-    console.log(`✅ Found ${confirmedRecords.length} records with CONFIRMED status`);
+    console.log(
+      `✅ Found ${confirmedRecords.length} records with CONFIRMED status`
+    );
 
     // Test automatic vs manual changes
     const automaticChanges = await prisma.reservationStatusHistory.count({
@@ -133,8 +157,9 @@ async function testStatusHistoryModel() {
     });
     console.log("\n🧹 Test record cleaned up");
 
-    console.log("\n🎉 ReservationStatusHistory model test completed successfully!");
-
+    console.log(
+      "\n🎉 ReservationStatusHistory model test completed successfully!"
+    );
   } catch (error) {
     console.error("❌ Error testing ReservationStatusHistory:", error);
   } finally {

@@ -65,16 +65,6 @@ export function PropertySwitcher({
         cookiePropertyId = existingCookie.split("=")[1];
       }
 
-      // Only log in development and reduce frequency
-      if (process.env.NODE_ENV === "development") {
-        console.log(`🏢 Available properties:`, availableProperties);
-        console.log(`🍪 Cookie propertyId:`, cookiePropertyId);
-        console.log(
-          `📱 Session currentPropertyId:`,
-          session?.user?.currentPropertyId
-        );
-      }
-
       // Find current property - prioritize cookie, then session, then default
       let current = null;
 
@@ -101,13 +91,6 @@ export function PropertySwitcher({
         current =
           availableProperties.find((p) => p.isDefault) ||
           availableProperties[0];
-        if (process.env.NODE_ENV === "development") {
-          console.log(`🏠 Using fallback property:`, current?.name);
-        }
-      }
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(`✅ Final selected property:`, current?.name, current?.id);
       }
       setCurrentProperty(current);
 
@@ -182,14 +165,12 @@ export function PropertySwitcher({
         console.log(`🍪 Cookie after setting:`, verifyCookie);
 
         // Update session to reflect the property change
-        console.log(`📱 Updating session with propertyId: ${propertyId}`);
         await update({ currentPropertyId: propertyId });
 
         // Wait for session update to complete
         await new Promise((resolve) => setTimeout(resolve, 300));
 
         // Refresh the page to ensure all components get the new property context
-        console.log(`🔄 Refreshing page to apply new property context`);
         window.location.reload();
       } catch (error) {
         console.error("Error switching property:", error);

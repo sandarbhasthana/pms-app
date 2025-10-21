@@ -53,8 +53,8 @@ const STATUS_BUSINESS_RULES = {
       warningThreshold: 0 // Same day warning
     },
     paymentRequirements: {
-      minimumPayment: 0.5, // 50% of total amount
-      allowedStatuses: ["PAID", "PARTIALLY_PAID"]
+      minimumPayment: 1.0, // 100% payment required for check-in
+      allowedStatuses: ["PAID"] // Only PAID status allowed for check-in
     },
     roomRequirements: {
       mustBeClean: true,
@@ -339,9 +339,19 @@ export class StatusTransitionValidator {
       const { minimumPayment, allowedStatuses } = rules.paymentRequirements;
 
       if (!allowedStatuses.includes(reservation.paymentStatus)) {
-        result.businessRuleViolations.push(
-          `Payment status must be one of: ${allowedStatuses.join(", ")}`
-        );
+        if (context.newStatus === ReservationStatus.IN_HOUSE) {
+          result.businessRuleViolations.push(
+            `Cannot check in: Payment status is ${
+              reservation.paymentStatus
+            }. Full payment (₹${(reservation.totalAmount || 0).toFixed(
+              2
+            )}) is required before check-in.`
+          );
+        } else {
+          result.businessRuleViolations.push(
+            `Payment status must be one of: ${allowedStatuses.join(", ")}`
+          );
+        }
       }
 
       // Check minimum payment amount
@@ -351,11 +361,21 @@ export class StatusTransitionValidator {
       const requiredAmount = totalAmount * minimumPayment;
 
       if (paidAmount < requiredAmount) {
-        result.businessRuleViolations.push(
-          `Minimum payment of ${
-            minimumPayment * 100
-          }% (₹${requiredAmount.toFixed(2)}) required`
-        );
+        if (context.newStatus === ReservationStatus.IN_HOUSE) {
+          result.businessRuleViolations.push(
+            `Cannot check in: Payment received (₹${paidAmount.toFixed(
+              2
+            )}) is less than required (₹${requiredAmount.toFixed(
+              2
+            )}). Full payment is required.`
+          );
+        } else {
+          result.businessRuleViolations.push(
+            `Minimum payment of ${
+              minimumPayment * 100
+            }% (₹${requiredAmount.toFixed(2)}) required`
+          );
+        }
       }
     }
 

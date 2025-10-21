@@ -230,6 +230,7 @@ export class CleanupProcessor extends BaseJobProcessor {
       },
       select: {
         id: true,
+        propertyId: true,
         status: true,
         guestName: true,
         checkIn: true,
@@ -273,6 +274,7 @@ export class CleanupProcessor extends BaseJobProcessor {
           } else {
             await this.updateReservationStatus(
               reservation.id,
+              reservation.propertyId,
               newStatus,
               reason,
               {} // Additional data object

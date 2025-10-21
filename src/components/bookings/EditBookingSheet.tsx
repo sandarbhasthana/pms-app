@@ -1,18 +1,13 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose
+  SheetClose,
+  SheetDescription
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -38,7 +33,6 @@ import {
   StatusBadge,
   StatusUpdateModal
 } from "@/components/reservation-status";
-import { useRenderLogger } from "@/lib/debug/render-logger";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
@@ -48,13 +42,14 @@ import EditCardsTab from "./edit-tabs/EditCardsTab";
 import EditDocumentsTab from "./edit-tabs/EditDocumentsTab";
 import EditNotesTab from "./edit-tabs/EditNotesTab";
 import EditAuditTab from "./edit-tabs/EditAuditTab";
+import { StatusChangeConfirmationModal } from "./StatusChangeConfirmationModal";
 import {
   EditBookingSheetProps,
   EditBookingTab,
   EditBookingFormData
 } from "./edit-tabs/types";
 
-const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
+const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   editingReservation,
   setEditingReservation,
   availableRooms,
@@ -92,15 +87,15 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showStatusConfirmation, setShowStatusConfirmation] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    newStatus: ReservationStatus;
+  } | null>(null);
 
   // Track the last reservation ID to prevent unnecessary form resets
   const lastReservationIdRef = useRef<string | null>(null);
-
-  // Debug: Log renders for performance testing
-  useRenderLogger("EditBookingSheet", {
-    reservationId: editingReservation?.id,
-    hasUnsavedChanges
-  });
+  // Track if we're in the initialization phase to avoid checking unsaved changes
+  const isInitializingRef = useRef(true);
 
   // Initialize form data when reservation ID actually changes (prevents unnecessary resets)
   useEffect(() => {
@@ -111,7 +106,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       lastReservationIdRef.current = currentReservationId;
 
       if (editingReservation) {
-        setFormData({
+        const newFormData = {
           guestName: editingReservation.guestName || "",
           email: editingReservation.email || "",
           phone: editingReservation.phone || "",
@@ -144,18 +139,32 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
             paymentMethod: "cash", // Default method
             paymentStatus: editingReservation.paymentStatus || "UNPAID"
           }
-        });
+        };
+        setFormData(newFormData);
         setActiveTab("details");
         setHasUnsavedChanges(false);
+        // Mark that we're done initializing
+        isInitializingRef.current = false;
       }
     }
-  }, [editingReservation]); // Safe to depend on entire object now since we check ID internally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingReservation?.id]); // Only depend on ID to prevent unnecessary re-runs
 
-  // Helper function to check for changes (moved outside to avoid recreating)
-  const checkForChanges = useCallback(() => {
-    if (!editingReservation) return false;
+  // Calculate if there are unsaved changes directly (avoid extra callback layer)
+  // Skip during initialization to prevent unnecessary renders
+  useEffect(() => {
+    // Skip during initialization phase
+    if (isInitializingRef.current) {
+      return;
+    }
 
-    return (
+    if (!editingReservation) {
+      // Only update state if it's currently true
+      setHasUnsavedChanges((prev) => (prev ? false : prev));
+      return;
+    }
+
+    const hasChanges =
       formData.guestName !== (editingReservation.guestName || "") ||
       formData.email !== (editingReservation.email || "") ||
       formData.phone !== (editingReservation.phone || "") ||
@@ -164,26 +173,20 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       formData.checkOut !== (editingReservation.checkOut || "") ||
       formData.adults !== (editingReservation.adults || 1) ||
       formData.children !== (editingReservation.children || 0) ||
-      formData.notes !== (editingReservation.notes || "")
-    );
+      formData.notes !== (editingReservation.notes || "");
+
+    // Only update state if the value actually changed
+    setHasUnsavedChanges((prev) => (prev !== hasChanges ? hasChanges : prev));
   }, [formData, editingReservation]);
 
-  // Calculate if there are unsaved changes (using callback to avoid dependency issues)
-  const hasChanges = useMemo(() => {
-    return checkForChanges();
-  }, [checkForChanges]);
-
-  // Update hasUnsavedChanges state only when hasChanges actually changes
-  useEffect(() => {
-    setHasUnsavedChanges(hasChanges);
-  }, [hasChanges]);
-
-  // Reset ref when reservation is cleared
+  // Reset refs when reservation is cleared
   useEffect(() => {
     if (!editingReservation) {
       lastReservationIdRef.current = null;
+      isInitializingRef.current = true; // Reset initialization flag for next reservation
     }
-  }, [editingReservation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingReservation?.id]);
 
   const updateFormData = useCallback(
     (updates: Partial<EditBookingFormData>) => {
@@ -230,9 +233,24 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       return;
     }
 
+    // Check if this is a critical transition that needs confirmation
+    const isCriticalTransition =
+      (currentStatus === "CONFIRMED" && newStatus === "CANCELLED") ||
+      (currentStatus === "IN_HOUSE" && newStatus === "CANCELLED") ||
+      (currentStatus === "CONFIRMED" && newStatus === "NO_SHOW");
+
+    // If critical transition and no reason provided, show confirmation modal
+    if (isCriticalTransition && !reason) {
+      setPendingStatusChange({ newStatus });
+      setShowStatusConfirmation(true);
+      return;
+    }
+
     setIsUpdatingStatus(true);
 
     try {
+      console.log(`🔄 Updating status to ${newStatus} with reason: ${reason}`);
+
       const response = await fetch(
         `/api/reservations/${editingReservation.id}/status`,
         {
@@ -243,8 +261,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
           credentials: "include",
           body: JSON.stringify({
             newStatus,
-            reason,
-            updatedBy: "user", // This should come from session
+            reason: reason || "Status changed from EditBookingSheet",
             isAutomatic: false
           })
         }
@@ -252,7 +269,22 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to update status");
+
+        // Build detailed error message from validation details
+        let errorMessage = error.error || "Failed to update status";
+
+        // Show approval reason if approval is required
+        if (error.requiresApproval && error.approvalReason) {
+          errorMessage = `${error.error}: ${error.approvalReason}`;
+        } else if (
+          error.details &&
+          Array.isArray(error.details) &&
+          error.details.length > 0
+        ) {
+          errorMessage = error.details[0]; // Show first validation error
+        }
+
+        throw new Error(errorMessage);
       }
 
       await response.json();
@@ -266,6 +298,12 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       });
 
       toast.success(`Status updated to ${getStatusConfig(newStatus).label}`);
+
+      // Trigger calendar refresh by calling onUpdate with empty data
+      // This will cause the calendar to refetch and display the updated status color
+      if (onUpdate) {
+        await onUpdate(editingReservation.id, {});
+      }
     } catch (error) {
       console.error("Failed to update status:", error);
       toast.error(
@@ -273,6 +311,7 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
       );
     } finally {
       setIsUpdatingStatus(false);
+      setPendingStatusChange(null);
     }
   };
 
@@ -344,6 +383,9 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
         <div />
       </SheetClose>
       <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base [&_[data-slot=select-content]]:z-[99999] z-[9999]">
+        <SheetDescription className="sr-only">
+          Edit booking details including guest information, dates, and status
+        </SheetDescription>
         <SheetHeader className="relative">
           {/* Status and Action Dropdowns + Close button in top right */}
           <div className="absolute top-0 right-0 flex items-center gap-3">
@@ -641,6 +683,25 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
         </div>
       </SheetContent>
 
+      {/* Status Change Confirmation Modal */}
+      {pendingStatusChange && (
+        <StatusChangeConfirmationModal
+          isOpen={showStatusConfirmation}
+          currentStatus={editingReservation.status as ReservationStatus}
+          newStatus={pendingStatusChange.newStatus}
+          guestName={editingReservation.guestName || "Guest"}
+          onConfirm={(reason) => {
+            setShowStatusConfirmation(false);
+            handleStatusUpdate(pendingStatusChange.newStatus, reason);
+          }}
+          onCancel={() => {
+            setShowStatusConfirmation(false);
+            setPendingStatusChange(null);
+          }}
+          isLoading={isUpdatingStatus}
+        />
+      )}
+
       {/* Advanced Status Update Modal */}
       <StatusUpdateModal
         isOpen={showStatusModal}
@@ -655,12 +716,31 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
           paymentStatus: editingReservation.paymentStatus
         }}
         currentUserRole="FRONT_DESK" // This should come from user session
-        onStatusUpdate={(reservationId, newStatus, reason) =>
+        onStatusUpdate={(_reservationId, newStatus, reason) =>
           handleStatusUpdate(newStatus, reason)
         }
       />
     </Sheet>
   );
 };
+
+// Memoize the component to prevent unnecessary re-renders when parent re-renders
+// Only re-render if the actual props change (editingReservation ID, availableRooms, callbacks)
+const EditBookingSheet = React.memo(
+  EditBookingSheetComponent,
+  (prevProps, nextProps) => {
+    // Return true if props are equal (don't re-render)
+    // Return false if props are different (do re-render)
+    return (
+      prevProps.editingReservation?.id === nextProps.editingReservation?.id &&
+      prevProps.availableRooms === nextProps.availableRooms &&
+      prevProps.onUpdate === nextProps.onUpdate &&
+      prevProps.onDelete === nextProps.onDelete &&
+      prevProps.setEditingReservation === nextProps.setEditingReservation
+    );
+  }
+);
+
+EditBookingSheet.displayName = "EditBookingSheet";
 
 export default EditBookingSheet;

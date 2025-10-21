@@ -130,6 +130,7 @@ async function createCleanupTestData() {
       await prisma.reservationStatusHistory.create({
         data: {
           reservationId: reservation.id,
+          propertyId: property.id,
           previousStatus: ReservationStatus.CONFIRMATION_PENDING,
           newStatus: testData.status,
           changeReason: "Initial status set for testing",
@@ -157,7 +158,6 @@ async function createCleanupTestData() {
     console.log(
       "\n📝 Skipping orphaned status history records (CASCADE DELETE prevents creation)"
     );
-    const orphanedRecords: string[] = [];
 
     console.log("\n📊 Cleanup Test Data Summary:");
     console.log("==============================================");

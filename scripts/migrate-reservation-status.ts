@@ -41,7 +41,7 @@ async function migrateReservationStatus() {
 
       const pendingReservations = await prisma.reservation.findMany({
         where: { status: "PENDING" as unknown as ReservationStatus },
-        select: { id: true, status: true }
+        select: { id: true, propertyId: true, status: true }
       });
 
       for (const reservation of pendingReservations) {
@@ -62,6 +62,7 @@ async function migrateReservationStatus() {
           await tx.reservationStatusHistory.create({
             data: {
               reservationId: reservation.id,
+              propertyId: reservation.propertyId,
               previousStatus: "PENDING" as unknown as ReservationStatus,
               newStatus: "CONFIRMATION_PENDING",
               changedBy: "system-migration",
@@ -84,7 +85,7 @@ async function migrateReservationStatus() {
 
       const checkedInReservations = await prisma.reservation.findMany({
         where: { status: "CHECKED_IN" as unknown as ReservationStatus },
-        select: { id: true, status: true, checkIn: true }
+        select: { id: true, propertyId: true, status: true, checkIn: true }
       });
 
       for (const reservation of checkedInReservations) {
@@ -105,6 +106,7 @@ async function migrateReservationStatus() {
           await tx.reservationStatusHistory.create({
             data: {
               reservationId: reservation.id,
+              propertyId: reservation.propertyId,
               previousStatus: "CHECKED_IN" as unknown as ReservationStatus,
               newStatus: "IN_HOUSE",
               changedBy: "system-migration",
@@ -135,13 +137,14 @@ async function migrateReservationStatus() {
           none: {} // Only reservations without any status history
         }
       },
-      select: { id: true, status: true, createdAt: true }
+      select: { id: true, propertyId: true, status: true, createdAt: true }
     });
 
     for (const reservation of existingReservations) {
       await prisma.reservationStatusHistory.create({
         data: {
           reservationId: reservation.id,
+          propertyId: reservation.propertyId,
           previousStatus: null, // No previous status for initial entry
           newStatus: reservation.status,
           changedBy: "system-migration",

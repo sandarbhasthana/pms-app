@@ -20,6 +20,7 @@ interface PropertyAutomationSettings {
 
 interface NoShowCandidate {
   id: string;
+  propertyId: string;
   guestName: string | null;
   checkIn: Date;
   email: string | null;
@@ -194,6 +195,7 @@ export class NoShowProcessor extends BaseJobProcessor {
       },
       select: {
         id: true,
+        propertyId: true,
         guestName: true,
         checkIn: true,
         email: true,
@@ -280,6 +282,7 @@ export class NoShowProcessor extends BaseJobProcessor {
           // Update reservation status
           await this.updateReservationStatus(
             reservation.id,
+            reservation.propertyId,
             ReservationStatus.NO_SHOW,
             reason
           );

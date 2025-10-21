@@ -17,7 +17,6 @@ class APIDeduplicator {
     // Check if there's already a pending request
     const existing = this.pendingRequests.get(key);
     if (existing) {
-      console.log(`🔄 Deduplicating client request: ${key}`);
       return existing.promise as Promise<T>;
     }
 

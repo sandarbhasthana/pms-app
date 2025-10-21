@@ -2,7 +2,8 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { ReservationStatus } from "@prisma/client";
+import { ReservationStatus, PropertyRole } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { validatePropertyAccess } from "@/lib/property-context";
 import { withPropertyContext } from "@/lib/property-context";
 import { validateStatusTransition } from "@/lib/reservation-status/utils";
@@ -34,12 +35,10 @@ export async function PATCH(
     const {
       newStatus,
       reason,
-      updatedBy,
       isAutomatic = false
     }: {
       newStatus: ReservationStatus;
       reason?: string;
-      updatedBy?: string;
       isAutomatic?: boolean;
     } = await req.json();
 
@@ -96,23 +95,50 @@ export async function PATCH(
     }
 
     // Get user's property role for advanced validation
-    const userProperty = await withPropertyContext(propertyId!, async (tx) => {
-      return await tx.userProperty.findFirst({
-        where: {
-          userId: userId,
-          propertyId: propertyId
-        },
-        select: {
-          role: true
+    // First check if user is ORG_ADMIN (has organization-level access)
+    const orgAccess = await prisma.userOrg.findFirst({
+      where: {
+        userId: userId,
+        role: { in: ["SUPER_ADMIN", "ORG_ADMIN"] },
+        organization: {
+          properties: {
+            some: { id: propertyId }
+          }
         }
-      });
+      },
+      select: {
+        role: true
+      }
     });
 
-    if (!userProperty) {
-      return NextResponse.json(
-        { error: "User property access not found" },
-        { status: 403 }
+    // If ORG_ADMIN or SUPER_ADMIN, map to PROPERTY_MGR for validation
+    let userRole: PropertyRole | undefined;
+    if (orgAccess?.role === "SUPER_ADMIN" || orgAccess?.role === "ORG_ADMIN") {
+      userRole = PropertyRole.PROPERTY_MGR; // Map org-level roles to property manager
+    } else {
+      // Check property-level access
+      const userProperty = await withPropertyContext(
+        propertyId!,
+        async (tx) => {
+          return await tx.userProperty.findFirst({
+            where: {
+              userId: userId,
+              propertyId: propertyId
+            },
+            select: {
+              role: true
+            }
+          });
+        }
       );
+
+      if (!userProperty) {
+        return NextResponse.json(
+          { error: "User property access not found" },
+          { status: 403 }
+        );
+      }
+      userRole = userProperty.role;
     }
 
     // Get organizationId from property
@@ -137,14 +163,14 @@ export async function PATCH(
       newStatus,
       reason: reason || "Status update",
       userId: userId!,
-      userRole: userProperty.role,
+      userRole: userRole!,
       propertyId: propertyId!,
       organizationId: property.organizationId,
       isAutomatic,
       reservation: {
         guestName: reservation.guestName || "Unknown Guest",
-        checkIn: reservation.checkIn,
-        checkOut: reservation.checkOut,
+        checkIn: new Date(reservation.checkIn),
+        checkOut: new Date(reservation.checkOut),
         paymentStatus: reservation.paymentStatus || "UNPAID",
         paidAmount: reservation.paidAmount || 0,
         amountCaptured: reservation.amountCaptured || 0,
@@ -218,7 +244,7 @@ export async function PATCH(
           where: { id },
           data: {
             status: newStatus,
-            statusUpdatedBy: updatedBy || userId || "system",
+            statusUpdatedBy: userId, // Always use the authenticated user's ID
             statusUpdatedAt: new Date(),
             statusChangeReason: reason,
             // Set check-in/check-out timestamps based on status
@@ -243,10 +269,12 @@ export async function PATCH(
         await tx.reservationStatusHistory.create({
           data: {
             reservationId: id,
+            propertyId: propertyId!,
             previousStatus: reservation.status,
             newStatus: newStatus,
-            changedBy: updatedBy || userId || "system",
+            changedBy: userId || null, // Always use the authenticated user's ID
             changeReason: reason,
+            notes: undefined, // Can be added from request body if needed
             isAutomatic: isAutomatic
           }
         });

@@ -388,6 +388,7 @@ export class PaymentStatusProcessor extends BaseJobProcessor {
     // Update reservation status and paid amount
     await this.updateReservationStatus(
       reservation.id,
+      reservation.propertyId,
       businessLogic.newStatus,
       businessLogic.reason,
       {
