@@ -69,7 +69,36 @@ const reservationsCache = new Map<
   string,
   { data: unknown; timestamp: number }
 >();
-const RESERVATIONS_CACHE_DURATION = 300000; // 5 minutes
+const RESERVATIONS_CACHE_DURATION = 5000; // 5 seconds (reduced from 5 minutes to avoid stale data after deletions)
+
+// Helper function to clear cache for a specific property
+export function clearReservationsCacheForProperty(propertyId: string) {
+  console.log(`🔍 Clearing cache for property: ${propertyId}`);
+  console.log(`📊 Current cache size: ${reservationsCache.size}`);
+
+  const keysToDelete: string[] = [];
+  for (const key of reservationsCache.keys()) {
+    console.log(`  Checking key: ${key}`);
+    if (key.includes(`reservations-${propertyId}-`)) {
+      keysToDelete.push(key);
+    }
+  }
+
+  keysToDelete.forEach((key) => {
+    reservationsCache.delete(key);
+    console.log(`🗑️ Cleared cache key: ${key}`);
+  });
+
+  if (keysToDelete.length > 0) {
+    console.log(
+      `✅ Cleared ${keysToDelete.length} cache entries for property ${propertyId}`
+    );
+  } else {
+    console.log(`⚠️ No cache entries found for property ${propertyId}`);
+  }
+
+  console.log(`📊 Cache size after clearing: ${reservationsCache.size}`);
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -113,14 +142,17 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
     const cached = reservationsCache.get(cacheKey);
 
+    console.log(`🔍 Cache lookup for key: ${cacheKey}`);
+    console.log(`📊 Cache size: ${reservationsCache.size}`);
+
     if (cached && now - cached.timestamp < RESERVATIONS_CACHE_DURATION) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(`📦 Cache hit for reservations: ${cacheKey}`);
-      }
+      console.log(`📦 Cache hit for reservations: ${cacheKey}`);
       const response = NextResponse.json(cached.data);
       response.headers.set("X-Cache", "HIT");
       return response;
     }
+
+    console.log(`❌ Cache miss for reservations: ${cacheKey}`);
 
     const reservations: ReservationFromDB[] = await withPropertyContext(
       propertyId!,

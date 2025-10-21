@@ -190,15 +190,18 @@ export default function BookingsRowStylePage() {
 
           const params = new URLSearchParams({
             start: fetchInfo.startStr,
-            end: fetchInfo.endStr
+            end: fetchInfo.endStr,
+            t: Date.now().toString(), // Add timestamp to force cache bust
+            r: Math.random().toString() // Add random value for extra cache busting
           });
           const res = await fetch(`/api/reservations?${params}`, {
             credentials: "include",
             // Ensure fresh data for payment status updates
-            cache: "no-cache",
+            cache: "no-store",
             headers: {
-              "Cache-Control": "no-cache",
+              "Cache-Control": "no-cache, no-store, must-revalidate",
               Pragma: "no-cache",
+              Expires: "0",
               // Include organization context
               ...(orgId && { "x-organization-id": orgId })
             }
@@ -738,18 +741,21 @@ export default function BookingsRowStylePage() {
   // FIXED: Optimized reload function with forced calendar refresh
   const reload = async () => {
     try {
+      console.log(`🔄 Reloading reservations...`);
       // Get orgId from cookies for API calls
       const orgId = document.cookie
         .split("; ")
         .find((row) => row.startsWith("orgId="))
         ?.split("=")[1];
 
-      const res = await fetch("/api/reservations", {
+      // Add timestamp to force cache bust
+      const timestamp = Date.now();
+      const res = await fetch(`/api/reservations?t=${timestamp}`, {
         credentials: "include",
         // FIXED: Force fresh data after payment updates
-        cache: "no-cache",
+        cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
           // FIXED: Include organization context
           ...(orgId && { "x-organization-id": orgId })
@@ -758,11 +764,25 @@ export default function BookingsRowStylePage() {
 
       if (res.ok) {
         const { reservations } = await res.json();
+        console.log(`📊 Loaded ${reservations.length} reservations`);
 
+        // Update local state first
         setEvents(reservations);
 
         // FIXED: Force immediate calendar refetch to show updated payment status
-        calendarRef.current?.getApi().refetchEvents();
+        console.log(`🔄 Refetching calendar events...`);
+        const api = calendarRef.current?.getApi();
+        if (api) {
+          // Remove all events and refetch - this ensures a complete refresh
+          api.removeAllEvents();
+
+          // Wait a tiny bit for removal to complete
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Refetch events - this will call the eventSources callback
+          api.refetchEvents();
+          console.log(`✅ Calendar refetch triggered`);
+        }
       } else {
         console.error("Reload failed:", res.status, res.statusText);
       }

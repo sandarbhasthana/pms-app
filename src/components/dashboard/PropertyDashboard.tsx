@@ -466,76 +466,82 @@ export function PropertyDashboard() {
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Arrivals */}
-          <div className="bg-slate-700 dark:bg-slate-800 rounded-xl p-6 border border-slate-600 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <ArrowDownRight className="h-5 w-5 text-blue-400" />
+                <div className="p-2 bg-blue-100 dark:bg-blue-500/10 rounded-lg">
+                  <ArrowDownRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-300 uppercase tracking-wide">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                   ARRIVALS
                 </span>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">
+            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
               {stats?.todayCheckIns || 0}
             </div>
-            <div className="text-sm text-slate-400">Expected today</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Expected today
+            </div>
           </div>
 
           {/* Departures */}
-          <div className="bg-slate-700 dark:bg-slate-800 rounded-xl p-6 border border-slate-600 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-orange-500/10 rounded-lg">
-                  <ArrowUpRight className="h-5 w-5 text-orange-400" />
+                <div className="p-2 bg-orange-100 dark:bg-orange-500/10 rounded-lg">
+                  <ArrowUpRight className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-300 uppercase tracking-wide">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                   DEPARTURES
                 </span>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">
+            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
               {stats?.todayCheckOuts || 0}
             </div>
-            <div className="text-sm text-slate-400">Expected today</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Expected today
+            </div>
           </div>
 
           {/* Occupancy */}
-          <div className="bg-slate-700 dark:bg-slate-800 rounded-xl p-6 border border-slate-600 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <Users className="h-5 w-5 text-green-400" />
+                <div className="p-2 bg-green-100 dark:bg-green-500/10 rounded-lg">
+                  <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-300 uppercase tracking-wide">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                   OCCUPANCY
                 </span>
               </div>
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-slate-900 dark:text-white">
                 {stats?.occupancyRate || 0}%
               </span>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">
+            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
               {stats?.occupiedRooms || 0}/{stats?.totalRooms || 0}
             </div>
-            <div className="text-sm text-slate-400">Rooms occupied</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Rooms occupied
+            </div>
           </div>
         </div>
 
         {/* Dashboard Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-slate-700 dark:bg-slate-800 p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 text-slate-300"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               Overview
             </TabsTrigger>
             {canViewAnalytics && (
               <TabsTrigger
                 value="analytics"
-                className="data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 text-slate-300"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 Analytics & Reports
               </TabsTrigger>

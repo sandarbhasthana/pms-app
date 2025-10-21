@@ -16,6 +16,7 @@ interface BookingPaymentTabProps extends BookingTabProps {
   checkOutDate: string;
   actualRoomPrice: number;
   ratesLoading: boolean;
+  calculateRoomPriceForStay?: () => number;
 }
 
 export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
@@ -27,7 +28,8 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
   checkInDate,
   checkOutDate,
   actualRoomPrice,
-  ratesLoading
+  ratesLoading,
+  calculateRoomPriceForStay
 }) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isCreatingPaymentIntent, setIsCreatingPaymentIntent] = useState(false);
@@ -108,9 +110,11 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       )
     );
 
-    // Use actual room price from rates data
-    const basePricePerNight = actualRoomPrice;
-    const basePrice = basePricePerNight * nights;
+    // Use the function to calculate room price for all nights (includes business rules)
+    // If the function is not provided, fall back to simple multiplication
+    const basePrice = calculateRoomPriceForStay
+      ? calculateRoomPriceForStay()
+      : actualRoomPrice * nights;
 
     const addonsTotal =
       (formData.addons.extraBed ? 500 * nights : 0) +
@@ -133,7 +137,8 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
     formData.addons.extraBed,
     formData.addons.breakfast,
     formData.adults,
-    formData.childrenCount
+    formData.childrenCount,
+    calculateRoomPriceForStay
   ]);
 
   // Handle payment method selection

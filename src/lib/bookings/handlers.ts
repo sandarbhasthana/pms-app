@@ -147,6 +147,8 @@ export async function handleDeleteBooking(
   reload: () => Promise<void>
 ) {
   try {
+    console.log(`🗑️ Starting delete for reservation: ${id}`);
+
     // Get orgId from cookies for API calls
     const orgId = document.cookie
       .split("; ")
@@ -163,25 +165,44 @@ export async function handleDeleteBooking(
       }
     });
 
+    console.log(
+      `🗑️ Delete reservation response: ${res.status} ${res.statusText}`
+    );
+
     if (!res.ok) {
       // Try to parse JSON error, fallback to text if not JSON
       let errorMessage = "Failed to delete reservation";
+      let responseBody = "";
       try {
         const errorData = await res.json();
         errorMessage = errorData.error || errorMessage;
+        responseBody = JSON.stringify(errorData);
       } catch {
         // If JSON parsing fails, try to get text
         try {
-          errorMessage = (await res.text()) || errorMessage;
+          responseBody = await res.text();
+          errorMessage = responseBody || errorMessage;
         } catch {
           // If both fail, use default message
         }
       }
+      console.error(`❌ Delete failed (${res.status}): ${errorMessage}`);
+      console.error(`📋 Response body:`, responseBody);
       throw new Error(errorMessage);
     }
 
+    console.log(`✅ Reservation deleted successfully`);
     toast.success("Deleted!");
+
+    // Wait a bit for the server to process the deletion and clear cache
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    console.log(`🔄 Reloading calendar data...`);
     await reload();
+
+    // Wait a bit more to ensure calendar has refreshed
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`✅ Reload complete`);
   } catch (err) {
     console.error("Delete booking error:", err);
     toast.error(err instanceof Error ? err.message : "Unknown error");

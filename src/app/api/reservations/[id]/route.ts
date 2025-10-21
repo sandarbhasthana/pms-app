@@ -7,6 +7,7 @@ import {
 } from "@/lib/property-context";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
 import { prisma } from "@/lib/prisma";
+import { clearReservationsCacheForProperty } from "../route";
 
 /**
  * GET /api/reservations/[id]
@@ -262,64 +263,70 @@ export async function DELETE(
   const { id } = await context.params;
 
   try {
-    // Get reservation to determine property
-    const reservation = await prisma.reservation.findUnique({
-      where: { id },
-      select: { propertyId: true, status: true }
-    });
+    console.log(`🗑️ DELETE /api/reservations/${id} - Starting deletion`);
 
-    if (!reservation || !reservation.propertyId) {
-      return new NextResponse("Reservation not found", { status: 404 });
-    }
-
-    // Validate property access with required role
+    // Validate property access with required role FIRST
     const validation = await validatePropertyAccess(req, "FRONT_DESK");
     if (!validation.success) {
+      console.error(
+        `❌ Property access validation failed: ${validation.error}`
+      );
       return new NextResponse(validation.error, {
         status: validation.error === "Unauthorized" ? 401 : 403
       });
     }
 
-    // Check if reservation can be deleted (e.g., not checked in)
-    if (reservation.status === "IN_HOUSE") {
-      return NextResponse.json(
-        { error: "Cannot delete a checked-in reservation" },
-        { status: 400 }
-      );
-    }
+    const { propertyId } = validation;
+    console.log(`✅ Property access validated for property: ${propertyId}`);
 
-    await withPropertyContext(reservation.propertyId!, async (tx) => {
-      // First check if reservation exists and get payment info
-      const existing = await tx.reservation.findUnique({
-        where: { id },
-        include: {
-          payments: true // Include payments to check if any exist
-        }
-      });
+    // Delete the reservation directly within property context
+    try {
+      console.log(`🗑️ Deleting reservation: ${id}`);
 
-      if (!existing) {
-        return { count: 0 };
-      }
-
-      // Delete payments first (if any exist)
-      if (existing.payments && existing.payments.length > 0) {
-        await tx.payment.deleteMany({
+      const result = await withPropertyContext(propertyId!, async (tx) => {
+        // Delete payments first
+        console.log(`🗑️ Deleting payments for reservation: ${id}`);
+        const deletedPayments = await tx.payment.deleteMany({
           where: { reservationId: id }
         });
+        console.log(`✅ Deleted ${deletedPayments.count} payments`);
+
+        // Then delete the reservation
+        console.log(`🗑️ Deleting reservation: ${id}`);
+        const deletedReservation = await tx.reservation.delete({
+          where: { id }
+        });
+        console.log(`✅ Deleted reservation:`, deletedReservation);
+        return deletedReservation;
+      });
+
+      console.log(`✅ Reservation deleted successfully:`, result);
+
+      // Clear the reservations cache for this property so the next fetch gets fresh data
+      clearReservationsCacheForProperty(propertyId!);
+
+      return new NextResponse(null, { status: 204 });
+    } catch (deleteError) {
+      console.error(`❌ Error during deletion:`, deleteError);
+
+      // Check if it's a "record not found" error from Prisma
+      if (
+        deleteError instanceof Error &&
+        deleteError.message.includes("P2025")
+      ) {
+        return NextResponse.json(
+          { error: "Reservation not found" },
+          { status: 404 }
+        );
       }
 
-      // Then delete the reservation
-      return await tx.reservation.delete({
-        where: { id }
-      });
-    });
-
-    return new NextResponse(null, { status: 204 });
+      throw deleteError;
+    }
   } catch (error) {
-    console.error("DELETE /api/reservations/[id] error:", error);
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
+    console.error("❌ DELETE /api/reservations/[id] error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("Error details:", errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

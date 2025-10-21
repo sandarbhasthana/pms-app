@@ -166,7 +166,8 @@ const seasonalRatesFetcher = async (
 export function useRatesData(
   startDate: Date,
   days: number = 7,
-  ratePlan: string = "base"
+  ratePlan: string = "base",
+  applyBusinessRules: boolean = true
 ) {
   const startDateStr = format(startDate, "yyyy-MM-dd");
 
@@ -175,10 +176,11 @@ export function useRatesData(
     const params = new URLSearchParams({
       startDate: startDateStr,
       days: days.toString(),
-      ratePlan
+      ratePlan,
+      applyRules: applyBusinessRules.toString()
     });
     return `/api/rates?${params.toString()}`;
-  }, [startDateStr, days, ratePlan]);
+  }, [startDateStr, days, ratePlan, applyBusinessRules]);
 
   const { data, error, isLoading, mutate } = useSWR<RatesResponse>(
     swrKey,

@@ -135,6 +135,61 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     return 0;
   }, [selectedSlot, ratesData, roomTypeMapping]);
 
+  // Calculate total room price for all nights (with business rules applied)
+  const calculateRoomPriceForStay = useCallback(() => {
+    if (!selectedSlot || !ratesData || ratesData.length === 0) {
+      return 0;
+    }
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const nights = Math.max(
+      1,
+      Math.ceil(
+        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+      )
+    );
+
+    // Find the room type from the room name
+    const roomName = selectedSlot.roomName;
+    let calendarRoomType = "Standard"; // Default
+
+    if (roomName.toLowerCase().includes("presidential"))
+      calendarRoomType = "Presidential";
+    else if (roomName.toLowerCase().includes("suite"))
+      calendarRoomType = "Suite";
+    else if (roomName.toLowerCase().includes("deluxe"))
+      calendarRoomType = "Deluxe";
+    else if (roomName.toLowerCase().includes("standard"))
+      calendarRoomType = "Standard";
+
+    const dbRoomTypeName =
+      roomTypeMapping[calendarRoomType as keyof typeof roomTypeMapping];
+
+    // Find the rates data for this room type
+    const roomTypeRates = ratesData.find(
+      (rates) => rates.roomTypeName === dbRoomTypeName
+    );
+
+    if (!roomTypeRates) {
+      return 0;
+    }
+
+    // Sum up prices for each night (this includes business rules applied per-night)
+    let totalPrice = 0;
+    for (let i = 0; i < nights; i++) {
+      const currentDate = new Date(checkIn);
+      currentDate.setDate(currentDate.getDate() + i);
+      const dateStr = format(currentDate, "yyyy-MM-dd");
+      const rateData = roomTypeRates.dates[dateStr];
+      if (rateData) {
+        totalPrice += rateData.finalPrice;
+      }
+    }
+
+    return totalPrice;
+  }, [selectedSlot, ratesData, roomTypeMapping, checkInDate, checkOutDate]);
+
   // Initialize form data from props
   const [formData, setFormData] = useState<BookingFormData>({
     fullName,
@@ -355,6 +410,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
                 checkOutDate={checkOutDate}
                 actualRoomPrice={actualRoomPrice}
                 ratesLoading={ratesLoading}
+                calculateRoomPriceForStay={calculateRoomPriceForStay}
               />
             </TabsContent>
           </Tabs>

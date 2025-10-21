@@ -133,6 +133,12 @@ async function buildUserSession(user: {
   const defaultProperty =
     availableProperties.find((p) => p.isDefault) || availableProperties[0];
 
+  // For multi-property organizations, don't set currentPropertyId during login
+  // Force user to explicitly select a property via the property selector
+  // For single-property organizations, auto-select the only property
+  const currentPropertyId =
+    availableProperties.length === 1 ? availableProperties[0]?.id : null;
+
   // Return the shape NextAuth expects
   return {
     id: user.id,
@@ -141,7 +147,7 @@ async function buildUserSession(user: {
     image: user.image,
     orgId: membership.organizationId,
     role: membership.role,
-    currentPropertyId: defaultProperty?.id,
+    currentPropertyId,
     availableProperties,
     defaultProperty,
     propertyCount: availableProperties.length

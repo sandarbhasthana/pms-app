@@ -36,8 +36,7 @@ import {
 } from "@/lib/reservation-status/utils";
 import {
   StatusBadge,
-  StatusUpdateModal,
-  QuickStatusActions
+  StatusUpdateModal
 } from "@/components/reservation-status";
 import { useRenderLogger } from "@/lib/debug/render-logger";
 
@@ -348,63 +347,105 @@ const EditBookingSheet: React.FC<EditBookingSheetProps> = ({
         <SheetHeader className="relative">
           {/* Status and Action Dropdowns + Close button in top right */}
           <div className="absolute top-0 right-0 flex items-center gap-3">
-            {/* Enhanced Status Management */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Status:
-              </span>
-
-              {/* Current Status Badge */}
-              <StatusBadge
-                status={editingReservation.status as ReservationStatus}
-                size="sm"
-                showIcon={true}
-                showLabel={true}
-              />
-
-              {/* Quick Status Actions */}
-              <QuickStatusActions
-                reservation={{
-                  id: editingReservation.id,
-                  guestName: editingReservation.guestName,
-                  checkIn: editingReservation.checkIn,
-                  checkOut: editingReservation.checkOut,
-                  status: editingReservation.status as ReservationStatus
-                }}
-                onStatusUpdate={(reservationId, newStatus, reason) =>
-                  handleStatusUpdate(newStatus, reason)
-                }
-                onOpenFullModal={() => setShowStatusModal(true)}
-                disabled={isUpdatingStatus}
-                size="sm"
-              />
-
-              {/* Advanced Status Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStatusModal(true)}
-                disabled={isUpdatingStatus}
-                className="h-8 text-xs px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30"
-              >
-                Manage Status
-              </Button>
-            </div>
-
-            {/* Actions Dropdown */}
+            {/* Status Dropdown */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Actions:
-              </span>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-32 text-xs justify-between px-3 bg-purple-50 dark:bg-purple-900/20 text-[#7210a2] dark:text-[#8b4aff] border-[#7210a2] dark:border-[#8b4aff] hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm"
+                    disabled={isUpdatingStatus}
+                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        editingReservation.status === "CONFIRMED"
+                          ? "#14b8a6" // Teal
+                          : editingReservation.status === "CONFIRMATION_PENDING"
+                          ? "#ec4899" // Pink
+                          : editingReservation.status === "IN_HOUSE"
+                          ? "#22c55e" // Green
+                          : editingReservation.status === "CANCELLED"
+                          ? "#6b7280" // Gray
+                          : editingReservation.status === "CHECKED_OUT"
+                          ? "#8b5cf6" // Purple
+                          : editingReservation.status === "NO_SHOW"
+                          ? "#f97316" // Orange
+                          : "#6b7280",
+                      color: "white",
+                      border: "none"
+                    }}
                   >
-                    <span>Select Action</span>
-                    <ChevronDownIcon className="h-3 w-3 opacity-50" />
+                    <span className="uppercase text-xs font-bold">
+                      {editingReservation.status?.replace(/_/g, " ")}
+                    </span>
+                    <ChevronDownIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="z-[10000]"
+                  sideOffset={5}
+                >
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate(
+                        "CONFIRMATION_PENDING",
+                        "Status changed"
+                      )
+                    }
+                  >
+                    Confirmation Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate("CONFIRMED", "Status changed")
+                    }
+                  >
+                    Confirmed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate("IN_HOUSE", "Status changed")
+                    }
+                  >
+                    In-House
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate("CHECKED_OUT", "Status changed")
+                    }
+                  >
+                    Checked Out
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate("NO_SHOW", "Status changed")
+                    }
+                  >
+                    No-Show
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStatusUpdate("CANCELLED", "Status changed")
+                    }
+                  >
+                    Cancelled
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Actions Dropdown */}
+            <div className="flex items-center gap-2">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white border-none"
+                  >
+                    <span className="uppercase text-xs font-bold">Actions</span>
+                    <ChevronDownIcon className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
