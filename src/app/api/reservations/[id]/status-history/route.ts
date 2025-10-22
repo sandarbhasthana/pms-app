@@ -30,7 +30,8 @@ export async function GET(
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    const includeAutomatic = url.searchParams.get("includeAutomatic") !== "false";
+    const includeAutomatic =
+      url.searchParams.get("includeAutomatic") !== "false";
 
     // Verify reservation exists and belongs to property
     const reservation = await withPropertyContext(propertyId!, async (tx) => {
@@ -54,7 +55,7 @@ export async function GET(
       );
     }
 
-    // Get status history
+    // Get status history with user information
     const statusHistory = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.reservationStatusHistory.findMany({
         where: {
@@ -62,21 +63,23 @@ export async function GET(
           ...(includeAutomatic ? {} : { isAutomatic: false })
         },
         orderBy: {
-          changedAt: 'desc'
+          changedAt: "desc"
         },
         take: limit,
         skip: offset,
-        select: {
-          id: true,
-          previousStatus: true,
-          newStatus: true,
-          changedBy: true,
-          changeReason: true,
-          changedAt: true,
-          isAutomatic: true
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
         }
       });
     });
+
+    console.log(`📋 Status history for reservation ${id}:`, statusHistory);
 
     // Get total count for pagination
     const totalCount = await withPropertyContext(propertyId!, async (tx) => {
@@ -102,7 +105,6 @@ export async function GET(
         hasMore: offset + limit < totalCount
       }
     });
-
   } catch (error) {
     console.error("GET /api/reservations/[id]/status-history error:", error);
     return NextResponse.json(
