@@ -43,6 +43,8 @@ import EditDocumentsTab from "./edit-tabs/EditDocumentsTab";
 import EditNotesTab from "./edit-tabs/EditNotesTab";
 import EditAuditTab from "./edit-tabs/EditAuditTab";
 import { StatusChangeConfirmationModal } from "./StatusChangeConfirmationModal";
+import { EarlyCheckInOptionsModal } from "./EarlyCheckInOptionsModal";
+import { useApprovalBellRefresh } from "@/contexts/ApprovalBellContext";
 import {
   EditBookingSheetProps,
   EditBookingTab,
@@ -56,6 +58,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   onUpdate,
   onDelete
 }) => {
+  const { refreshApprovalRequests } = useApprovalBellRefresh();
   const [activeTab, setActiveTab] = useState<EditBookingTab>("details");
   const [formData, setFormData] = useState<EditBookingFormData>({
     guestName: "",
@@ -90,6 +93,12 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   const [showStatusConfirmation, setShowStatusConfirmation] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     newStatus: ReservationStatus;
+  } | null>(null);
+  const [showEarlyCheckInModal, setShowEarlyCheckInModal] = useState(false);
+  const [earlyCheckInData, setEarlyCheckInData] = useState<{
+    hoursEarly: number;
+    currentCheckInTime: string;
+    scheduledCheckInTime: string;
   } | null>(null);
 
   // Track the last reservation ID to prevent unnecessary form resets
@@ -233,6 +242,28 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       return;
     }
 
+    // Check if this is an early check-in
+    if (
+      newStatus === ReservationStatus.IN_HOUSE &&
+      editingReservation.checkIn
+    ) {
+      const now = new Date();
+      const checkInTime = new Date(editingReservation.checkIn);
+      const hoursUntilCheckIn =
+        (checkInTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // If check-in is more than 4 hours in the future, it's an early check-in
+      if (hoursUntilCheckIn > 4) {
+        setEarlyCheckInData({
+          hoursEarly: hoursUntilCheckIn,
+          currentCheckInTime: now.toISOString(),
+          scheduledCheckInTime: editingReservation.checkIn
+        });
+        setShowEarlyCheckInModal(true);
+        return;
+      }
+    }
+
     // Check if this is a critical transition that needs confirmation
     const isCriticalTransition =
       (currentStatus === "CONFIRMED" && newStatus === "CANCELLED") ||
@@ -270,13 +301,53 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       if (!response.ok) {
         const error = await response.json();
 
+        // Handle approval required response
+        if (response.status === 403 && error.requiresApproval) {
+          // Create approval request
+          try {
+            const approvalRes = await fetch("/api/approval-requests", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                reservationId: editingReservation.id,
+                requestType: "EARLY_CHECKIN",
+                requestReason:
+                  error.approvalReason ||
+                  "Early check-in requires manager approval",
+                metadata: {
+                  newStatus,
+                  reason,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            });
+
+            if (approvalRes.ok) {
+              await approvalRes.json();
+
+              // Show success message FIRST
+              toast.success("Request forwarded to manager for approval");
+
+              // Refresh approval requests in the bell
+              await refreshApprovalRequests();
+
+              setIsUpdatingStatus(false);
+              return;
+            } else {
+              // Approval request creation failed
+              throw new Error("Failed to create approval request");
+            }
+          } catch (approvalError) {
+            console.error("Error creating approval request:", approvalError);
+            throw new Error("Failed to create approval request");
+          }
+        }
+
         // Build detailed error message from validation details
         let errorMessage = error.error || "Failed to update status";
 
-        // Show approval reason if approval is required
-        if (error.requiresApproval && error.approvalReason) {
-          errorMessage = `${error.error}: ${error.approvalReason}`;
-        } else if (
+        if (
           error.details &&
           Array.isArray(error.details) &&
           error.details.length > 0
@@ -330,6 +401,28 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       console.error("Failed to delete reservation:", error);
       toast.error("Failed to delete reservation. Please try again.");
     }
+  };
+
+  const handleEarlyCheckInApproval = async () => {
+    // Proceed with the status update - it will trigger the approval request flow
+    await handleStatusUpdate(
+      ReservationStatus.IN_HOUSE,
+      "Early check-in requested"
+    );
+    // Close modal after approval request is created
+    setShowEarlyCheckInModal(false);
+    setEarlyCheckInData(null);
+  };
+
+  const handleEarlyCheckInDateChange = (newCheckInDate: string) => {
+    // Update the form field with the new check-in date
+    setFormData({
+      ...formData,
+      checkIn: newCheckInDate
+    });
+    // Close the modal
+    setShowEarlyCheckInModal(false);
+    setEarlyCheckInData(null);
   };
 
   const handleNext = () => {
@@ -720,6 +813,24 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
           handleStatusUpdate(newStatus, reason)
         }
       />
+
+      {/* Early Check-in Options Modal */}
+      {earlyCheckInData && (
+        <EarlyCheckInOptionsModal
+          isOpen={showEarlyCheckInModal}
+          onClose={() => {
+            setShowEarlyCheckInModal(false);
+            setEarlyCheckInData(null);
+          }}
+          guestName={editingReservation.guestName || "Guest"}
+          scheduledCheckInTime={earlyCheckInData.scheduledCheckInTime}
+          currentCheckInTime={earlyCheckInData.currentCheckInTime}
+          hoursEarly={earlyCheckInData.hoursEarly}
+          onRequestApproval={handleEarlyCheckInApproval}
+          onChangeCheckInDate={handleEarlyCheckInDateChange}
+          isLoading={isUpdatingStatus}
+        />
+      )}
     </Sheet>
   );
 };

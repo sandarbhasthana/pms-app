@@ -54,18 +54,36 @@ interface Room {
 }
 
 /**
- * Get event color based on reservation status
+ * Get event color based on reservation status and theme
+ * Light theme: Original colors
+ * Dark theme: Darker shades for better contrast
  */
-const getEventColor = (status?: string): string => {
-  const colorMap: Record<string, string> = {
-    CONFIRMED: "#14b8a6", // Teal
+const getEventColor = (
+  status?: string,
+  isDarkMode: boolean = false
+): string => {
+  const lightColorMap: Record<string, string> = {
+    CONFIRMED: "#9AB69B", // Sage Green
     CONFIRMATION_PENDING: "#ec4899", // Pink
     IN_HOUSE: "#22c55e", // Green
     CANCELLED: "#6b7280", // Gray
     CHECKED_OUT: "#8b5cf6", // Purple
     NO_SHOW: "#f97316" // Orange
   };
-  return colorMap[status || "CONFIRMED"] || "#14b8a6";
+
+  const darkColorMap: Record<string, string> = {
+    CONFIRMED: "#3b513b", // Sage Green (dark mode)
+    CONFIRMATION_PENDING: "#db2777", // Pink-600
+    IN_HOUSE: "#10b981", // Emerald-500 (bright green for active)
+    CANCELLED: "#4b5563", // Gray-700
+    CHECKED_OUT: "#7c3aed", // Violet-600
+    NO_SHOW: "#d97706" // Amber-600
+  };
+
+  const colorMap = isDarkMode ? darkColorMap : lightColorMap;
+  return (
+    colorMap[status || "CONFIRMED"] || (isDarkMode ? "#047857" : "#9AB69B")
+  );
 };
 
 export default function BookingsRowStylePage() {
@@ -77,6 +95,9 @@ export default function BookingsRowStylePage() {
   // Add refetch control state
   const [lastRefetch, setLastRefetch] = useState<number>(0);
   const [isRefetching, setIsRefetching] = useState(false);
+
+  // Dark mode detection
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [datePickerDate, setDatePickerDate] = useState<Date | null>(new Date());
   const [selectedDate, setSelectedDate] = useState(
@@ -232,9 +253,9 @@ export default function BookingsRowStylePage() {
               start: r.checkIn,
               end: r.checkOut,
               allDay: true,
-              backgroundColor: getEventColor(r.status), // Color based on status
-              borderColor: getEventColor(r.status),
-              textColor: "#ffffff", // White text for better contrast
+              backgroundColor: getEventColor(r.status, isDarkMode), // Color based on status and theme
+              borderColor: getEventColor(r.status, isDarkMode),
+              textColor: isDarkMode ? "#f0f8ff" : "#1e1e1e", // Alice blue in dark mode, gray-900 in light mode
               extendedProps: {
                 isPartialDay: true,
                 status: r.status,
@@ -306,7 +327,7 @@ export default function BookingsRowStylePage() {
         success(wknd);
       }
     ];
-  }, [startOfToday, endOfToday]); // Include dependencies used in the memoized value
+  }, [startOfToday, endOfToday, isDarkMode]); // Include dependencies used in the memoized value
 
   // ------------------------
   // Load rooms function (separated for reuse)
@@ -445,6 +466,28 @@ export default function BookingsRowStylePage() {
       window.removeEventListener("storage", handleStorageEvent);
     };
   }, [loadRooms]);
+
+  // ------------------------
+  // Detect dark mode changes
+  // ------------------------
+  useEffect(() => {
+    // Initial detection
+    const isDark = document.documentElement.classList.contains("dark");
+    setIsDarkMode(isDark);
+
+    // Watch for changes
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      setIsDarkMode(isDark);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // ------------------------
   // Determine country via geolocation, fallback to browser locale

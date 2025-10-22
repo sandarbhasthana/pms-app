@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { PropertySwitcher } from "@/components/PropertySwitcher";
+import { ApprovalBell } from "@/components/approval/ApprovalBell";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -67,6 +68,8 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Property switcher - only for non-SUPER_ADMIN users */}
         {role !== "SUPER_ADMIN" && <PropertySwitcher />}
+        {/* Approval requests bell - only for PROPERTY_MGR and above */}
+        {role && PM_OR_ABOVE.has(role) && <ApprovalBell />}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}

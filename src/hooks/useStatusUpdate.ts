@@ -16,6 +16,9 @@ interface StatusUpdateResult {
   reservation?: Reservation;
   message?: string;
   error?: string;
+  requiresApproval?: boolean;
+  approvalReason?: string;
+  approvalRequestId?: string;
 }
 
 export function useStatusUpdate(options: StatusUpdateOptions = {}) {
@@ -50,6 +53,52 @@ export function useStatusUpdate(options: StatusUpdateOptions = {}) {
         );
 
         const data = await response.json();
+
+        // Handle approval required response (403)
+        if (response.status === 403 && data.requiresApproval) {
+          // Create approval request
+          try {
+            const approvalRes = await fetch("/api/approval-requests", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                reservationId,
+                requestType: "EARLY_CHECKIN",
+                requestReason:
+                  data.approvalReason ||
+                  "Early check-in requires manager approval",
+                metadata: {
+                  newStatus,
+                  reason,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            });
+
+            if (approvalRes.ok) {
+              const approvalData = await approvalRes.json();
+
+              if (options.showToast !== false) {
+                toast.success(
+                  "Approval request submitted. Waiting for manager approval."
+                );
+              }
+
+              return {
+                success: false,
+                error: data.approvalReason || "Approval required",
+                requiresApproval: true,
+                approvalReason: data.approvalReason,
+                approvalRequestId: approvalData.id
+              };
+            }
+          } catch (approvalError) {
+            console.error("Error creating approval request:", approvalError);
+          }
+
+          throw new Error(data.approvalReason || "Approval required");
+        }
 
         if (!response.ok) {
           throw new Error(data.error || "Failed to update status");

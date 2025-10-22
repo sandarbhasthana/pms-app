@@ -141,9 +141,13 @@ export default function CalendarViewRowStyle({
       // Count occupied rooms for this room type on this date
       const occupiedRooms = events.filter((event) => {
         // Check if this reservation overlaps with the given date
+        // Parse dates consistently using UTC to avoid timezone mismatches
         const checkIn = new Date(event.checkIn);
         const checkOut = new Date(event.checkOut);
-        const targetDate = new Date(dateStr);
+
+        // Create target date at UTC midnight to match the API date format
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const targetDate = new Date(Date.UTC(year, month - 1, day));
 
         // Check if the room belongs to this room type
         const roomBelongsToType = resourceGroup?.children?.some(
@@ -156,13 +160,14 @@ export default function CalendarViewRowStyle({
         return (
           roomBelongsToType &&
           dateInRange &&
-          (event.status === "CONFIRMED" ||
-            event.status === "CHECKED_IN" ||
-            !event.status)
+          (event.status === "CONFIRMED" || event.status === "CHECKED_IN")
         );
       }).length;
 
-      return { occupied: occupiedRooms, total: totalRooms };
+      // Calculate available rooms (total - occupied)
+      const availableRooms = totalRooms - occupiedRooms;
+
+      return { occupied: availableRooms, total: totalRooms };
     };
   }, [resources, events]);
 
@@ -493,8 +498,7 @@ export default function CalendarViewRowStyle({
               padding: "2px",
               overflow: "hidden",
               fontWeight: "bold",
-              textOverflow: "ellipsis",
-              color: "#f0f8ff !important" // Alice Blue color for guest names with !important
+              textOverflow: "ellipsis"
             }}
           >
             {arg.event.title}

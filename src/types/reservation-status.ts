@@ -49,58 +49,58 @@ export interface StatusConfig {
 /**
  * Complete status configuration mapping
  * Color scheme:
- * - Confirmed: Teal (#14b8a6)
- * - Confirmation Pending: Pink (#ec4899)
- * - In-House: Green (#22c55e)
- * - Cancelled: Gray (#6b7280)
- * - Checked Out: Purple (#8b5cf6)
- * - No-Show: Orange (#f97316)
+ * - Confirmation Pending: Pink (#ec4899) - Light: bg-pink-100 text-gray-900, Dark: bg-pink-900 text-alice-blue
+ * - Confirmed: Sage Green (#9AB69B) - Light: bg-emerald-100 text-gray-900, Dark: bg-emerald-900 text-alice-blue
+ * - In-House: Green (#22c55e) - Light: bg-green-100 text-gray-900, Dark: bg-green-900 text-alice-blue
+ * - Checked Out: Purple (#8b5cf6) - Light: bg-purple-100 text-gray-900, Dark: bg-purple-900 text-alice-blue
+ * - No-Show: Orange (#f97316) - Light: bg-orange-100 text-gray-900, Dark: bg-orange-900 text-alice-blue
+ * - Cancelled: Gray (#6b7280) - Light: bg-gray-100 text-gray-900, Dark: bg-gray-800 text-alice-blue
  */
 export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CONFIRMATION_PENDING: {
     color: "#ec4899",
-    bgColor: "bg-pink-100 dark:bg-pink-900/20",
-    textColor: "text-pink-800 dark:text-pink-200",
+    bgColor: "bg-pink-100 dark:bg-pink-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "clock",
     label: "Confirmation Pending",
     description: "Awaiting confirmation"
   },
   CONFIRMED: {
-    color: "#14b8a6",
-    bgColor: "bg-teal-100 dark:bg-teal-900/20",
-    textColor: "text-teal-800 dark:text-teal-200",
+    color: "#9AB69B",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "check-circle",
     label: "Confirmed",
     description: "Payment received"
   },
   IN_HOUSE: {
     color: "#22c55e",
-    bgColor: "bg-green-100 dark:bg-green-900/20",
-    textColor: "text-green-800 dark:text-green-200",
+    bgColor: "bg-green-100 dark:bg-green-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "home",
     label: "In-House",
     description: "Guest checked in"
   },
   CHECKED_OUT: {
     color: "#8b5cf6",
-    bgColor: "bg-purple-100 dark:bg-purple-900/20",
-    textColor: "text-purple-800 dark:text-purple-200",
+    bgColor: "bg-purple-100 dark:bg-purple-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "logout",
     label: "Checked Out",
     description: "Stay completed"
   },
   NO_SHOW: {
     color: "#f97316",
-    bgColor: "bg-orange-100 dark:bg-orange-900/20",
-    textColor: "text-orange-800 dark:text-orange-200",
+    bgColor: "bg-orange-100 dark:bg-orange-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "x-circle",
     label: "No-Show",
     description: "Guest did not arrive"
   },
   CANCELLED: {
     color: "#6b7280",
-    bgColor: "bg-gray-100 dark:bg-gray-900/20",
-    textColor: "text-gray-800 dark:text-gray-200",
+    bgColor: "bg-gray-100 dark:bg-gray-800",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "ban",
     label: "Cancelled",
     description: "Reservation cancelled"

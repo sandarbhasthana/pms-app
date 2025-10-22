@@ -464,6 +464,15 @@
   border-width: 2px !important;
 }
 
+/* Calendar event text color - gray-900 for light mode, alice blue for dark mode */
+.fc-event:not(.fc-bg-event) {
+  color: rgb(31, 41, 55) !important; /* Gray-900 for light mode */
+}
+
+.dark .fc-event:not(.fc-bg-event) {
+  color: #f0f8ff !important; /* Alice Blue for dark mode */
+}
+
 /* STATUS STYLING END */
 
 /* FullCalendar Resource Group Expand/Collapse Arrow Styling */

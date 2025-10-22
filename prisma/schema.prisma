@@ -75,6 +75,8 @@ model Property {
   performanceMetrics      PerformanceMetric[]
   queueMetrics            QueueMetric[]
   statusHistoryLogs       ReservationStatusHistory[]
+  auditLogs               ReservationAuditLog[]
+  approvalRequests        ApprovalRequest[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -112,6 +114,9 @@ model User {
   systemActivities         SystemActivity[]
   notificationPreferences  UserNotificationPreferences?
   statusHistoryChanges     ReservationStatusHistory[]
+  auditLogs                ReservationAuditLog[]        @relation("AuditLogUser")
+  approvalRequestsCreated  ApprovalRequest[]            @relation("ApprovalRequestedBy")
+  approvalRequestsApproved ApprovalRequest[]            @relation("ApprovalApprovedBy")
 }
 
 /// Join table: user membership in a tenant with a role
@@ -310,6 +315,8 @@ model Reservation {
   room                  Room                       @relation(fields: [roomId], references: [id])
   user                  User?                      @relation(fields: [userId], references: [id])
   statusHistory         ReservationStatusHistory[]
+  auditLogs             ReservationAuditLog[]
+  approvalRequests      ApprovalRequest[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -341,6 +348,59 @@ model ReservationStatusHistory {
   @@index([changedAt])
   @@index([newStatus])
   @@index([changedBy])
+}
+
+/// Comprehensive audit trail for all reservation changes
+model ReservationAuditLog {
+  id            String    @id @default(cuid())
+  reservationId String
+  propertyId    String
+  action        String    // CREATED, FIELD_UPDATED, NOTE_ADDED, PAYMENT_MADE, ADDON_ADDED, ADDON_REMOVED
+  fieldName     String?   // Which field was changed (e.g., "guestName", "checkIn", "notes")
+  oldValue      String?   // Previous value
+  newValue      String?   // New value
+  description   String?   // Human-readable description of the change
+  changedBy     String?   // User ID who made the change
+  changedAt     DateTime  @default(now())
+  metadata      String?   // JSON metadata for additional context
+
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user          User?       @relation("AuditLogUser", fields: [changedBy], references: [id], onDelete: SetNull)
+  property      Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([propertyId])
+  @@index([changedAt])
+  @@index([action])
+  @@index([changedBy])
+}
+
+/// Approval requests for actions requiring manager approval (e.g., early check-in)
+model ApprovalRequest {
+  id              String    @id @default(cuid())
+  reservationId   String
+  propertyId      String
+  requestType     String    // EARLY_CHECKIN, LATE_CHECKOUT, CANCELLATION, etc.
+  requestReason   String    // Human-readable reason for the request
+  requestedBy     String    // User ID who requested the approval
+  requestedAt     DateTime  @default(now())
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedBy      String?   // User ID who approved/rejected
+  approvedAt      DateTime?
+  approvalNotes   String?   // Notes from the approver
+  metadata        String?   // JSON metadata with additional context (e.g., old/new values)
+
+  reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  property        Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  requestedByUser User        @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id], onDelete: Cascade)
+  approvedByUser  User?       @relation("ApprovalApprovedBy", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([reservationId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([requestedBy])
+  @@index([approvedBy])
 }
 
 /// Property settings scoped to a tenant or specific property

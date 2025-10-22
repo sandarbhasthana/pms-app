@@ -12,6 +12,9 @@ import {
   PropertyRole,
   ReservationSource
 } from "@prisma/client";
+import { logReservationCreated } from "@/lib/audit-log/reservation-audit";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/prisma";
 
 // Payment data types
 interface PaymentData {
@@ -530,6 +533,23 @@ export async function POST(req: NextRequest) {
 
       return newReservation;
     });
+
+    // Log reservation creation to audit trail
+    try {
+      const session = await getServerSession();
+      const userId = session?.user?.id || null;
+
+      await logReservationCreated(
+        prisma,
+        reservation.id,
+        propertyId!,
+        guestName,
+        userId
+      );
+    } catch (auditError) {
+      console.error("Error logging reservation creation:", auditError);
+      // Don't throw - audit logging failure shouldn't block reservation creation
+    }
 
     // OPTIMIZATION: Invalidate cache after creating new reservation
     // Clear all cache entries for this property since we don't know which date ranges are affected

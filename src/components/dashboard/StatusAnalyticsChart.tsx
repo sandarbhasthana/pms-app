@@ -62,12 +62,12 @@ interface StatusAnalyticsChartProps {
 
 // Status colors for charts
 const STATUS_COLORS = {
-  [ReservationStatus.CONFIRMATION_PENDING]: "#f59e0b", // amber
-  [ReservationStatus.CONFIRMED]: "#3b82f6", // blue
-  [ReservationStatus.IN_HOUSE]: "#10b981", // emerald
-  [ReservationStatus.CHECKED_OUT]: "#6b7280", // gray
-  [ReservationStatus.NO_SHOW]: "#ef4444", // red
-  [ReservationStatus.CANCELLED]: "#f97316" // orange
+  [ReservationStatus.CONFIRMATION_PENDING]: "#ec4899", // pink
+  [ReservationStatus.CONFIRMED]: "#9AB69B", // sage green
+  [ReservationStatus.IN_HOUSE]: "#22c55e", // green
+  [ReservationStatus.CHECKED_OUT]: "#8b5cf6", // purple
+  [ReservationStatus.NO_SHOW]: "#f97316", // orange
+  [ReservationStatus.CANCELLED]: "#6b7280" // gray
 };
 
 export default function StatusAnalyticsChart({

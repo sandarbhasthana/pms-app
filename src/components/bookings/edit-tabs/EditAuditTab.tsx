@@ -32,48 +32,80 @@ interface StatusHistoryEntry {
   } | null;
 }
 
-// Note: Activity log data will be populated from API when available
-// For now, we'll use status history as the primary audit trail
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  fieldName: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  description: string | null;
+  changedBy: string | null;
+  changedAt: string;
+  metadata: string | null;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+}
 
 const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
   const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch status history when component mounts or reservation changes
+  // Fetch status history and audit logs when component mounts or reservation changes
   useEffect(() => {
-    const fetchStatusHistory = async () => {
+    const fetchAuditData = async () => {
       if (!reservationData?.id) return;
 
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
+        // Fetch status history
+        const statusResponse = await fetch(
           `/api/reservations/${reservationData.id}/status-history?limit=50&includeAutomatic=true`,
           {
             credentials: "include"
           }
         );
 
-        if (!response.ok) {
+        if (!statusResponse.ok) {
           throw new Error("Failed to fetch status history");
         }
 
-        const data = await response.json();
-        console.log("Status history response:", data);
-        setStatusHistory(data.statusHistory || []);
+        const statusData = await statusResponse.json();
+        console.log("Status history response:", statusData);
+        setStatusHistory(statusData.statusHistory || []);
+
+        // Fetch audit log
+        const auditResponse = await fetch(
+          `/api/reservations/${reservationData.id}/audit-log?limit=100`,
+          {
+            credentials: "include"
+          }
+        );
+
+        if (!auditResponse.ok) {
+          throw new Error("Failed to fetch audit log");
+        }
+
+        const auditData = await auditResponse.json();
+        console.log("Audit log response:", auditData);
+        setAuditLogs(auditData.auditLogs || []);
       } catch (err) {
-        console.error("Error fetching status history:", err);
+        console.error("Error fetching audit data:", err);
         setError(
-          err instanceof Error ? err.message : "Failed to load status history"
+          err instanceof Error ? err.message : "Failed to load audit data"
         );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStatusHistory();
+    fetchAuditData();
   }, [reservationData?.id]);
 
   const formatTimestamp = (timestamp: string) => {
@@ -203,14 +235,68 @@ const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
         </p>
       </div>
 
-      {/* Audit Log Entries - Coming Soon */}
+      {/* Audit Log Entries */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <div className="text-center py-8">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            Full activity log (field changes, notes, etc.) coming soon.
-            Currently showing status change history above.
-          </p>
-        </div>
+        {auditLogs.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              No activity log entries yet. Changes will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {auditLogs.map((log, index) => (
+              <div key={log.id} className="relative">
+                {/* Timeline Line */}
+                {index < auditLogs.length - 1 && (
+                  <div className="absolute left-6 top-12 w-0.5 h-8 bg-gray-200 dark:bg-gray-600"></div>
+                )}
+
+                <div className="flex items-start gap-4">
+                  {/* Timeline Dot */}
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-100 dark:!bg-gray-700 flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  </div>
+
+                  {/* Log Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                        {log.action.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        by {log.user?.name || log.user?.email || "System"}
+                      </span>
+                    </div>
+
+                    <div className="text-sm text-gray-900 dark:text-gray-100 mb-1">
+                      {log.description || (
+                        <>
+                          {log.fieldName && (
+                            <>
+                              Changed <strong>{log.fieldName}</strong> from{" "}
+                              <span className="text-red-600 dark:text-red-400">
+                                &quot;{log.oldValue || "empty"}&quot;
+                              </span>{" "}
+                              to{" "}
+                              <span className="text-green-600 dark:text-green-400">
+                                &quot;{log.newValue || "empty"}&quot;
+                              </span>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatTimestamp(log.changedAt)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -8,6 +8,8 @@ import {
 import { calculatePaymentStatus } from "@/lib/payments/utils";
 import { prisma } from "@/lib/prisma";
 import { clearReservationsCacheForProperty } from "../route";
+import { logFieldUpdate } from "@/lib/audit-log/reservation-audit";
+import { getServerSession } from "next-auth";
 
 /**
  * GET /api/reservations/[id]
@@ -209,6 +211,11 @@ export async function PATCH(
       }
     }
 
+    // Get current reservation data for audit logging
+    const currentReservation = await prisma.reservation.findUnique({
+      where: { id }
+    });
+
     const updated = await withPropertyContext(
       reservation.propertyId,
       async (tx) => {
@@ -241,6 +248,121 @@ export async function PATCH(
         });
       }
     );
+
+    // Log field updates to audit trail
+    try {
+      const session = await getServerSession();
+      const userId = session?.user?.id || null;
+
+      // Log each field that was updated
+      if (
+        guestName !== undefined &&
+        guestName !== currentReservation?.guestName
+      ) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "guestName",
+          currentReservation?.guestName,
+          guestName,
+          userId
+        );
+      }
+
+      if (
+        checkIn !== undefined &&
+        checkIn !== currentReservation?.checkIn?.toISOString()
+      ) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "checkIn",
+          currentReservation?.checkIn?.toISOString(),
+          checkIn,
+          userId
+        );
+      }
+
+      if (
+        checkOut !== undefined &&
+        checkOut !== currentReservation?.checkOut?.toISOString()
+      ) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "checkOut",
+          currentReservation?.checkOut?.toISOString(),
+          checkOut,
+          userId
+        );
+      }
+
+      if (notes !== undefined && notes !== currentReservation?.notes) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "notes",
+          currentReservation?.notes,
+          notes,
+          userId
+        );
+      }
+
+      if (phone !== undefined && phone !== currentReservation?.phone) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "phone",
+          currentReservation?.phone,
+          phone,
+          userId
+        );
+      }
+
+      if (email !== undefined && email !== currentReservation?.email) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "email",
+          currentReservation?.email,
+          email,
+          userId
+        );
+      }
+
+      if (adults !== undefined && adults !== currentReservation?.adults) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "adults",
+          currentReservation?.adults,
+          adults,
+          userId
+        );
+      }
+
+      if (children !== undefined && children !== currentReservation?.children) {
+        await logFieldUpdate(
+          prisma,
+          id,
+          reservation.propertyId,
+          "children",
+          currentReservation?.children,
+          children,
+          userId
+        );
+      }
+    } catch (auditError) {
+      console.error("Error logging field updates:", auditError);
+      // Don't throw - audit logging failure shouldn't block updates
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

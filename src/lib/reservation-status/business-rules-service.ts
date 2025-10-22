@@ -344,6 +344,18 @@ export class StatusBusinessRulesService {
     rule: StatusBusinessRule,
     context: StatusTransitionContext
   ): Promise<{ applies: boolean; reason?: string }> {
+    // Skip approval requirement for PROPERTY_MGR and above
+    // Note: ORG_ADMIN and SUPER_ADMIN are mapped to PROPERTY_MGR in the API
+    if (
+      rule.name === "Early Check-in Approval Required" &&
+      context.userRole === PropertyRole.PROPERTY_MGR
+    ) {
+      return {
+        applies: false,
+        reason: "User has sufficient permissions to bypass approval"
+      };
+    }
+
     // Check if all conditions are met
     for (const condition of rule.conditions) {
       const conditionMet = await this.evaluateCondition(condition, context);
