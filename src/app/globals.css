@@ -331,6 +331,11 @@
     color: #f0f8ff !important; /* Alice Blue text */
   }
 
+  /* Override for unsaved changes text - higher specificity */
+  .dark .unsaved-changes-text {
+    color: #FFFF80 !important;
+  }
+
   /* Muted text in dark mode */
   .dark .text-muted-foreground,
   .dark .text-gray-500,
@@ -464,13 +469,24 @@
   border-width: 2px !important;
 }
 
-/* Calendar event text color - gray-900 for light mode, alice blue for dark mode */
-.fc-event:not(.fc-bg-event) {
-  color: rgb(31, 41, 55) !important; /* Gray-900 for light mode */
+/* Override FullCalendar text color to respect event textColor property */
+.fc-event:not(.fc-bg-event) .fc-event-title {
+  color: inherit !important;
 }
 
-.dark .fc-event:not(.fc-bg-event) {
-  color: #f0f8ff !important; /* Alice Blue for dark mode */
+.fc-event:not(.fc-bg-event) {
+  color: inherit !important;
+}
+
+.fc-event:not(.fc-bg-event) .fc-event-title,
+.fc-event:not(.fc-bg-event) .fc-event-time,
+.fc-event:not(.fc-bg-event) span {
+  color: inherit !important;
+}
+
+/* Ensure span text color is not overridden */
+.fc-event:not(.fc-bg-event) span {
+  color: inherit !important;
 }
 
 /* STATUS STYLING END */

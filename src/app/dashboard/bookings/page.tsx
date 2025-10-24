@@ -51,39 +51,47 @@ interface Reservation {
 interface Room {
   id: string;
   title: string;
+  children?: Array<{ id: string; title: string; basePrice?: number }>;
 }
 
 /**
- * Get event color based on reservation status and theme
- * Light theme: Original colors
- * Dark theme: Darker shades for better contrast
+ * Get event color and text color based on reservation status and theme
+ * Light theme: Original colors with gray-900 text for CONFIRMED, alice blue for others
+ * Dark theme: Darker shades with alice blue text
  */
 const getEventColor = (
   status?: string,
   isDarkMode: boolean = false
-): string => {
-  const lightColorMap: Record<string, string> = {
-    CONFIRMED: "#9AB69B", // Sage Green
-    CONFIRMATION_PENDING: "#ec4899", // Pink
-    IN_HOUSE: "#22c55e", // Green
-    CANCELLED: "#6b7280", // Gray
-    CHECKED_OUT: "#8b5cf6", // Purple
-    NO_SHOW: "#f97316" // Orange
+): { backgroundColor: string; textColor: string } => {
+  const lightColorMap: Record<string, { bg: string; text: string }> = {
+    CONFIRMED: { bg: "#9AB69B", text: "#1f2937" }, // Sage Green with gray-900 text
+    CONFIRMATION_PENDING: { bg: "#ec4899", text: "#f0f8f9" }, // Pink with alice blue text
+    IN_HOUSE: { bg: "#22c55e", text: "#f0f8f9" }, // Green with alice blue text
+    CANCELLED: { bg: "#6b7280", text: "#f0f8f9" }, // Gray with alice blue text
+    CHECKED_OUT: { bg: "#8b5cf6", text: "#f0f8f9" }, // Purple with alice blue text
+    NO_SHOW: { bg: "#f97316", text: "#f0f8f9" } // Orange with alice blue text
   };
 
-  const darkColorMap: Record<string, string> = {
-    CONFIRMED: "#3b513b", // Sage Green (dark mode)
-    CONFIRMATION_PENDING: "#db2777", // Pink-600
-    IN_HOUSE: "#10b981", // Emerald-500 (bright green for active)
-    CANCELLED: "#4b5563", // Gray-700
-    CHECKED_OUT: "#7c3aed", // Violet-600
-    NO_SHOW: "#d97706" // Amber-600
+  const darkColorMap: Record<string, { bg: string; text: string }> = {
+    CONFIRMED: { bg: "#3b513b", text: "#f0f8f9" }, // Sage Green (dark) with alice blue text
+    CONFIRMATION_PENDING: { bg: "#db2777", text: "#f0f8f9" }, // Pink-600 with alice blue text
+    IN_HOUSE: { bg: "#10b981", text: "#f0f8f9" }, // Emerald-500 with alice blue text
+    CANCELLED: { bg: "#4b5563", text: "#f0f8f9" }, // Gray-700 with alice blue text
+    CHECKED_OUT: { bg: "#7c3aed", text: "#f0f8f9" }, // Violet-600 with alice blue text
+    NO_SHOW: { bg: "#d97706", text: "#f0f8f9" } // Amber-600 with alice blue text
   };
 
   const colorMap = isDarkMode ? darkColorMap : lightColorMap;
-  return (
-    colorMap[status || "CONFIRMED"] || (isDarkMode ? "#047857" : "#9AB69B")
-  );
+  const colors =
+    colorMap[status || "CONFIRMED"] ||
+    (isDarkMode
+      ? { bg: "#047857", text: "#f0f8f9" }
+      : { bg: "#9AB69B", text: "#1f2937" });
+
+  return {
+    backgroundColor: colors.bg,
+    textColor: colors.text
+  };
 };
 
 export default function BookingsRowStylePage() {
@@ -246,22 +254,25 @@ export default function BookingsRowStylePage() {
           const { reservations } = await res.json();
 
           success(
-            reservations.map((r: Reservation) => ({
-              id: r.id,
-              resourceId: r.roomId,
-              title: formatGuestNameForCalendar(r.guestName),
-              start: r.checkIn,
-              end: r.checkOut,
-              allDay: true,
-              backgroundColor: getEventColor(r.status, isDarkMode), // Color based on status and theme
-              borderColor: getEventColor(r.status, isDarkMode),
-              textColor: isDarkMode ? "#f0f8ff" : "#1e1e1e", // Alice blue in dark mode, gray-900 in light mode
-              extendedProps: {
-                isPartialDay: true,
-                status: r.status,
-                paymentStatus: r.paymentStatus
-              }
-            }))
+            reservations.map((r: Reservation) => {
+              const colors = getEventColor(r.status, isDarkMode);
+              return {
+                id: r.id,
+                resourceId: r.roomId,
+                title: formatGuestNameForCalendar(r.guestName),
+                start: r.checkIn,
+                end: r.checkOut,
+                allDay: true,
+                backgroundColor: colors.backgroundColor,
+                borderColor: colors.backgroundColor,
+                textColor: colors.textColor,
+                extendedProps: {
+                  isPartialDay: true,
+                  status: r.status,
+                  paymentStatus: r.paymentStatus
+                }
+              };
+            })
           );
         } catch (e) {
           failure(e as Error);
@@ -345,7 +356,12 @@ export default function BookingsRowStylePage() {
           return await roomsRes.json();
         }
       );
-      type RawRoom = { id: string; name: string; type: string };
+      type RawRoom = {
+        id: string;
+        name: string;
+        type: string;
+        roomType?: { id: string; name: string; basePrice: number };
+      };
       const roomsData: RawRoom[] = Array.isArray(roomsJson)
         ? roomsJson
         : roomsJson.rooms;
@@ -353,7 +369,12 @@ export default function BookingsRowStylePage() {
       interface GroupedResource {
         id: string;
         title: string;
-        children: Array<{ id: string; title: string; order: string }>;
+        children: Array<{
+          id: string;
+          title: string;
+          order: string;
+          basePrice?: number;
+        }>;
       }
 
       const groupedResources = roomsData.reduce((acc, room) => {
@@ -368,7 +389,8 @@ export default function BookingsRowStylePage() {
         acc[groupId].children.push({
           id: room.id,
           title: room.name,
-          order: room.name // Add explicit order field for FullCalendar
+          order: room.name, // Add explicit order field for FullCalendar
+          basePrice: room.roomType?.basePrice || 0 // Preserve room type base price
         });
         return acc;
       }, {} as Record<string, GroupedResource>);
@@ -775,25 +797,29 @@ export default function BookingsRowStylePage() {
   // ------------------------
   // Memoize availableRooms to prevent unnecessary re-renders of EditBookingSheet
   const availableRooms = useMemo(() => {
-    return resources.map((room, index) => {
-      // Extract room type and number from title (e.g., "Presidential Suite - 101")
-      const titleParts = room.title.split(" - ");
-      const roomType = titleParts.length > 1 ? titleParts[0] : room.title;
-      const roomNumber =
-        titleParts.length > 1 ? titleParts[1] : `${index + 101}`;
+    return resources.flatMap((group) => {
+      // Each group has children (individual rooms)
+      if (!group.children) return [];
 
-      // Create proper room data
-      return {
-        id: room.id,
-        name: room.title,
-        number: roomNumber,
-        type: roomType.toLowerCase().replace(/\s+/g, "_"),
-        typeDisplayName: roomType,
-        capacity: 4, // Placeholder - should come from room data
-        basePrice: 0, // No fallback prices in production
-        available: true, // Will be updated by availability check
-        isCurrentRoom: editingReservation?.roomId === room.id
-      };
+      return group.children.map((room, index) => {
+        // Extract room number from title (e.g., "Presidential Suite - 101")
+        const titleParts = room.title.split(" - ");
+        const roomNumber =
+          titleParts.length > 1 ? titleParts[1] : `${index + 101}`;
+
+        // Create proper room data
+        return {
+          id: room.id,
+          name: room.title,
+          number: roomNumber,
+          type: group.id.toLowerCase().replace(/\s+/g, "_"),
+          typeDisplayName: group.id,
+          capacity: 4, // Placeholder - should come from room data
+          basePrice: room.basePrice || 0, // Use basePrice from room type
+          available: true, // Will be updated by availability check
+          isCurrentRoom: editingReservation?.roomId === room.id
+        };
+      });
     });
   }, [resources, editingReservation?.roomId]);
 
@@ -807,10 +833,11 @@ export default function BookingsRowStylePage() {
         .find((row) => row.startsWith("orgId="))
         ?.split("=")[1];
 
-      // If data is empty, just refresh the calendar (e.g., after status change)
+      // If data is empty, just refresh the calendar (e.g., after status change or payment)
       if (Object.keys(data).length === 0) {
         try {
-          console.log(`🔄 Refreshing calendar after status change...`);
+          console.log(`🔄 Refreshing calendar after payment/status change...`);
+          console.log(`📍 Using orgId: ${orgId}`);
           const timestamp = Date.now();
           const res = await fetch(
             `/api/reservations?orgId=${orgId}&t=${timestamp}`,
@@ -819,19 +846,66 @@ export default function BookingsRowStylePage() {
             }
           );
 
+          console.log(`📊 API Response Status: ${res.status}`);
           if (res.ok) {
             const responseData = await res.json();
+            console.log(
+              `📦 Received ${
+                responseData.reservations?.length || 0
+              } reservations`
+            );
+
+            // Update state with fresh data
             setEvents(responseData.reservations || []);
             setResources(responseData.rooms || []);
 
-            // Force calendar refresh
+            // Force calendar refresh by removing all events and re-adding them
             const api = calendarRef.current?.getApi();
             if (api) {
+              console.log(`🔄 Starting calendar refresh sequence...`);
+
+              // Remove all existing events
               api.removeAllEvents();
-              await new Promise((resolve) => setTimeout(resolve, 50));
-              api.refetchEvents();
-              console.log(`✅ Calendar refetch triggered`);
+              console.log(`✓ All events removed`);
+
+              // Wait a bit for removal to complete
+              await new Promise((resolve) => setTimeout(resolve, 100));
+
+              // Convert reservations to calendar events and add them directly
+              const calendarEvents = (responseData.reservations || []).map(
+                (r: Reservation) => {
+                  const colors = getEventColor(r.status, isDarkMode);
+                  return {
+                    id: r.id,
+                    resourceId: r.roomId,
+                    title: formatGuestNameForCalendar(r.guestName),
+                    start: r.checkIn,
+                    end: r.checkOut,
+                    allDay: true,
+                    backgroundColor: colors.backgroundColor,
+                    borderColor: colors.backgroundColor,
+                    textColor: colors.textColor,
+                    extendedProps: {
+                      isPartialDay: true,
+                      status: r.status,
+                      paymentStatus: r.paymentStatus
+                    }
+                  };
+                }
+              );
+
+              // Add events directly to calendar
+              api.addEventSource(calendarEvents);
+              console.log(
+                `✅ ${calendarEvents.length} events added to calendar`
+              );
+            } else {
+              console.warn("⚠️ Calendar API not available");
             }
+          } else {
+            console.error(`❌ API returned status ${res.status}`);
+            const errorData = await res.json();
+            console.error("Error response:", errorData);
           }
         } catch (error) {
           console.error("Failed to refresh calendar:", error);
@@ -885,7 +959,7 @@ export default function BookingsRowStylePage() {
         onClose: () => setEditingReservation(null)
       });
     },
-    []
+    [isDarkMode]
   );
 
   // Memoize onDelete callback to prevent unnecessary re-renders
@@ -986,19 +1060,41 @@ export default function BookingsRowStylePage() {
         // Update local state first
         setEvents(reservations);
 
-        // FIXED: Force immediate calendar refetch to show updated payment status
-        console.log(`🔄 Refetching calendar events...`);
+        // FIXED: Force immediate calendar refresh by removing and re-adding events
+        console.log(`🔄 Refreshing calendar events...`);
         const api = calendarRef.current?.getApi();
         if (api) {
-          // Remove all events and refetch - this ensures a complete refresh
+          // Remove all events
           api.removeAllEvents();
+          console.log(`✓ Events removed from calendar`);
 
-          // Wait a tiny bit for removal to complete
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          // Wait for removal to complete
+          await new Promise((resolve) => setTimeout(resolve, 100));
 
-          // Refetch events - this will call the eventSources callback
-          api.refetchEvents();
-          console.log(`✅ Calendar refetch triggered`);
+          // Convert reservations to calendar events and add them directly
+          const calendarEvents = (reservations || []).map((r: Reservation) => {
+            const colors = getEventColor(r.status, isDarkMode);
+            return {
+              id: r.id,
+              resourceId: r.roomId,
+              title: formatGuestNameForCalendar(r.guestName),
+              start: r.checkIn,
+              end: r.checkOut,
+              allDay: true,
+              backgroundColor: colors.backgroundColor,
+              borderColor: colors.backgroundColor,
+              textColor: colors.textColor,
+              extendedProps: {
+                isPartialDay: true,
+                status: r.status,
+                paymentStatus: r.paymentStatus
+              }
+            };
+          });
+
+          // Add events directly to calendar
+          api.addEventSource(calendarEvents);
+          console.log(`✅ ${calendarEvents.length} events added to calendar`);
         }
       } else {
         console.error("Reload failed:", res.status, res.statusText);

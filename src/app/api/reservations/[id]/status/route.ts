@@ -9,6 +9,7 @@ import { withPropertyContext } from "@/lib/property-context";
 import { validateStatusTransition } from "@/lib/reservation-status/utils";
 import { statusTransitionValidator } from "@/lib/reservation-status/advanced-validation";
 import { statusBusinessRulesService } from "@/lib/reservation-status/business-rules-service";
+import { clearReservationsCacheForProperty } from "@/lib/reservations/cache";
 
 /**
  * PATCH /api/reservations/[id]/status
@@ -80,6 +81,15 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    console.log(`🔍 Status Update - Reservation Data:`, {
+      id: reservation.id,
+      status: reservation.status,
+      paymentStatus: reservation.paymentStatus,
+      paidAmount: reservation.paidAmount,
+      depositAmount: reservation.depositAmount,
+      newStatus
+    });
 
     // Basic status transition validation
     const basicValidation = validateStatusTransition(
@@ -282,6 +292,11 @@ export async function PATCH(
         return updated;
       }
     );
+
+    // Clear cache for this property so the calendar gets fresh data
+    if (propertyId) {
+      clearReservationsCacheForProperty(propertyId);
+    }
 
     return NextResponse.json({
       success: true,

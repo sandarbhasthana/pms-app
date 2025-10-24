@@ -7,7 +7,7 @@ import {
 } from "@/lib/property-context";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
 import { prisma } from "@/lib/prisma";
-import { clearReservationsCacheForProperty } from "../route";
+import { clearReservationsCacheForProperty } from "@/lib/reservations/cache";
 import { logFieldUpdate } from "@/lib/audit-log/reservation-audit";
 import { getServerSession } from "next-auth";
 

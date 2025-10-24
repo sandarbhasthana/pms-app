@@ -467,6 +467,15 @@ export default function CalendarViewRowStyle({
         info.el.style.whiteSpace = "normal";
         info.el.style.padding = "2px 4px";
         info.el.style.marginTop = "20px";
+        // Apply text color from event with !important to all text elements
+        if (info.event.textColor) {
+          info.el.style.color = info.event.textColor;
+          // Also apply to all child elements
+          const allElements = info.el.querySelectorAll("*");
+          allElements.forEach((el: Element) => {
+            (el as HTMLElement).style.color = info.event.textColor;
+          });
+        }
       }}
       eventClassNames={() => {
         // Don't apply any classes - let the backgroundColor/borderColor from event source handle colors
@@ -488,23 +497,26 @@ export default function CalendarViewRowStyle({
           })}
         </span>
       )}
-      eventContent={(arg) =>
-        arg.event.display !== "background" ? (
+      eventContent={(arg) => {
+        const textColor = arg.event.textColor || "#f0f8ff";
+        return arg.event.display !== "background" ? (
           <div
-            style={{
-              whiteSpace: "nowrap",
-              lineHeight: "1.2",
-              fontSize: "0.8rem",
-              padding: "2px",
-              overflow: "hidden",
-              fontWeight: "bold",
-              textOverflow: "ellipsis"
-            }}
+            style={
+              {
+                whiteSpace: "nowrap",
+                lineHeight: "1.2",
+                fontSize: "0.8rem",
+                padding: "2px",
+                overflow: "hidden",
+                fontWeight: "bold",
+                textOverflow: "ellipsis"
+              } as React.CSSProperties & { "--event-text-color": string }
+            }
           >
-            {arg.event.title}
+            <span style={{ color: textColor }}>{arg.event.title}</span>
           </div>
-        ) : null
-      }
+        ) : null;
+      }}
       resourceAreaHeaderContent={<div className="pl-2">Room Types & Rooms</div>}
       resourceAreaHeaderClassNames={[
         "bg-white dark:bg-gray-900 text-gray-900 dark:text-white pl-6"

@@ -15,11 +15,15 @@ import {
 import { logReservationCreated } from "@/lib/audit-log/reservation-audit";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import {
+  reservationsCache,
+  RESERVATIONS_CACHE_DURATION
+} from "@/lib/reservations/cache";
 
 // Payment data types
 interface PaymentData {
   totalAmount: number;
-  paymentMethod: "card" | "cash" | "bank_transfer";
+  paymentMethod: "card" | "cash" | "bank_transfer" | "pay_at_checkin";
   creditCard?: {
     last4: string;
     brand: string;
@@ -56,6 +60,8 @@ type ReservationFromDB = {
   notes: string | null;
   email: string | null;
   phone: string | null;
+  depositAmount: number | null;
+  paidAmount: number | null;
   room: {
     id: string;
     name: string;
@@ -65,43 +71,12 @@ type ReservationFromDB = {
     id: string;
     name: string;
   } | null;
+  payments: Array<{
+    id: string;
+    amount: number;
+    status: string;
+  }>;
 };
-
-// OPTIMIZATION: In-memory cache for reservations
-const reservationsCache = new Map<
-  string,
-  { data: unknown; timestamp: number }
->();
-const RESERVATIONS_CACHE_DURATION = 5000; // 5 seconds (reduced from 5 minutes to avoid stale data after deletions)
-
-// Helper function to clear cache for a specific property
-export function clearReservationsCacheForProperty(propertyId: string) {
-  console.log(`🔍 Clearing cache for property: ${propertyId}`);
-  console.log(`📊 Current cache size: ${reservationsCache.size}`);
-
-  const keysToDelete: string[] = [];
-  for (const key of reservationsCache.keys()) {
-    console.log(`  Checking key: ${key}`);
-    if (key.includes(`reservations-${propertyId}-`)) {
-      keysToDelete.push(key);
-    }
-  }
-
-  keysToDelete.forEach((key) => {
-    reservationsCache.delete(key);
-    console.log(`🗑️ Cleared cache key: ${key}`);
-  });
-
-  if (keysToDelete.length > 0) {
-    console.log(
-      `✅ Cleared ${keysToDelete.length} cache entries for property ${propertyId}`
-    );
-  } else {
-    console.log(`⚠️ No cache entries found for property ${propertyId}`);
-  }
-
-  console.log(`📊 Cache size after clearing: ${reservationsCache.size}`);
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -189,7 +164,20 @@ export async function GET(req: NextRequest) {
                 ]
               })
           },
-          include: {
+          select: {
+            id: true,
+            guestName: true,
+            roomId: true,
+            checkIn: true,
+            checkOut: true,
+            adults: true,
+            children: true,
+            status: true,
+            notes: true,
+            email: true,
+            phone: true,
+            depositAmount: true,
+            paidAmount: true,
             room: {
               select: {
                 id: true,
@@ -201,6 +189,13 @@ export async function GET(req: NextRequest) {
               select: {
                 id: true,
                 name: true
+              }
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                status: true
               }
             }
           },
@@ -223,7 +218,14 @@ export async function GET(req: NextRequest) {
           r.id,
           property?.organizationId || ""
         );
-        return { ...r, paymentStatus };
+
+        // Calculate paidAmount from payments array if not set in database
+        const calculatedPaidAmount =
+          r.paidAmount !== null && r.paidAmount !== undefined
+            ? r.paidAmount
+            : r.payments.reduce((sum, p) => sum + p.amount, 0);
+
+        return { ...r, paymentStatus, paidAmount: calculatedPaidAmount };
       })
     );
 
@@ -383,6 +385,14 @@ export async function POST(req: NextRequest) {
     }
 
     const reservation = await withPropertyContext(propertyId!, async (tx) => {
+      // Determine reservation status based on payment method
+      // "pay_at_checkin" creates reservation in CONFIRMATION_PENDING state
+      // All other payment methods create in CONFIRMED state
+      const reservationStatus =
+        payment?.paymentMethod === "pay_at_checkin"
+          ? "CONFIRMATION_PENDING"
+          : "CONFIRMED";
+
       // Create the reservation
       const newReservation = await tx.reservation.create({
         data: {
@@ -401,7 +411,7 @@ export async function POST(req: NextRequest) {
           idNumber,
           issuingCountry,
           source: (source as ReservationSource) || ReservationSource.WEBSITE,
-          status: "CONFIRMED",
+          status: reservationStatus,
           // Add payment-related fields using correct schema fields
           amountCaptured:
             payment?.paymentMethod === "card"
@@ -410,12 +420,16 @@ export async function POST(req: NextRequest) {
           depositAmount: payment?.totalAmount
             ? Math.round(payment.totalAmount * 100)
             : null,
+          paidAmount:
+            payment?.paymentMethod === "card" ? payment.totalAmount : 0, // Initialize paidAmount: 0 for unpaid, or full amount for card payments
           paymentStatus:
             payment?.paymentMethod === "card"
               ? "PAID"
               : payment?.paymentMethod === "cash"
               ? "UNPAID"
               : payment?.paymentMethod === "bank_transfer"
+              ? "UNPAID"
+              : payment?.paymentMethod === "pay_at_checkin"
               ? "UNPAID"
               : "UNPAID"
         },
@@ -429,37 +443,40 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Create payment record if payment data exists
-      if (payment && payment.totalAmount > 0) {
-        console.log("Creating payment record for:", payment);
+      // Create payment record ONLY for card payments (which are immediately paid)
+      // For cash, bank_transfer, and pay_at_checkin, payment records are created when payment is actually made
+      if (
+        payment &&
+        payment.totalAmount > 0 &&
+        payment.paymentMethod === "card"
+      ) {
+        console.log("Creating payment record for card payment:", payment);
         console.log("Payment creditCard data:", payment.creditCard);
         let paymentMethodRecord = null;
 
-        // For card payments, validate payment data first
-        if (payment.paymentMethod === "card") {
-          console.log("Validating card payment data...");
-          console.log("payment.creditCard exists:", !!payment.creditCard);
-          console.log(
-            "paymentMethodId exists:",
-            payment.creditCard?.paymentMethodId
-          );
+        // Validate card payment data
+        console.log("Validating card payment data...");
+        console.log("payment.creditCard exists:", !!payment.creditCard);
+        console.log(
+          "paymentMethodId exists:",
+          payment.creditCard?.paymentMethodId
+        );
 
-          if (!payment.creditCard || !payment.creditCard.paymentMethodId) {
-            console.error("Missing payment data:", {
-              hasCreditCard: !!payment.creditCard,
-              creditCardData: payment.creditCard,
-              paymentMethodId: payment.creditCard?.paymentMethodId,
-              fullPaymentData: payment
-            });
-            throw new Error(
-              "Card payment failed - missing payment method details. Please try again."
-            );
-          }
+        if (!payment.creditCard || !payment.creditCard.paymentMethodId) {
+          console.error("Missing payment data:", {
+            hasCreditCard: !!payment.creditCard,
+            creditCardData: payment.creditCard,
+            paymentMethodId: payment.creditCard?.paymentMethodId,
+            fullPaymentData: payment
+          });
+          throw new Error(
+            "Card payment failed - missing payment method details. Please try again."
+          );
         }
 
         try {
           // Create PaymentMethod record for card payments
-          if (payment.paymentMethod === "card" && payment.creditCard) {
+          if (payment.creditCard) {
             console.log("Creating PaymentMethod record:", payment.creditCard);
             paymentMethodRecord = await tx.paymentMethod.create({
               data: {
@@ -476,27 +493,30 @@ export async function POST(req: NextRequest) {
             console.log("PaymentMethod created:", paymentMethodRecord.id);
           }
 
-          // Create Payment record
-          console.log("Creating Payment record...");
+          // Create Payment record for card payment
+          console.log("Creating Payment record for card payment...");
           await tx.payment.create({
             data: {
               reservationId: newReservation.id,
               type: "payment",
-              method: payment.paymentMethod,
-              status:
-                payment.paymentMethod === "card" ? "COMPLETED" : "PENDING",
+              method: "card",
+              status: "COMPLETED",
               amount: payment.totalAmount,
               currency: "INR",
               paymentMethodId: paymentMethodRecord?.id,
               description: `Payment for reservation ${newReservation.id}`,
-              processedAt: payment.paymentMethod === "card" ? new Date() : null
+              processedAt: new Date()
             }
           });
-          console.log("Payment record created successfully");
+          console.log("Card payment record created successfully");
         } catch (paymentError) {
-          console.error("Error creating payment records:", paymentError);
+          console.error("Error creating card payment records:", paymentError);
           // Don't throw here - let the reservation be created even if payment record fails
         }
+      } else if (payment && payment.totalAmount > 0) {
+        console.log(
+          `ℹ️ Payment method '${payment.paymentMethod}' selected - payment record will be created when payment is actually made`
+        );
       }
 
       // Process addons data if provided

@@ -1,41 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
-import { EditTabProps } from "./types";
-import {
-  CreditCardIcon,
-  BanknotesIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  ClockIcon,
-  PlusIcon
-} from "@heroicons/react/24/outline";
+import React, { useState, useCallback, useEffect } from "react";
+import { EditTabProps, Payment } from "./types";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { PaymentProvider } from "@/components/payments/PaymentProvider";
+import { PaymentForm } from "@/components/payments/PaymentForm";
+import { toast } from "sonner";
+import { PaymentResult } from "@/lib/payments/types";
+import { Textarea } from "@/components/ui/textarea";
 
 export const EditPaymentTab: React.FC<EditTabProps> = ({
-  // reservationData,
+  reservationData,
   formData,
   updateFormData,
   availableRooms,
   onPrevious,
   onSave,
-  onDelete
+  onDelete,
+  onUpdate,
+  setEditingReservation,
+  onStatusUpdate
 }) => {
-  const [showAddPayment, setShowAddPayment] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    amount: 0,
-    method: "cash",
-    notes: ""
-  });
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingPaymentIntent, setIsCreatingPaymentIntent] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<
+    "idle" | "processing" | "succeeded" | "failed"
+  >("idle");
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
+  const [verifyingPaymentId, setVerifyingPaymentId] = useState<string | null>(
+    null
+  );
+  const [verificationNotes, setVerificationNotes] = useState<{
+    [key: string]: string;
+  }>({});
 
-  const calculateNights = () => {
+  // Calculate number of nights
+  const calculateNights = useCallback(() => {
+    if (!formData.checkIn || !formData.checkOut) return 0;
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
     return Math.max(
@@ -44,17 +47,13 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
         (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
       )
     );
-  };
+  }, [formData.checkIn, formData.checkOut]);
 
-  const calculateTotals = () => {
+  // Calculate totals
+  const calculateTotals = useCallback(() => {
     const nights = calculateNights();
-    // Get actual room price from availableRooms data
-    const currentRoom = availableRooms?.find(
-      (room) => room.id === formData.roomId
-    );
-    const roomBasePrice = currentRoom?.basePrice || 0;
-    const basePrice = roomBasePrice * nights;
 
+    // Calculate add-ons total first
     let addonsTotal = 0;
     if (formData.addons.extraBed) {
       addonsTotal += 500 * formData.addons.extraBedQuantity * nights;
@@ -69,9 +68,67 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
       addonsTotal += addonTotal;
     });
 
-    const subtotal = basePrice + addonsTotal;
-    const paidAmount = formData.payment.paidAmount;
-    const remainingBalance = subtotal - paidAmount;
+    // Calculate room rate - use depositAmount if available (this is the actual quoted price from rates API)
+    // Otherwise fall back to room base price
+    let basePrice = 0;
+    let totalReservationAmount = 0;
+
+    // First priority: Use depositAmount (stored in cents, contains actual quoted price)
+    if (reservationData.depositAmount && reservationData.depositAmount > 0) {
+      totalReservationAmount = reservationData.depositAmount / 100; // Convert from cents
+      basePrice = totalReservationAmount; // This is the total room price for all nights
+      console.log(
+        `📊 Using depositAmount as total: ₹${totalReservationAmount} (from rates API)`
+      );
+    } else {
+      // Fallback: Calculate from room base price
+      const currentRoom = availableRooms?.find(
+        (room) => room.id === formData.roomId
+      );
+
+      if (currentRoom?.basePrice) {
+        basePrice = currentRoom.basePrice * nights;
+        totalReservationAmount = basePrice;
+        console.log(
+          `📊 Using room base price: ₹${currentRoom.basePrice} × ${nights} nights = ₹${basePrice}`
+        );
+      } else {
+        console.warn(
+          `Room ${formData.roomId} not found in availableRooms. Using fallback calculation.`
+        );
+        basePrice = 0;
+        totalReservationAmount = 0;
+      }
+    }
+
+    const paidAmount = reservationData.paidAmount || 0;
+
+    console.log(`📊 Calculate Totals Debug:`, {
+      status: reservationData.status,
+      basePrice,
+      totalReservationAmount,
+      addonsTotal,
+      paidAmount,
+      depositAmount: reservationData.depositAmount
+    });
+
+    // For CONFIRMATION_PENDING: Calculate balance as (room + addons - paid)
+    // For other statuses: Room rate is already paid, so balance = (addons - (paid - room))
+    let subtotal: number;
+    let remainingBalance: number;
+
+    if (reservationData.status === "CONFIRMATION_PENDING") {
+      // Include room rate in total for pending confirmations
+      subtotal = totalReservationAmount + addonsTotal;
+      remainingBalance = subtotal - paidAmount;
+    } else {
+      // For confirmed/checked-in bookings: room rate is already paid
+      // Only addons are outstanding
+      subtotal = addonsTotal;
+      // Subtract room rate from paid amount to get credit available for addons
+      const creditAvailable = paidAmount - basePrice;
+      remainingBalance = subtotal - creditAvailable;
+    }
 
     return {
       basePrice,
@@ -81,253 +138,412 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
       remainingBalance,
       nights
     };
-  };
+  }, [
+    formData,
+    availableRooms,
+    calculateNights,
+    reservationData.status,
+    reservationData.paidAmount,
+    reservationData.depositAmount
+  ]);
 
   const totals = calculateTotals();
 
-  const handlePaymentStatusChange = (
-    status: "PAID" | "PARTIALLY_PAID" | "UNPAID"
-  ) => {
-    updateFormData({
-      payment: {
-        ...formData.payment,
-        paymentStatus: status
+  // Create payment intent when card payment is selected
+  const createPaymentIntent = useCallback(
+    async (amount: number) => {
+      setIsCreatingPaymentIntent(true);
+      try {
+        const requestBody = {
+          amount: Math.round(amount * 100), // Convert to cents
+          currency: "inr",
+          metadata: {
+            reservationId: reservationData.id,
+            roomId: formData.roomId,
+            roomName: availableRooms?.find((r) => r.id === formData.roomId)
+              ?.name,
+            checkIn: formData.checkIn,
+            checkOut: formData.checkOut,
+            guestName: formData.guestName,
+            guestEmail: formData.email,
+            guestPhone: formData.phone
+          }
+        };
+
+        const response = await fetch("/api/test/create-payment-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Failed to create payment intent: ${response.status} ${errorText}`
+          );
+        }
+
+        const data = await response.json();
+
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          throw new Error("No clientSecret received from server");
+        }
+      } catch (error) {
+        console.error("Error creating payment intent:", error);
+        toast.error("Failed to initialize payment. Please try again.");
+        setClientSecret(null);
+      } finally {
+        setIsCreatingPaymentIntent(false);
       }
-    });
-  };
+    },
+    [
+      reservationData.id,
+      formData.roomId,
+      formData.checkIn,
+      formData.checkOut,
+      formData.guestName,
+      formData.email,
+      formData.phone,
+      availableRooms
+    ]
+  );
 
-  const handlePaymentMethodChange = (method: string) => {
-    updateFormData({
-      payment: {
-        ...formData.payment,
-        paymentMethod: method
+  // Handle payment method change
+  const handlePaymentMethodChange = useCallback(
+    async (method: string) => {
+      // Update form data
+      updateFormData({
+        payment: {
+          ...formData.payment,
+          paymentMethod: method
+        }
+      });
+
+      // Auto-initialize PaymentIntent when card is selected (better UX)
+      if (method === "card" && totals.remainingBalance > 0) {
+        // Auto-create PaymentIntent immediately for smooth UX
+        await createPaymentIntent(totals.remainingBalance);
+      } else {
+        // Clear payment intent for non-card payments
+        setClientSecret(null);
+        setPaymentStatus("idle");
       }
-    });
-  };
+    },
+    [
+      formData.payment,
+      updateFormData,
+      totals.remainingBalance,
+      createPaymentIntent
+    ]
+  );
 
-  const handleAddPayment = () => {
-    if (newPayment.amount <= 0) return;
+  // Fetch pending payments on mount
+  useEffect(() => {
+    const fetchPendingPayments = async () => {
+      if (!reservationData?.id) return;
 
-    const newPaidAmount = formData.payment.paidAmount + newPayment.amount;
-    const newStatus =
-      newPaidAmount >= totals.subtotal ? "PAID" : "PARTIALLY_PAID";
+      try {
+        const res = await fetch(`/api/reservations/${reservationData.id}`, {
+          credentials: "include"
+        });
 
-    updateFormData({
-      payment: {
-        ...formData.payment,
-        paidAmount: newPaidAmount,
-        paymentStatus: newStatus,
-        paymentMethod: newPayment.method
+        if (res.ok) {
+          const data = await res.json();
+          // Filter for pending payments (cash/bank_transfer)
+          const pending = (data.payments || []).filter(
+            (p: Payment) => p.status === "PENDING"
+          );
+          setPendingPayments(pending);
+          console.log(`📋 Found ${pending.length} pending payments`);
+        }
+      } catch (error) {
+        console.error("Error fetching pending payments:", error);
       }
-    });
+    };
 
-    // Reset form
-    setNewPayment({ amount: 0, method: "cash", notes: "" });
-    setShowAddPayment(false);
-  };
+    fetchPendingPayments();
+  }, [reservationData?.id]);
 
-  const getPaymentStatusIcon = () => {
-    switch (formData.payment.paymentStatus) {
-      case "PAID":
-        return CheckCircleIcon;
-      case "PARTIALLY_PAID":
-        return ClockIcon;
-      case "UNPAID":
-      default:
-        return ExclamationTriangleIcon;
+  // Create PaymentIntent on mount if card is already selected
+  useEffect(() => {
+    if (
+      formData.payment.paymentMethod === "card" &&
+      !clientSecret &&
+      !isCreatingPaymentIntent &&
+      totals.remainingBalance > 0
+    ) {
+      createPaymentIntent(totals.remainingBalance);
     }
-  };
+  }, [
+    formData.payment.paymentMethod,
+    clientSecret,
+    isCreatingPaymentIntent,
+    totals.remainingBalance,
+    createPaymentIntent
+  ]);
 
-  const getPaymentStatusColor = () => {
-    switch (formData.payment.paymentStatus) {
-      case "PAID":
-        return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700";
-      case "PARTIALLY_PAID":
-        return "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700";
-      case "UNPAID":
-      default:
-        return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700";
+  // Handle payment success
+  const handlePaymentSuccess = useCallback(
+    async (result: PaymentResult) => {
+      if (result.success) {
+        toast.success("Payment processed successfully!");
+        setPaymentStatus("idle");
+        setClientSecret(null);
+        onSave?.();
+      } else {
+        toast.error(result.error || "Payment failed");
+      }
+    },
+    [onSave]
+  );
+
+  // Handle payment verification
+  const handleVerifyPayment = useCallback(
+    async (paymentId: string) => {
+      if (!reservationData?.id) {
+        toast.error("Reservation ID not found");
+        return;
+      }
+
+      const notes = verificationNotes[paymentId] || "";
+
+      try {
+        setVerifyingPaymentId(paymentId);
+        console.log(`🔵 Verifying payment ${paymentId}...`);
+
+        const response = await fetch(
+          `/api/reservations/${reservationData.id}/payments/${paymentId}/verify`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              verificationNotes: notes
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`❌ Verification Error:`, error);
+          throw new Error(error.error || "Failed to verify payment");
+        }
+
+        const result = await response.json();
+        console.log(`✅ Payment verified:`, result);
+
+        toast.success("Payment verified successfully!");
+
+        // Update pending payments list
+        setPendingPayments((prev) => prev.filter((p) => p.id !== paymentId));
+
+        // Clear verification notes for this payment
+        setVerificationNotes((prev) => {
+          const updated = { ...prev };
+          delete updated[paymentId];
+          return updated;
+        });
+
+        // Trigger hard refresh after payment verification
+        console.log("🔄 Triggering hard refresh after payment verification...");
+        setTimeout(() => {
+          console.log("🔄 Performing hard refresh...");
+          window.location.reload();
+        }, 500);
+      } catch (error) {
+        console.error("Error verifying payment:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to verify payment"
+        );
+      } finally {
+        setVerifyingPaymentId(null);
+      }
+    },
+    [reservationData?.id, verificationNotes]
+  );
+
+  // Handle cash payment recording
+  const handleCashPaymentSave = useCallback(async () => {
+    if (!reservationData?.id) {
+      toast.error("Reservation ID not found");
+      return;
     }
-  };
 
-  const PaymentStatusIcon = getPaymentStatusIcon();
+    // Validate that remaining balance is positive
+    if (totals.remainingBalance <= 0) {
+      toast.error(
+        "No outstanding balance to pay. All charges have been settled."
+      );
+      return;
+    }
+
+    try {
+      console.log("🌐 Sending payment request to API...");
+      console.log(`   URL: /api/reservations/${reservationData.id}/payment`);
+      console.log(`   Amount: ${totals.remainingBalance}`);
+      console.log(`   Method: cash`);
+
+      // Record the cash payment
+      const response = await fetch(
+        `/api/reservations/${reservationData.id}/payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            amount: totals.remainingBalance,
+            paymentMethod: "cash"
+          })
+        }
+      );
+
+      console.log(`📊 API Response Status: ${response.status}`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(`❌ API Error:`, error);
+        throw new Error(error.error || "Failed to record cash payment");
+      }
+
+      const responseData = await response.json();
+      console.log(`✅ Payment API Success:`, responseData);
+
+      toast.success("Cash payment recorded successfully!");
+
+      // Check if reservation is now fully paid and needs auto-confirmation
+      const updatedReservation = responseData.reservation;
+      if (
+        updatedReservation &&
+        updatedReservation.paymentStatus === "PAID" &&
+        updatedReservation.status === "CONFIRMATION_PENDING"
+      ) {
+        console.log("✅ Payment complete - Auto-confirming reservation...");
+        // Auto-confirm the reservation
+        if (onStatusUpdate) {
+          try {
+            await onStatusUpdate(
+              "CONFIRMED",
+              "Auto-confirmed: Full payment received"
+            );
+            console.log("✅ Reservation auto-confirmed");
+          } catch (statusError) {
+            console.error("Error auto-confirming reservation:", statusError);
+            toast.error("Payment recorded but auto-confirmation failed");
+          }
+        }
+      }
+
+      // Refresh calendar and close sheet
+      if (onUpdate && setEditingReservation) {
+        try {
+          console.log("🔄 Triggering calendar refresh after cash payment...");
+          // Call onUpdate with empty data to trigger calendar refresh
+          await onUpdate(reservationData.id, {});
+          console.log("✅ Calendar refresh completed");
+          // Close the sheet
+          setEditingReservation(null);
+
+          // Trigger hard refresh after payment
+          console.log("🔄 Triggering hard refresh after cash payment...");
+          setTimeout(() => {
+            console.log("🔄 Performing hard refresh...");
+            window.location.reload();
+          }, 500);
+        } catch (refreshError) {
+          console.error("Error refreshing calendar:", refreshError);
+          // Still close the sheet even if refresh fails
+          setEditingReservation(null);
+          toast.error("Payment recorded but calendar refresh failed");
+
+          // Still do hard refresh even if refresh fails
+          setTimeout(() => {
+            console.log("🔄 Performing hard refresh after error...");
+            window.location.reload();
+          }, 500);
+        }
+      } else {
+        console.warn(
+          "onUpdate or setEditingReservation not available, using fallback"
+        );
+        // Fallback to onSave if onUpdate is not available
+        onSave?.();
+      }
+    } catch (error) {
+      console.error("Error recording cash payment:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to record cash payment"
+      );
+    }
+  }, [
+    reservationData?.id,
+    totals.remainingBalance,
+    onUpdate,
+    setEditingReservation,
+    onSave,
+    onStatusUpdate
+  ]);
 
   return (
     <div className="space-y-6">
-      {/* Payment Status Management */}
-      <div className={`rounded-lg p-6 border ${getPaymentStatusColor()}`}>
-        <div className="flex items-center gap-3 mb-6">
-          <PaymentStatusIcon className="h-6 w-6" />
-          <h3 className="text-lg font-semibold">Payment Status</h3>
-        </div>
+      {/* Reservation Summary */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold mb-4">Reservation Summary</h3>
 
-        {/* Professional Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Side - Payment Controls Side by Side (Folio Style) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                Payment Status
-              </label>
-              <Select
-                value={formData.payment.paymentStatus}
-                onValueChange={(value: "PAID" | "PARTIALLY_PAID" | "UNPAID") =>
-                  handlePaymentStatusChange(value)
-                }
-              >
-                <SelectTrigger className="h-10 px-4 text-sm justify-between bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm">
-                  <SelectValue placeholder="Select payment status" />
-                </SelectTrigger>
-                <SelectContent className="z-[10000]" sideOffset={5}>
-                  <SelectItem
-                    value="UNPAID"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Unpaid
-                  </SelectItem>
-                  <SelectItem
-                    value="PARTIALLY_PAID"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Partially Paid
-                  </SelectItem>
-                  <SelectItem
-                    value="PAID"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Paid
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                Payment Method
-              </label>
-              <Select
-                value={formData.payment.paymentMethod}
-                onValueChange={handlePaymentMethodChange}
-              >
-                <SelectTrigger className="h-10 px-4 text-sm justify-between bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-sm">
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent className="z-[10000]" sideOffset={5}>
-                  <SelectItem
-                    value="cash"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Cash
-                  </SelectItem>
-                  <SelectItem
-                    value="card"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Credit/Debit Card
-                  </SelectItem>
-                  <SelectItem
-                    value="upi"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    UPI
-                  </SelectItem>
-                  <SelectItem
-                    value="bank_transfer"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Bank Transfer
-                  </SelectItem>
-                  <SelectItem
-                    value="cheque"
-                    className="hover:bg-purple-100/80 dark:hover:bg-purple-900/30 focus:bg-purple-100/80 dark:focus:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 focus:text-purple-700 dark:focus:text-purple-300"
-                  >
-                    Cheque
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Check-in</p>
+            <p className="font-semibold">{formData.checkIn}</p>
           </div>
-
-          {/* Right Side - Financial Summary Stack - Compact */}
-          <div className="flex justify-end">
-            <div className="bg-white/50 dark:bg-black/20 rounded-lg p-6 w-2/3">
-              <div className="space-y-3">
-                {/* Paid Amount */}
-                <div className="flex justify-between items-center gap-8">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                    Paid
-                  </span>
-                  <span className="text-xl font-mono font-bold text-green-600 dark:text-green-400">
-                    ₹{totals.paidAmount.toLocaleString("en-IN")}
-                  </span>
-                </div>
-
-                {/* Total Amount */}
-                <div className="flex justify-between items-center gap-8">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                    Total Amount
-                  </span>
-                  <span className="text-xl font-mono font-bold text-gray-900 dark:text-white">
-                    ₹{totals.subtotal.toLocaleString("en-IN")}
-                  </span>
-                </div>
-
-                {/* Horizontal Line - Only covers the container width */}
-                <div className="border-t-2 border-gray-300 dark:border-gray-600 my-4"></div>
-
-                {/* Balance Due - Bigger Font */}
-                <div className="flex justify-between items-center gap-8">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                    Balance Due
-                  </span>
-                  <span
-                    className={`text-3xl font-mono font-bold ${
-                      totals.remainingBalance > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-green-600 dark:text-green-400"
-                    }`}
-                  >
-                    ₹{totals.remainingBalance.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Check-out</p>
+            <p className="font-semibold">{formData.checkOut}</p>
+          </div>
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Guest</p>
+            <p className="font-semibold">{formData.guestName}</p>
+          </div>
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Room</p>
+            <p className="font-semibold">
+              {availableRooms?.find((r) => r.id === formData.roomId)?.name}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Guests</p>
+            <p className="font-semibold">
+              {formData.adults} Adults, {formData.children} Children
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-600 dark:text-gray-400">Nights</p>
+            <p className="font-semibold">{totals.nights}</p>
           </div>
         </div>
       </div>
 
-      {/* Booking Summary */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 mb-4">
-          <BanknotesIcon className="h-5 w-5 text-purple-600" />
-          <h3 className="text-lg font-semibold">Booking Summary</h3>
-        </div>
+      {/* Accommodation Summary */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold mb-4">Accommodation Summary</h3>
 
-        <div className="grid grid-cols-[1fr_auto] gap-y-1.5">
-          {/* Room Rate */}
-          <span className="text-base font-medium text-gray-700 dark:text-gray-300">
-            Room Rate ({totals.nights} night{totals.nights > 1 ? "s" : ""})
-          </span>
-          <span className="text-base font-mono font-semibold text-gray-900 dark:text-white justify-self-end">
-            ₹{totals.basePrice.toLocaleString("en-IN")}
-          </span>
-          <div className="col-span-2 border-b border-gray-100 dark:border-gray-700"></div>
-          {/* Placeholder Tax Line (to be sourced from property tax settings later) */}
-          <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
-            Tax (GST 18%)
-          </span>
-          <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
-            ₹{Math.round(totals.subtotal * 0.18).toLocaleString("en-IN")}
-          </span>
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span>
+              Room Rate ({totals.nights} night{totals.nights > 1 ? "s" : ""})
+            </span>
+            <span>₹{totals.basePrice.toLocaleString("en-IN")}</span>
+          </div>
 
-          {/* Add-ons */}
           {formData.addons.extraBed && (
-            <>
-              <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+            <div className="flex justify-between text-blue-600 dark:text-blue-400">
+              <span>
                 Extra Bed × {formData.addons.extraBedQuantity} × {totals.nights}{" "}
-                nights
+                night{totals.nights > 1 ? "s" : ""}
               </span>
-              <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
+              <span>
                 ₹
                 {(
                   500 *
@@ -335,16 +551,16 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
                   totals.nights
                 ).toLocaleString("en-IN")}
               </span>
-            </>
+            </div>
           )}
 
           {formData.addons.breakfast && (
-            <>
-              <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+            <div className="flex justify-between text-blue-600 dark:text-blue-400">
+              <span>
                 Breakfast × {formData.addons.breakfastQuantity} ×{" "}
-                {totals.nights} nights
+                {totals.nights} night{totals.nights > 1 ? "s" : ""}
               </span>
-              <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
+              <span>
                 ₹
                 {(
                   300 *
@@ -352,16 +568,21 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
                   totals.nights
                 ).toLocaleString("en-IN")}
               </span>
-            </>
+            </div>
           )}
 
           {formData.addons.customAddons.map((addon) => (
-            <>
-              <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+            <div
+              key={addon.id}
+              className="flex justify-between text-blue-600 dark:text-blue-400"
+            >
+              <span>
                 {addon.name} × {addon.quantity}
-                {addon.perNight && ` × ${totals.nights} nights`}
+                {addon.perNight
+                  ? ` × ${totals.nights} night${totals.nights > 1 ? "s" : ""}`
+                  : ""}
               </span>
-              <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300 justify-self-end">
+              <span>
                 ₹
                 {(
                   addon.price *
@@ -369,140 +590,276 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
                   (addon.perNight ? totals.nights : 1)
                 ).toLocaleString("en-IN")}
               </span>
-            </>
+            </div>
           ))}
 
-          {totals.addonsTotal > 0 && (
-            <>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Add-ons Subtotal
-              </span>
-              <span className="text-sm font-mono font-semibold text-gray-700 dark:text-gray-300 justify-self-end">
-                ₹{totals.addonsTotal.toLocaleString("en-IN")}
-              </span>
-            </>
-          )}
-
-          {/* Total */}
-          <div className="col-span-2 flex justify-between items-center py-3 border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:!bg-gray-700/50 rounded-lg px-4 mt-4">
-            <span className="text-[17px] font-bold text-gray-900 dark:text-white">
-              Total Amount
-            </span>
-            <span className="text-[19px] font-mono font-bold text-purple-600 dark:text-purple-400">
-              ₹{totals.subtotal.toLocaleString("en-IN")}
-            </span>
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-3 mt-3">
+            <div className="flex justify-between">
+              <span>Accommodation Subtotal</span>
+              <span>₹{totals.subtotal.toLocaleString("en-IN")}</span>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Add Payment Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <CreditCardIcon className="h-5 w-5 text-purple-600" />
-            <h3 className="text-lg font-semibold">Payment Management</h3>
-          </div>
           {totals.remainingBalance > 0 && (
-            <Button
-              onClick={() => setShowAddPayment(true)}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add Payment
-            </Button>
+            <div className="flex justify-between text-red-600 dark:text-red-400">
+              <span>Outstanding Balance</span>
+              <span>₹{totals.remainingBalance.toLocaleString("en-IN")}</span>
+            </div>
           )}
+
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-3 mt-3">
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total Payment Due</span>
+              <span className="text-purple-600 dark:text-purple-400">
+                ₹{totals.remainingBalance.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
         </div>
-
-        {showAddPayment && (
-          <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
-            <h4 className="font-medium mb-3">Record New Payment</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Amount *
-                </label>
-                <input
-                  type="number"
-                  value={newPayment.amount}
-                  onChange={(e) =>
-                    setNewPayment({
-                      ...newPayment,
-                      amount: Number(e.target.value)
-                    })
-                  }
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900"
-                  placeholder="0"
-                  min="0"
-                  max={totals.remainingBalance}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Payment Method
-                </label>
-                <Select
-                  value={newPayment.method}
-                  onValueChange={(value) =>
-                    setNewPayment({ ...newPayment, method: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="card">Credit/Debit Card</SelectItem>
-                    <SelectItem value="upi">UPI</SelectItem>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="mt-3">
-              <label className="block text-sm font-medium mb-1">Notes</label>
-              <textarea
-                value={newPayment.notes}
-                onChange={(e) =>
-                  setNewPayment({ ...newPayment, notes: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900"
-                rows={2}
-                placeholder="Optional payment notes"
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={handleAddPayment} size="sm">
-                Record Payment
-              </Button>
-              <Button
-                onClick={() => setShowAddPayment(false)}
-                variant="outline"
-                size="sm"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {totals.remainingBalance <= 0 ? (
-          <div className="text-center py-4 text-green-600 dark:text-green-400">
-            <CheckCircleIcon className="h-8 w-8 mx-auto mb-2" />
-            <p className="font-medium">Payment Complete</p>
-            <p className="text-sm">This reservation is fully paid</p>
-          </div>
-        ) : (
-          <div className="text-center py-4 text-yellow-600 dark:text-yellow-400">
-            <ClockIcon className="h-8 w-8 mx-auto mb-2" />
-            <p className="font-medium">
-              Outstanding Balance: ₹{totals.remainingBalance.toLocaleString()}
-            </p>
-            <p className="text-sm">Add payments to complete the booking</p>
-          </div>
-        )}
       </div>
+
+      {/* Payment Status */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold mb-4">Payment Status</h3>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+              Paid
+            </p>
+            <p className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
+              ₹{totals.paidAmount.toLocaleString("en-IN")}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+              Total
+            </p>
+            <p className="text-2xl font-mono font-bold text-gray-900 dark:text-white">
+              ₹{totals.subtotal.toLocaleString("en-IN")}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+              Balance Due
+            </p>
+            <p
+              className={`text-2xl font-mono font-bold ${
+                totals.remainingBalance > 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-green-600 dark:text-green-400"
+              }`}
+            >
+              ₹{totals.remainingBalance.toLocaleString("en-IN")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Verification Section - Show pending payments */}
+      {pendingPayments.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4">
+            Verify Pending Payments
+          </h3>
+
+          <div className="space-y-4">
+            {pendingPayments.map((payment) => (
+              <div
+                key={payment.id}
+                className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {payment.method === "cash"
+                        ? "💵 Cash Payment"
+                        : "🏦 Bank Transfer"}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Amount: ₹{payment.amount.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      Recorded: {new Date(payment.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full">
+                    PENDING
+                  </span>
+                </div>
+
+                <div className="mb-3">
+                  <Label
+                    htmlFor={`notes-${payment.id}`}
+                    className="text-sm font-medium mb-2 block"
+                  >
+                    Verification Notes
+                  </Label>
+                  <Textarea
+                    id={`notes-${payment.id}`}
+                    placeholder="e.g., Received at front desk, Deposited to bank account, Cheque #12345..."
+                    value={verificationNotes[payment.id] || ""}
+                    onChange={(e) =>
+                      setVerificationNotes((prev) => ({
+                        ...prev,
+                        [payment.id]: e.target.value
+                      }))
+                    }
+                    className="min-h-20 text-sm"
+                  />
+                </div>
+
+                <Button
+                  onClick={() => handleVerifyPayment(payment.id)}
+                  disabled={verifyingPaymentId === payment.id}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {verifyingPaymentId === payment.id ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Verifying...
+                    </>
+                  ) : (
+                    "✓ Mark as Verified"
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Make Payment Section - Always visible */}
+      {totals.remainingBalance > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4">Make Payment</h3>
+
+          {totals.remainingBalance <= 0 ? (
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+              <p className="text-sm text-green-800 dark:text-green-200">
+                <strong>✓ All charges settled.</strong> No outstanding balance
+                to pay.
+              </p>
+            </div>
+          ) : (
+            <RadioGroup
+              value={formData.payment.paymentMethod}
+              onValueChange={handlePaymentMethodChange}
+              className="space-y-4"
+            >
+              <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <RadioGroupItem value="card" id="card-make" />
+                <Label htmlFor="card-make" className="flex-1 cursor-pointer">
+                  <div>
+                    <p className="font-medium">Pay with Credit/Debit Card</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Secure payment processing via Stripe
+                    </p>
+                  </div>
+                </Label>
+                <div className="text-right">
+                  <p className="font-semibold text-green-600">
+                    ₹{totals.remainingBalance.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <RadioGroupItem value="cash" id="cash-make" />
+                <Label htmlFor="cash-make" className="flex-1 cursor-pointer">
+                  <div>
+                    <p className="font-medium">Cash Payment</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Collect payment in cash at check-in
+                    </p>
+                  </div>
+                </Label>
+                <div className="text-right">
+                  <p className="font-semibold text-blue-600">
+                    ₹{totals.remainingBalance.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <RadioGroupItem value="bank_transfer" id="bank_transfer-make" />
+                <Label
+                  htmlFor="bank_transfer-make"
+                  className="flex-1 cursor-pointer"
+                >
+                  <div>
+                    <p className="font-medium">Bank Transfer</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Direct bank transfer or wire transfer
+                    </p>
+                  </div>
+                </Label>
+                <div className="text-right">
+                  <p className="font-semibold text-orange-600">
+                    ₹{totals.remainingBalance.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+          )}
+
+          {/* Stripe Payment Form - Show when card payment is selected */}
+          {formData.payment.paymentMethod === "card" && (
+            <div className="mt-6 p-4 bg-gray-50 dark:!bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">
+                Complete Your Payment
+              </h4>
+
+              {isCreatingPaymentIntent || !clientSecret ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">
+                    {isCreatingPaymentIntent
+                      ? "Initializing payment..."
+                      : "Loading payment form..."}
+                  </span>
+                </div>
+              ) : (
+                <PaymentProvider clientSecret={clientSecret}>
+                  <PaymentForm
+                    amount={totals.remainingBalance}
+                    currency="INR"
+                    clientSecret={clientSecret}
+                    reservationId={reservationData.id}
+                    onSuccess={handlePaymentSuccess}
+                    onError={(error: string) => {
+                      setPaymentStatus("failed");
+                      toast.error(`Payment failed: ${error}`);
+                    }}
+                    onCardSave={(cardDetails) => {
+                      console.log("✅ Card saved:", cardDetails);
+                      toast.success("Card saved successfully for future use!");
+                    }}
+                    loading={paymentStatus === "processing"}
+                    showAmount={true}
+                    title="Complete Payment"
+                    description={`Payment for ${
+                      availableRooms?.find((r) => r.id === formData.roomId)
+                        ?.name
+                    }`}
+                  />
+                </PaymentProvider>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Payment Policy:</strong> Card payments are processed
+              securely through Stripe and confirm your reservation immediately.
+              Cash and bank transfer payments will be marked as pending until
+              received.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">
@@ -515,12 +872,49 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
           <Button
             onClick={onDelete}
             variant="outline"
-            className="text-red-600 border-red-600 hover:bg-red-50"
+            className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             Delete Booking
           </Button>
           <Button
-            onClick={onSave}
+            onClick={() => {
+              console.log("💾 Save Changes clicked");
+              console.log(
+                `   Payment Method: ${formData.payment.paymentMethod}`
+              );
+              console.log(`   Remaining Balance: ${totals.remainingBalance}`);
+              console.log(
+                `   Database Paid Amount: ${reservationData.paidAmount}`
+              );
+              console.log(
+                `   Database Payment Status: ${reservationData.paymentStatus}`
+              );
+
+              // Check if payment needs to be recorded
+              // If cash payment is selected and database shows unpaid/partial payment, record the payment
+              const needsPaymentRecording =
+                formData.payment.paymentMethod === "cash" &&
+                (reservationData.paymentStatus === "UNPAID" ||
+                  reservationData.paymentStatus === "PARTIALLY_PAID");
+
+              if (needsPaymentRecording && totals.remainingBalance > 0) {
+                console.log("🔵 Calling handleCashPaymentSave...");
+                handleCashPaymentSave();
+              } else if (
+                totals.remainingBalance === 0 &&
+                reservationData.status === "CONFIRMATION_PENDING" &&
+                (reservationData.paymentStatus === "PAID" ||
+                  reservationData.paymentStatus === "PARTIALLY_PAID")
+              ) {
+                // Auto-confirm reservation when fully paid
+                console.log("✅ Auto-confirming reservation (fully paid)...");
+                onStatusUpdate?.("CONFIRMED", "Auto-confirmed: Fully paid");
+              } else {
+                console.log("⚪ Calling onSave fallback...");
+                // For other payment methods or no balance, just save
+                onSave?.();
+              }
+            }}
             className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             Save Changes

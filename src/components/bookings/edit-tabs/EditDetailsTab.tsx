@@ -153,7 +153,25 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
   }, [formData.checkIn, formData.checkOut, checkRoomAvailability]); // Run when initial form data is available
 
   const formatDateForInput = (dateString: string) => {
-    return new Date(dateString).toISOString().split("T")[0];
+    if (!dateString) return "";
+
+    // If it's already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+
+    // Otherwise, parse and format
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date string: ${dateString}`);
+        return "";
+      }
+      return date.toISOString().split("T")[0];
+    } catch (error) {
+      console.error(`Error formatting date: ${dateString}`, error);
+      return "";
+    }
   };
 
   const handleInputChange = (field: string, value: string | number) => {

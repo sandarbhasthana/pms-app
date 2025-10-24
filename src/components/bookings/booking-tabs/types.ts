@@ -45,7 +45,7 @@ export interface BookingFormData {
   // Payment
   payment: {
     totalAmount: number;
-    paymentMethod: "card" | "cash" | "bank_transfer";
+    paymentMethod: "card" | "cash" | "bank_transfer" | "pay_at_checkin";
     creditCard?: {
       last4: string;
       brand: string;

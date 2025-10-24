@@ -539,15 +539,28 @@ export class StatusBusinessRulesService {
   ): number {
     if (!reservation) return 0;
 
+    // Calculate based on actual amounts if available
+    if (reservation.depositAmount && reservation.paidAmount) {
+      const percentage = reservation.paidAmount / reservation.depositAmount;
+      console.log(`💰 Payment Percentage Calculation:`, {
+        paidAmount: reservation.paidAmount,
+        depositAmount: reservation.depositAmount,
+        percentage: percentage.toFixed(2),
+        paymentStatus: reservation.paymentStatus
+      });
+      return Math.min(percentage, 1.0); // Cap at 100%
+    }
+
+    // Fallback to paymentStatus if amounts are not available
+    console.log(`💰 Payment Percentage (fallback):`, {
+      paymentStatus: reservation.paymentStatus,
+      paidAmount: reservation.paidAmount,
+      depositAmount: reservation.depositAmount
+    });
     switch (reservation.paymentStatus) {
       case "PAID":
         return 1.0;
       case "PARTIALLY_PAID":
-        // Since totalAmount is not available in the context, we'll use a fallback
-        // In a real implementation, this should be calculated based on actual amounts
-        if (reservation.depositAmount && reservation.paidAmount) {
-          return reservation.paidAmount / (reservation.depositAmount * 2); // Rough estimate
-        }
         return 0.5; // Default assumption for partial payment
       case "UNPAID":
       default:

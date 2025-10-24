@@ -147,7 +147,11 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
     updateFormData({
       payment: {
         ...formData.payment,
-        paymentMethod: method as "card" | "cash" | "bank_transfer",
+        paymentMethod: method as
+          | "card"
+          | "cash"
+          | "bank_transfer"
+          | "pay_at_checkin",
         totalAmount: calculateTotals().subtotal
       }
     });
@@ -243,7 +247,7 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
       return;
     }
 
-    // For cash and bank transfer, create booking directly
+    // For cash, bank transfer, and pay at check-in, create booking directly
     const updatedFormData = {
       ...formData,
       payment: {
@@ -418,6 +422,23 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
               </p>
             </div>
           </div>
+
+          <div className="flex items-center space-x-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <RadioGroupItem value="pay_at_checkin" id="pay_at_checkin" />
+            <Label htmlFor="pay_at_checkin" className="flex-1 cursor-pointer">
+              <div>
+                <p className="font-medium">Pay at Check-in</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Payment to be collected at reception during check-in
+                </p>
+              </div>
+            </Label>
+            <div className="text-right">
+              <p className="font-semibold text-amber-600">
+                ₹{totals.subtotal.toLocaleString()}
+              </p>
+            </div>
+          </div>
         </RadioGroup>
 
         {/* Stripe Payment Form - Show when card payment is selected */}
@@ -456,9 +477,9 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
 
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Payment Policy:</strong> Full payment is required to confirm
-            your reservation. Card payments are processed securely through
-            Stripe. Cash and bank transfer payments will be marked as pending
+            <strong>Payment Policy:</strong> Card payments are processed
+            securely through Stripe and confirm your reservation immediately.
+            Cash, bank transfer, and check-in payments will be marked as pending
             until received.
           </p>
         </div>

@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  BellIcon
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -70,14 +70,13 @@ export function ApprovalBell({ className }: ApprovalBellProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
           className={cn(
-            "relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-50",
+            "relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-gray-700 transition-colors z-50",
             className
           )}
           title="Approval Requests"
         >
-          <ClockIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9]" />
 
           {/* Badge for pending count */}
           {pendingCount > 0 && (
@@ -153,7 +152,7 @@ export function ApprovalBell({ className }: ApprovalBellProps) {
                   </Button>
                   <Button
                     size="sm"
-                    className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700"
+                    className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => handleApprove(request.id)}
                   >
                     <CheckCircleIcon className="h-3 w-3 mr-1" />

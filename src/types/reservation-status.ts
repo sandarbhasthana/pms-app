@@ -60,15 +60,15 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CONFIRMATION_PENDING: {
     color: "#ec4899",
     bgColor: "bg-pink-100 dark:bg-pink-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "!text-gray-900 dark:text-[#f0f8ff]",
     icon: "clock",
     label: "Confirmation Pending",
     description: "Awaiting confirmation"
   },
   CONFIRMED: {
     color: "#9AB69B",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    bgColor: "bg-emerald-500 dark:bg-emerald-900",
+    textColor: "!text-gray-100 dark:!text-[#f0f8ff]",
     icon: "check-circle",
     label: "Confirmed",
     description: "Payment received"

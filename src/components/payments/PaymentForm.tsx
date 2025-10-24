@@ -24,6 +24,16 @@ interface PaymentFormProps {
   showAmount?: boolean;
   title?: string;
   description?: string;
+  reservationId?: string;
+  onCardSave?: (cardDetails: CardSaveDetails) => void;
+}
+
+interface CardSaveDetails {
+  stripePaymentMethodId: string;
+  cardBrand?: string;
+  cardLast4?: string;
+  cardExpMonth?: number;
+  cardExpYear?: number;
 }
 
 export function PaymentForm({
@@ -36,7 +46,9 @@ export function PaymentForm({
   disabled = false,
   showAmount = true,
   title = "Payment Details",
-  description
+  description,
+  reservationId,
+  onCardSave
 }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -46,6 +58,8 @@ export function PaymentForm({
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "succeeded" | "failed"
   >("idle");
+  const [saveCard, setSaveCard] = useState(false);
+  const [isSavingCard, setIsSavingCard] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,6 +103,39 @@ export function PaymentForm({
       } else if (paymentIntent) {
         // Payment succeeded
         setPaymentStatus("succeeded");
+
+        // Save card if requested
+        if (saveCard && reservationId && paymentIntent.payment_method) {
+          setIsSavingCard(true);
+          try {
+            const paymentMethodId = paymentIntent.payment_method as string;
+            const response = await fetch(
+              `/api/reservations/${reservationId}/payment-methods`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  stripePaymentMethodId: paymentMethodId,
+                  saveCard: true,
+                  setAsDefault: true
+                })
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              onCardSave?.(data.paymentMethod);
+              console.log("✅ Card saved successfully");
+            } else {
+              console.error("Failed to save card");
+            }
+          } catch (err) {
+            console.error("Error saving card:", err);
+          } finally {
+            setIsSavingCard(false);
+          }
+        }
+
         const result: PaymentResult = {
           success: true,
           paymentIntentId: paymentIntent.id,
@@ -165,6 +212,24 @@ export function PaymentForm({
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Save Card Checkbox */}
+          <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <input
+              type="checkbox"
+              id="saveCard"
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              disabled={isFormDisabled || isSavingCard}
+              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+            />
+            <label
+              htmlFor="saveCard"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+            >
+              Save this card for future use
+            </label>
+          </div>
 
           {/* Submit Button */}
           <Button

@@ -30,14 +30,15 @@ export interface EditReservationData {
   statusUpdatedAt?: string;
   statusChangeReason?: string | null;
 
-  // Add-ons (when backend support is added)
-  addons?: ReservationAddon[];
-
   // Payment info
-  totalAmount?: number;
   paidAmount?: number;
+  depositAmount?: number; // Total reservation amount in cents (from rates API)
+  totalAmount?: number;
   remainingBalance?: number;
   payments?: Payment[];
+
+  // Add-ons (when backend support is added)
+  addons?: ReservationAddon[];
 }
 
 export interface ReservationAddon {
@@ -146,6 +147,8 @@ export interface EditBookingSheetProps {
   onDelete: (reservationId: string) => Promise<void>;
 }
 
+import { ReservationStatus } from "@/types/reservation-status";
+
 export interface EditTabProps {
   reservationData: EditReservationData;
   formData: EditBookingFormData;
@@ -155,6 +158,15 @@ export interface EditTabProps {
   onPrevious?: () => void;
   onSave?: () => void;
   onDelete?: () => void;
+  onUpdate?: (
+    reservationId: string,
+    data: Partial<EditBookingFormData>
+  ) => Promise<void>;
+  setEditingReservation?: (reservation: EditReservationData | null) => void;
+  onStatusUpdate?: (
+    newStatus: ReservationStatus | string,
+    reason?: string
+  ) => Promise<void>;
 }
 
 export type EditBookingTab =

@@ -115,49 +115,157 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       lastReservationIdRef.current = currentReservationId;
 
       if (editingReservation) {
-        const newFormData = {
-          guestName: editingReservation.guestName || "",
-          email: editingReservation.email || "",
-          phone: editingReservation.phone || "",
-          idType: editingReservation.idType || "passport",
-          idNumber: editingReservation.idNumber || "",
-          issuingCountry: editingReservation.issuingCountry || "",
-          roomId: editingReservation.roomId || "",
-          checkIn: editingReservation.checkIn || "",
-          checkOut: editingReservation.checkOut || "",
-          adults: editingReservation.adults || 1,
-          children: editingReservation.children || 0,
-          notes: editingReservation.notes || "",
-          addons: {
-            extraBed: false, // Will be populated from backend when available
-            extraBedQuantity: 1,
-            breakfast: false,
-            breakfastQuantity: 1,
-            customAddons: (editingReservation.addons || []).map((addon) => ({
-              id: addon.id,
-              name: addon.name,
-              description: addon.description,
-              price: addon.price,
-              quantity: addon.quantity,
-              perNight: addon.nights ? addon.nights > 1 : false // Convert nights to perNight boolean
-            }))
-          },
-          payment: {
-            totalAmount: editingReservation.totalAmount || 0,
-            paidAmount: editingReservation.paidAmount || 0,
-            paymentMethod: "cash", // Default method
-            paymentStatus: editingReservation.paymentStatus || "UNPAID"
+        // Fetch full reservation data to ensure we have all fields including depositAmount
+        const fetchFullReservationData = async () => {
+          try {
+            console.log(
+              `📥 Fetching full reservation data for ${editingReservation.id}...`
+            );
+            const res = await fetch(
+              `/api/reservations/${editingReservation.id}`,
+              {
+                credentials: "include"
+              }
+            );
+
+            if (!res.ok) {
+              console.warn(
+                `Failed to fetch full reservation data: ${res.status}`
+              );
+              // Fall back to using the provided data
+              initializeFormData(editingReservation);
+              return;
+            }
+
+            const fullReservation = await res.json();
+            console.log(`✅ Full reservation data loaded:`, {
+              id: fullReservation.id,
+              depositAmount: fullReservation.depositAmount,
+              paidAmount: fullReservation.paidAmount,
+              status: fullReservation.status,
+              checkIn: fullReservation.checkIn,
+              checkOut: fullReservation.checkOut
+            });
+            console.log(`📋 Full reservation object:`, fullReservation);
+            initializeFormData(fullReservation);
+          } catch (error) {
+            console.error("Error fetching full reservation data:", error);
+            // Fall back to using the provided data
+            console.log(
+              `⚠️ Falling back to provided reservation data:`,
+              editingReservation
+            );
+            initializeFormData(editingReservation);
           }
         };
-        setFormData(newFormData);
-        setActiveTab("details");
-        setHasUnsavedChanges(false);
-        // Mark that we're done initializing
-        isInitializingRef.current = false;
+
+        fetchFullReservationData();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingReservation?.id]); // Only depend on ID to prevent unnecessary re-runs
+
+  // Helper function to initialize form data from reservation object
+  const initializeFormData = (reservation: typeof editingReservation) => {
+    if (!reservation) {
+      console.warn(
+        "⚠️ Cannot initialize form data: reservation is null/undefined"
+      );
+      return;
+    }
+
+    // Validate required fields
+    if (!reservation.id || !reservation.roomId) {
+      console.error("❌ Invalid reservation data: missing required fields", {
+        id: reservation.id,
+        roomId: reservation.roomId
+      });
+      return;
+    }
+
+    // Log payment data for debugging
+    console.log(`💳 Payment data for reservation ${reservation.id}:`, {
+      depositAmount: reservation.depositAmount,
+      paidAmount: reservation.paidAmount,
+      paymentStatus: reservation.paymentStatus,
+      status: reservation.status
+    });
+
+    // Helper to format dates to YYYY-MM-DD string format
+    const formatDateString = (
+      date: string | Date | null | undefined
+    ): string => {
+      if (!date) return "";
+      if (typeof date === "string") {
+        // If already a string, extract just the date part
+        return date.split("T")[0];
+      }
+      // If it's a Date object, convert to ISO string and extract date part
+      try {
+        return new Date(date).toISOString().split("T")[0];
+      } catch {
+        console.warn(`Failed to format date: ${date}`);
+        return "";
+      }
+    };
+
+    const newFormData = {
+      guestName: reservation.guestName || "",
+      email: reservation.email || "",
+      phone: reservation.phone || "",
+      idType: reservation.idType || "passport",
+      idNumber: reservation.idNumber || "",
+      issuingCountry: reservation.issuingCountry || "",
+      roomId: reservation.roomId || "",
+      checkIn: formatDateString(reservation.checkIn),
+      checkOut: formatDateString(reservation.checkOut),
+      adults: reservation.adults || 1,
+      children: reservation.children || 0,
+      notes: reservation.notes || "",
+      addons: {
+        extraBed: false, // Will be populated from backend when available
+        extraBedQuantity: 1,
+        breakfast: false,
+        breakfastQuantity: 1,
+        customAddons: (reservation.addons || []).map((addon) => ({
+          id: addon.id,
+          name: addon.name,
+          description: addon.description,
+          price: addon.price,
+          quantity: addon.quantity,
+          perNight: addon.nights ? addon.nights > 1 : false // Convert nights to perNight boolean
+        }))
+      },
+      payment: {
+        totalAmount: reservation.depositAmount
+          ? reservation.depositAmount / 100
+          : 0, // Convert from cents
+        paidAmount: reservation.paidAmount || 0,
+        paymentMethod: "cash", // Default method
+        paymentStatus: reservation.paymentStatus || "UNPAID"
+      }
+    };
+
+    // Validate calculated values
+    if (
+      newFormData.payment.totalAmount === 0 &&
+      reservation.status === "CONFIRMATION_PENDING"
+    ) {
+      console.warn(
+        `⚠️ Warning: CONFIRMATION_PENDING reservation has ₹0 total amount. This may indicate missing depositAmount.`,
+        {
+          reservationId: reservation.id,
+          depositAmount: reservation.depositAmount
+        }
+      );
+    }
+
+    setFormData(newFormData);
+    setActiveTab("details");
+    setHasUnsavedChanges(false);
+    // Mark that we're done initializing
+    isInitializingRef.current = false;
+  };
 
   // Calculate if there are unsaved changes directly (avoid extra callback layer)
   // Skip during initialization to prevent unnecessary renders
@@ -173,13 +281,30 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       return;
     }
 
+    // Helper function to format dates for comparison
+    const formatDateForComparison = (
+      date: string | Date | null | undefined
+    ): string => {
+      if (!date) return "";
+      if (typeof date === "string") {
+        return date.split("T")[0]; // Extract just the date part
+      }
+      try {
+        return new Date(date).toISOString().split("T")[0];
+      } catch {
+        return "";
+      }
+    };
+
     const hasChanges =
       formData.guestName !== (editingReservation.guestName || "") ||
       formData.email !== (editingReservation.email || "") ||
       formData.phone !== (editingReservation.phone || "") ||
       formData.roomId !== (editingReservation.roomId || "") ||
-      formData.checkIn !== (editingReservation.checkIn || "") ||
-      formData.checkOut !== (editingReservation.checkOut || "") ||
+      formData.checkIn !==
+        formatDateForComparison(editingReservation.checkIn) ||
+      formData.checkOut !==
+        formatDateForComparison(editingReservation.checkOut) ||
       formData.adults !== (editingReservation.adults || 1) ||
       formData.children !== (editingReservation.children || 0) ||
       formData.notes !== (editingReservation.notes || "");
@@ -220,7 +345,18 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
     try {
       await onUpdate(editingReservation.id, formData);
       setHasUnsavedChanges(false);
+
+      // Add hard refresh after save
+      console.log("💾 Save completed, triggering hard refresh...");
+
+      // Close the sheet first
       setEditingReservation(null);
+
+      // Then trigger a hard refresh after a short delay to ensure sheet is closed
+      setTimeout(() => {
+        console.log("🔄 Performing hard refresh...");
+        window.location.reload();
+      }, 300);
     } catch (error) {
       console.error("Failed to update reservation:", error);
       toast.error("Failed to update reservation. Please try again.");
@@ -228,14 +364,15 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   };
 
   const handleStatusUpdate = async (
-    newStatus: ReservationStatus,
+    newStatus: ReservationStatus | string,
     reason?: string
   ) => {
     if (!editingReservation) return;
 
     // Validate the status transition
     const currentStatus = editingReservation.status as ReservationStatus;
-    const validation = validateStatusTransition(currentStatus, newStatus);
+    const statusToUpdate = newStatus as ReservationStatus;
+    const validation = validateStatusTransition(currentStatus, statusToUpdate);
 
     if (!validation.isValid) {
       toast.error(validation.reason || "Invalid status transition");
@@ -368,7 +505,9 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
         statusChangeReason: reason
       });
 
-      toast.success(`Status updated to ${getStatusConfig(newStatus).label}`);
+      toast.success(
+        `Status updated to ${getStatusConfig(statusToUpdate).label}`
+      );
 
       // Trigger calendar refresh by calling onUpdate with empty data
       // This will cause the calendar to refetch and display the updated status color
@@ -490,11 +629,13 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                     variant="outline"
                     size="sm"
                     disabled={isUpdatingStatus}
-                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full"
+                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full text-white hover:text-white transition-all duration-200 group cursor-pointer"
                     style={{
                       backgroundColor:
                         editingReservation.status === "CONFIRMED"
-                          ? "#14b8a6" // Teal
+                          ? document.documentElement.classList.contains("dark")
+                            ? "#3b513b" // Dark mode: Dark sage green
+                            : "#9AB69B" // Light mode: Sage green
                           : editingReservation.status === "CONFIRMATION_PENDING"
                           ? "#ec4899" // Pink
                           : editingReservation.status === "IN_HOUSE"
@@ -508,6 +649,15 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                           : "#6b7280",
                       color: "white",
                       border: "none"
+                    }}
+                    onMouseEnter={(e) => {
+                      // Darken only the background by adjusting opacity
+                      e.currentTarget.style.boxShadow =
+                        "inset 0 0 0 9999px rgba(0, 0, 0, 0.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      // Remove the darkening effect
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   >
                     <span className="uppercase text-xs font-bold">
@@ -577,7 +727,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white border-none"
+                    className="h-10 px-4 text-sm font-medium justify-between gap-2 rounded-full bg-blue-400 hover:bg-blue-500 text-white border-none dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white hover:text-white cursor-pointer"
                   >
                     <span className="uppercase text-xs font-bold">Actions</span>
                     <ChevronDownIcon className="h-4 w-4" />
@@ -631,7 +781,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="p-2 rounded-md bg-gray-200 hover:!bg-gray-300 dark:!bg-gray-700 dark:hover:bg-gray-900 transition-colors"
+              className="p-2 rounded-md bg-gray-200 hover:!bg-gray-300 dark:!bg-gray-700 dark:hover:bg-gray-900 transition-colors cursor-pointer"
               title="Close"
             >
               <XMarkIcon className="h-6 w-6 dark:!text-[#f0f8f9]" />
@@ -642,7 +792,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] text-[#f0f8ff] font-medium transition-colors"
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-full bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] text-[#f0f8ff] font-bold transition-colors cursor-pointer text-sm mb-[1.1rem]"
           >
             <ChevronLeftIcon className="h-5 w-5" />
             <span>Back</span>
@@ -770,6 +920,9 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 onPrevious={handlePrevious}
                 onSave={handleSave}
                 onDelete={handleDelete}
+                onUpdate={onUpdate}
+                setEditingReservation={setEditingReservation}
+                onStatusUpdate={handleStatusUpdate}
               />
             </TabsContent>
           </Tabs>
