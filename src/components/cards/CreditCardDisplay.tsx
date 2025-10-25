@@ -1,11 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  TrashIcon,
-  StarIcon
-} from "@heroicons/react/24/outline";
+import { TrashIcon, StarIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
+import {
+  Visa,
+  Mastercard,
+  Amex,
+  Discover,
+  Jcb,
+  Diners,
+  Unionpay,
+  Maestro,
+  Elo,
+  Hipercard
+} from "react-payment-logos/dist/logo";
 
 interface CreditCardDisplayProps {
   brand?: string;
@@ -59,6 +68,38 @@ const ALTERNATIVE_GRADIENTS = [
   "from-[#a8edea] to-[#fed6e3]", // Mint-Pink
   "from-[#ff9a56] to-[#ff6a88]" // Orange-Red
 ];
+
+// Helper function to render card brand logo
+const getCardLogo = (brand: string) => {
+  const logoClass = "h-16 w-auto";
+
+  switch (brand?.toLowerCase()) {
+    case "visa":
+      return <Visa className={logoClass} />;
+    case "mastercard":
+      return <Mastercard className={logoClass} />;
+    case "amex":
+    case "american_express":
+      return <Amex className={logoClass} />;
+    case "discover":
+      return <Discover className={logoClass} />;
+    case "jcb":
+      return <Jcb className={logoClass} />;
+    case "diners":
+    case "diners_club":
+      return <Diners className={logoClass} />;
+    case "unionpay":
+      return <Unionpay className={logoClass} />;
+    case "maestro":
+      return <Maestro className={logoClass} />;
+    case "elo":
+      return <Elo className={logoClass} />;
+    case "hipercard":
+      return <Hipercard className={logoClass} />;
+    default:
+      return null;
+  }
+};
 
 const CreditCardDisplayComponent: React.FC<CreditCardDisplayProps> = ({
   brand = "default",
@@ -325,17 +366,17 @@ const CreditCardDisplayComponent: React.FC<CreditCardDisplayProps> = ({
               </div>
             </div>
 
-            {/* Brand Logo and Default Badge */}
-            <div className="text-right flex flex-col items-end gap-2">
-              <div className="text-xs font-bold opacity-75">
-                {cardStyle.logo}
-              </div>
+            {/* Brand Logo and Default Star */}
+            <div className="flex flex-col items-end gap-2 justify-start relative">
               {isDefault && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/30 border border-white/50 text-white text-xs font-bold rounded-lg backdrop-blur-sm">
-                  <StarIconSolid className="h-3 w-3" />
-                  DEFAULT
-                </span>
+                <StarIconSolid
+                  className="h-5 w-5 text-red-500 absolute -top-2 -right-2 stroke-white"
+                  style={{ strokeWidth: "1.5px" }}
+                />
               )}
+              <div className="flex items-start justify-end">
+                {getCardLogo(brand || "default")}
+              </div>
             </div>
           </div>
 

@@ -67,8 +67,8 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   },
   CONFIRMED: {
     color: "#9AB69B",
-    bgColor: "bg-emerald-500 dark:bg-emerald-900",
-    textColor: "!text-gray-100 dark:!text-[#f0f8ff]",
+    bgColor: "bg-[#9AB69B] dark:bg-[#3b513b]",
+    textColor: "!text-white dark:!text-[#f0f8ff]",
     icon: "check-circle",
     label: "Confirmed",
     description: "Payment received"

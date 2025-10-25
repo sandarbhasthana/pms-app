@@ -5,7 +5,6 @@ import {
   withPropertyContext,
   validatePropertyAccess
 } from "@/lib/property-context";
-import { calculatePaymentStatus } from "@/lib/payments/utils";
 import { prisma } from "@/lib/prisma";
 import { clearReservationsCacheForProperty } from "@/lib/reservations/cache";
 import { logFieldUpdate } from "@/lib/audit-log/reservation-audit";
@@ -47,6 +46,9 @@ export async function GET(
             },
             payments: {
               orderBy: { createdAt: "desc" }
+            },
+            addons: {
+              orderBy: { createdAt: "asc" }
             }
           }
         });
@@ -57,16 +59,17 @@ export async function GET(
       return new NextResponse("Reservation not found", { status: 404 });
     }
 
-    // Add payment status
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId! },
-      select: { organizationId: true }
-    });
+    console.log(`📋 GET /api/reservations/${id}:`);
+    console.log(`   Reservation found: ${reservationDetails.id}`);
+    console.log(`   Payments: ${reservationDetails.payments?.length || 0}`);
+    console.log(`   Add-ons: ${reservationDetails.addons?.length || 0}`);
+    console.log(`   Stored paymentStatus: ${reservationDetails.paymentStatus}`);
 
-    const paymentStatus = await calculatePaymentStatus(
-      id,
-      property?.organizationId || ""
-    );
+    // Use the stored paymentStatus from the reservation
+    // This is already calculated and updated when payments are made
+    const paymentStatus = reservationDetails.paymentStatus || "UNPAID";
+
+    console.log(`   Final payment status: ${paymentStatus}`);
 
     return NextResponse.json({
       ...reservationDetails,

@@ -120,6 +120,9 @@ export async function POST(
       });
     }
 
+    // Calculate gradient index for new card (based on number of existing cards)
+    const nextGradientIndex = existingCards.length;
+
     // Create or update payment method
     const paymentMethod = await prisma.paymentMethod.upsert({
       where: { stripePaymentMethodId },
@@ -140,7 +143,8 @@ export async function POST(
         cardExpMonth: paymentMethodDetails.expMonth,
         cardExpYear: paymentMethodDetails.expYear,
         cardholderName: cardholderName || undefined,
-        isDefault: shouldSetAsDefault
+        isDefault: shouldSetAsDefault,
+        gradientIndex: nextGradientIndex
       }
     });
 
@@ -231,6 +235,7 @@ export async function GET(
       expMonth: pm.cardExpMonth,
       expYear: pm.cardExpYear,
       isDefault: pm.isDefault,
+      gradientIndex: pm.gradientIndex,
       createdAt: pm.createdAt
     }));
 

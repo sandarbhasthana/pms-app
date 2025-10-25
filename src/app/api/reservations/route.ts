@@ -523,31 +523,56 @@ export async function POST(req: NextRequest) {
       if (addons) {
         console.log("Processing addons data:", addons);
 
-        // Store addons information in reservation notes
-        const addonsList = [];
-        if (addons.extraBed) addonsList.push("Extra Bed");
-        if (addons.breakfast) addonsList.push("Breakfast");
+        const addonsToCreate = [];
+
+        // Add extra bed if selected
+        if (addons.extraBed) {
+          addonsToCreate.push({
+            type: "extra_bed",
+            name: "Extra Bed",
+            price: 500, // Default price, can be made configurable
+            quantity: 1,
+            totalAmount: 500
+          });
+        }
+
+        // Add breakfast if selected
+        if (addons.breakfast) {
+          addonsToCreate.push({
+            type: "breakfast",
+            name: "Breakfast",
+            price: 300, // Default price, can be made configurable
+            quantity: 1,
+            totalAmount: 300
+          });
+        }
+
+        // Add custom addons
         if (addons.customAddons) {
           addons.customAddons
             .filter((addon) => addon.selected)
-            .forEach((addon) =>
-              addonsList.push(`${addon.name} (₹${addon.price})`)
-            );
+            .forEach((addon) => {
+              addonsToCreate.push({
+                type: "custom",
+                name: addon.name,
+                price: addon.price,
+                quantity: 1,
+                totalAmount: addon.price
+              });
+            });
         }
 
-        if (addonsList.length > 0) {
-          const addonsNote = `Add-ons: ${addonsList.join(", ")}`;
-          console.log("Adding addons to reservation notes:", addonsNote);
-
-          // Update reservation with addons information
-          await tx.reservation.update({
-            where: { id: newReservation.id },
-            data: {
-              notes: newReservation.notes
-                ? `${newReservation.notes}\n\n${addonsNote}`
-                : addonsNote
-            }
-          });
+        // Create addon records in the database
+        if (addonsToCreate.length > 0) {
+          console.log("Creating addon records:", addonsToCreate);
+          for (const addon of addonsToCreate) {
+            await tx.reservationAddon.create({
+              data: {
+                reservationId: newReservation.id,
+                ...addon
+              }
+            });
+          }
         }
       }
 

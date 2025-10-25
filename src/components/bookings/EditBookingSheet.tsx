@@ -60,6 +60,9 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 }) => {
   const { refreshApprovalRequests } = useApprovalBellRefresh();
   const [activeTab, setActiveTab] = useState<EditBookingTab>("details");
+  const [calculatedPaymentStatus, setCalculatedPaymentStatus] = useState<
+    "PAID" | "PARTIALLY_PAID" | "UNPAID"
+  >("UNPAID");
   const [formData, setFormData] = useState<EditBookingFormData>({
     guestName: "",
     email: "",
@@ -144,10 +147,22 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
               paidAmount: fullReservation.paidAmount,
               status: fullReservation.status,
               checkIn: fullReservation.checkIn,
-              checkOut: fullReservation.checkOut
+              checkOut: fullReservation.checkOut,
+              paymentStatus: fullReservation.paymentStatus,
+              payments: fullReservation.payments?.length || 0,
+              addons: fullReservation.addons?.length || 0
             });
             console.log(`📋 Full reservation object:`, fullReservation);
             initializeFormData(fullReservation);
+
+            // Set calculated payment status from API response
+            console.log(
+              `💳 Payment status for ${editingReservation.id}:`,
+              fullReservation.paymentStatus
+            );
+            setCalculatedPaymentStatus(
+              fullReservation.paymentStatus || "UNPAID"
+            );
           } catch (error) {
             console.error("Error fetching full reservation data:", error);
             // Fall back to using the provided data
@@ -809,14 +824,14 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 />
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    editingReservation.paymentStatus === "PAID"
+                    calculatedPaymentStatus === "PAID"
                       ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                      : editingReservation.paymentStatus === "PARTIALLY_PAID"
+                      : calculatedPaymentStatus === "PARTIALLY_PAID"
                       ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
                       : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
                   }`}
                 >
-                  {editingReservation.paymentStatus || "UNPAID"}
+                  {calculatedPaymentStatus || "UNPAID"}
                 </span>
               </div>
             </SheetTitle>

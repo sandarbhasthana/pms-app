@@ -26,7 +26,8 @@ export async function calculatePaymentStatus(
                   pricing: true
                 }
               },
-              payments: true
+              payments: true,
+              addons: true
             }
           });
         });
@@ -40,7 +41,8 @@ export async function calculatePaymentStatus(
                 pricing: true
               }
             },
-            payments: true
+            payments: true,
+            addons: true
           }
         });
       }
@@ -49,22 +51,54 @@ export async function calculatePaymentStatus(
     const reservation = await getReservation();
 
     if (!reservation || !reservation.room || !reservation.room.pricing) {
+      console.log("❌ Reservation or room/pricing not found");
       return "UNPAID";
     }
 
-    const { checkIn, checkOut, payments: payments, room } = reservation;
+    const {
+      checkIn,
+      checkOut,
+      payments: payments,
+      room,
+      addons = []
+    } = reservation;
 
     const nights =
       (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
       (1000 * 60 * 60 * 24);
 
     const ratePerNight = room.pricing?.basePrice || 2000; // fallback if missing
-    const totalDue = ratePerNight * nights;
+    const roomTotal = ratePerNight * nights;
+
+    // Calculate add-ons total
+    const addonsTotal = addons.reduce((sum, addon) => {
+      return sum + addon.price * (addon.quantity || 1);
+    }, 0);
+
+    // Total due includes room + add-ons
+    const totalDue = roomTotal + addonsTotal;
 
     const paid = payments.reduce((sum, p) => sum + p.amount, 0);
 
-    if (paid === 0) return "UNPAID";
-    if (paid >= totalDue) return "PAID";
+    console.log(`💳 Payment Status Calculation for ${reservationId}:`);
+    console.log(`   Nights: ${nights}`);
+    console.log(`   Rate per night: ${ratePerNight}`);
+    console.log(`   Room total: ${roomTotal}`);
+    console.log(`   Add-ons count: ${addons.length}`);
+    console.log(`   Add-ons total: ${addonsTotal}`);
+    console.log(`   Total due: ${totalDue}`);
+    console.log(`   Payments count: ${payments.length}`);
+    console.log(`   Total paid: ${paid}`);
+
+    if (paid === 0) {
+      console.log(`   Result: UNPAID (no payments)`);
+      return "UNPAID";
+    }
+    if (paid >= totalDue) {
+      console.log(`   Result: PAID (${paid} >= ${totalDue})`);
+      return "PAID";
+    }
+    console.log(`   Result: PARTIALLY_PAID (${paid} < ${totalDue})`);
     return "PARTIALLY_PAID";
   } catch (error) {
     console.error("Error calculating payment status:", error);

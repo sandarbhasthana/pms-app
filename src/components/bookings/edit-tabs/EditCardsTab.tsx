@@ -21,6 +21,7 @@ interface PaymentMethod {
   expMonth?: number;
   expYear?: number;
   isDefault?: boolean;
+  gradientIndex?: number;
   createdAt: string;
 }
 
@@ -41,15 +42,12 @@ const EditCardsTab: React.FC<EditCardsTabProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        console.log("📋 Fetched payment methods:", data.paymentMethods);
         setPaymentMethods(data.paymentMethods || []);
       } else {
         // If not ok, still set empty array (e.g., for cash payments)
-        console.warn("No payment methods found for this reservation");
         setPaymentMethods([]);
       }
-    } catch (error) {
-      console.error("Error fetching payment methods:", error);
+    } catch {
       // Don't show error toast - it's normal for cash/bank transfer payments
       setPaymentMethods([]);
     } finally {
@@ -75,8 +73,7 @@ const EditCardsTab: React.FC<EditCardsTabProps> = ({
       } else {
         toast.error("Failed to delete card");
       }
-    } catch (error) {
-      console.error("Error deleting card:", error);
+    } catch {
       toast.error("Error deleting card");
     }
   };
@@ -98,8 +95,7 @@ const EditCardsTab: React.FC<EditCardsTabProps> = ({
         const errorData = await response.json();
         toast.error(errorData.error || "Failed to set default card");
       }
-    } catch (error) {
-      console.error("Error setting default card:", error);
+    } catch {
       toast.error("Error setting default card");
     }
   };
@@ -147,38 +143,23 @@ const EditCardsTab: React.FC<EditCardsTabProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Debug Info */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                Total cards: {paymentMethods.length} | Default:{" "}
-                {paymentMethods.find((m) => m.isDefault)?.id}
-              </p>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paymentMethods.map((method, index) => {
-                console.log(`🎴 Card ${index}:`, {
-                  id: method.id,
-                  last4: method.last4,
-                  expMonth: method.expMonth,
-                  expYear: method.expYear,
-                  isDefault: method.isDefault
-                });
-                return (
-                  <CreditCardDisplay
-                    key={method.id}
-                    brand={method.brand}
-                    last4={method.last4}
-                    expMonth={method.expMonth}
-                    expYear={method.expYear}
-                    isDefault={method.isDefault}
-                    onDelete={() => handleDeleteCard(method.id)}
-                    onSetDefault={() => handleSetDefault(method.id)}
-                    showActions={true}
-                    gradientIndex={index + 1}
-                  />
-                );
-              })}
+              {paymentMethods.map((method) => (
+                <CreditCardDisplay
+                  key={method.id}
+                  brand={method.brand}
+                  last4={method.last4}
+                  expMonth={method.expMonth}
+                  expYear={method.expYear}
+                  isDefault={method.isDefault}
+                  onDelete={() => handleDeleteCard(method.id)}
+                  onSetDefault={() => handleSetDefault(method.id)}
+                  showActions={true}
+                  gradientIndex={
+                    method.gradientIndex ? method.gradientIndex + 1 : 1
+                  }
+                />
+              ))}
             </div>
           </div>
         )}

@@ -317,6 +317,7 @@ model Reservation {
   statusHistory         ReservationStatusHistory[]
   auditLogs             ReservationAuditLog[]
   approvalRequests      ApprovalRequest[]
+  addons                ReservationAddon[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -325,6 +326,25 @@ model Reservation {
   @@index([channelId])
   @@index([status])
   @@index([statusUpdatedAt])
+}
+
+/// Add-ons for a reservation (extra bed, breakfast, etc.)
+model ReservationAddon {
+  id            String      @id @default(cuid())
+  reservationId String
+  type          String      // 'extra_bed', 'breakfast', 'custom', etc.
+  name          String      // Display name (e.g., "Extra Bed", "Breakfast")
+  description   String?     // Optional description
+  price         Float       // Price per unit
+  quantity      Int         @default(1) // Quantity of this add-on
+  totalAmount   Float       // price * quantity
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([type])
 }
 
 /// Audit trail for reservation status changes
@@ -512,6 +532,7 @@ model PaymentMethod {
   cardExpYear           Int?
   cardholderName        String?
   isDefault             Boolean   @default(false)
+  gradientIndex         Int       @default(0)
   createdAt             DateTime  @default(now())
   payments              Payment[]
 
