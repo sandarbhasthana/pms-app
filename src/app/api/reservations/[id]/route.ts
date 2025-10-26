@@ -126,6 +126,10 @@ export async function PATCH(
       idType,
       idNumber,
       issuingCountry,
+      guestImageUrl,
+      idDocumentUrl,
+      idExpiryDate,
+      idDocumentExpired,
       status,
       roomId // ✅ ADD ROOM ID SUPPORT
     } = await req.json();
@@ -247,6 +251,13 @@ export async function PATCH(
             idNumber: idNumber !== undefined ? idNumber : undefined,
             issuingCountry:
               issuingCountry !== undefined ? issuingCountry : undefined,
+            guestImageUrl:
+              guestImageUrl !== undefined ? guestImageUrl : undefined,
+            idDocumentUrl:
+              idDocumentUrl !== undefined ? idDocumentUrl : undefined,
+            idExpiryDate: idExpiryDate ? new Date(idExpiryDate) : undefined,
+            idDocumentExpired:
+              idDocumentExpired !== undefined ? idDocumentExpired : undefined,
             status: status !== undefined ? status : undefined,
             roomId: roomId !== undefined ? roomId : undefined // ✅ ADD ROOM ID UPDATE
           },

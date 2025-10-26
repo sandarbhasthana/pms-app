@@ -9,7 +9,9 @@ import {
   InformationCircleIcon
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
-import IDScannerWithOCR from "@/components/IDScannerWithOCR";
+import IDScannerWithAI from "@/components/bookings/IDScannerWithAI";
+import { uploadGuestImages, resizeImage } from "@/lib/utils/image-processing";
+import { useToast } from "@/hooks/use-toast";
 
 // Extended props for details tab to include scanner functionality
 interface BookingDetailsTabProps extends BookingTabProps {
@@ -20,6 +22,11 @@ interface BookingDetailsTabProps extends BookingTabProps {
     idNumber: string;
     fullName: string;
     issuingCountry: string;
+    idType?: string;
+    guestImageUrl?: string;
+    idDocumentUrl?: string;
+    idExpiryDate?: string;
+    idDocumentExpired?: boolean;
   }) => void;
   handleScanError: (err: Error) => void;
   setLastScannedSlot: (slot: SelectedSlot | null) => void;
@@ -42,24 +49,88 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
     width: number;
     height: number;
   } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setUploadedImage(result);
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const result = e.target?.result as string;
 
-        // Get image dimensions
-        const img = new window.Image();
-        img.onload = () => {
-          setImageDimensions({ width: img.width, height: img.height });
+            // Get original image dimensions
+            const img = new window.Image();
+            img.onload = async () => {
+              setImageDimensions({ width: img.width, height: img.height });
+
+              // Check if image exceeds 500x500
+              if (img.width > 500 || img.height > 500) {
+                toast({
+                  title: "Image Too Large",
+                  description: `Image is ${img.width}x${img.height}px. Resizing to fit within 500x500px...`
+                });
+
+                try {
+                  // Resize the image
+                  const resizedImage = await resizeImage(result, 500, 500);
+                  setUploadedImage(resizedImage);
+
+                  // Get resized dimensions
+                  const resizedImg = new window.Image();
+                  resizedImg.onload = () => {
+                    setImageDimensions({
+                      width: resizedImg.width,
+                      height: resizedImg.height
+                    });
+                    toast({
+                      title: "Image Resized",
+                      description: `Image resized to ${resizedImg.width}x${resizedImg.height}px`
+                    });
+                  };
+                  resizedImg.src = resizedImage;
+                } catch (resizeError) {
+                  console.error("Error resizing image:", resizeError);
+                  toast({
+                    title: "Resize Failed",
+                    description:
+                      "Failed to resize image. Please try another image.",
+                    variant: "destructive"
+                  });
+                }
+              } else {
+                // Image is already within limits
+                setUploadedImage(result);
+                toast({
+                  title: "Image Loaded",
+                  description: `Image size: ${img.width}x${img.height}px`
+                });
+              }
+            };
+            img.src = result;
+          } catch (error) {
+            console.error("Error processing image:", error);
+            toast({
+              title: "Error",
+              description: "Failed to process image. Please try again.",
+              variant: "destructive"
+            });
+          }
         };
-        img.src = result;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Error reading file:", error);
+        toast({
+          title: "Error",
+          description: "Failed to read file. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -67,6 +138,73 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
     setLastScannedSlot(selectedSlot);
     setShowScanner(true);
     setOcrEnabled(true);
+  };
+
+  const handleAIScanComplete = async (result: {
+    croppedFaceBase64: string | null;
+    fullDocumentBase64: string;
+    extractedData: {
+      fullName: string;
+      idType: string;
+      idNumber: string;
+      issuingCountry: string;
+      expiryDate: string;
+      isExpired: boolean;
+    };
+  }) => {
+    try {
+      setIsUploading(true);
+      setShowScanner(false);
+
+      // Display cropped face in the image placeholder
+      if (result.croppedFaceBase64) {
+        setUploadedImage(result.croppedFaceBase64);
+      }
+
+      // Upload both images to S3
+      toast({
+        title: "Uploading images...",
+        description: "Please wait while we save your images."
+      });
+
+      const { personImageUrl, documentImageUrl } = await uploadGuestImages(
+        result.croppedFaceBase64 || result.fullDocumentBase64, // Fallback to full document if no face
+        result.fullDocumentBase64,
+        result.extractedData.fullName || "guest"
+      );
+
+      // Call the parent handler with all extracted data
+      handleScanComplete({
+        fullName: result.extractedData.fullName,
+        idNumber: result.extractedData.idNumber,
+        issuingCountry: result.extractedData.issuingCountry,
+        idType: result.extractedData.idType,
+        guestImageUrl: personImageUrl,
+        idDocumentUrl: documentImageUrl,
+        idExpiryDate: result.extractedData.expiryDate,
+        idDocumentExpired: result.extractedData.isExpired
+      });
+
+      toast({
+        title: "Success!",
+        description: "ID document processed and images uploaded successfully."
+      });
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to upload images. Please try again.";
+      toast({
+        title: "Upload Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      const err = error instanceof Error ? error : new Error(errorMessage);
+      handleScanError(err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const isFormValid = () => {
@@ -357,17 +495,26 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
 
       {/* ID Scanner Modal */}
       {showScanner && (
-        <IDScannerWithOCR
-          onComplete={(result) => {
-            handleScanComplete(result);
-            setShowScanner(false);
-          }}
+        <IDScannerWithAI
+          onComplete={handleAIScanComplete}
           onError={(error) => {
             handleScanError(error);
             setShowScanner(false);
           }}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {/* Upload Loading Overlay */}
+      {isUploading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-center text-gray-900 dark:text-gray-100">
+              Uploading images...
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="flex justify-end">

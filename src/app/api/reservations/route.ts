@@ -314,6 +314,10 @@ export async function POST(req: NextRequest) {
       idType,
       idNumber,
       issuingCountry,
+      guestImageUrl,
+      idDocumentUrl,
+      idExpiryDate,
+      idDocumentExpired,
       source,
       payment,
       addons
@@ -330,6 +334,10 @@ export async function POST(req: NextRequest) {
       idType?: string;
       idNumber?: string;
       issuingCountry?: string;
+      guestImageUrl?: string;
+      idDocumentUrl?: string;
+      idExpiryDate?: string;
+      idDocumentExpired?: boolean;
       source?: ReservationSource;
       payment?: PaymentData;
       addons?: AddonsData;
@@ -504,6 +512,10 @@ export async function POST(req: NextRequest) {
           idType,
           idNumber,
           issuingCountry,
+          guestImageUrl,
+          idDocumentUrl,
+          idExpiryDate: idExpiryDate ? new Date(idExpiryDate) : null,
+          idDocumentExpired,
           source: (source as ReservationSource) || ReservationSource.WEBSITE,
           status: reservationStatus,
           // Add payment-related fields using correct schema fields

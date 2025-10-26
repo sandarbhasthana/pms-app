@@ -26,6 +26,12 @@ export interface BookingFormData {
   adults: number;
   childrenCount: number;
 
+  // Guest Images (from AI ID processing)
+  guestImageUrl?: string; // Cropped face photo for guest profile
+  idDocumentUrl?: string; // Full ID document for Documents tab
+  idExpiryDate?: string; // Expiry date from ID document (ISO format)
+  idDocumentExpired?: boolean; // Flag indicating if document is expired
+
   // Booking Details
   checkIn: string;
   checkOut: string;
@@ -85,6 +91,11 @@ export interface NewBookingSheetProps {
     idNumber: string;
     fullName: string;
     issuingCountry: string;
+    idType?: string;
+    guestImageUrl?: string;
+    idDocumentUrl?: string;
+    idExpiryDate?: string;
+    idDocumentExpired?: boolean;
   }) => void;
   handleScanError: (err: Error) => void;
   setLastScannedSlot: (slot: SelectedSlot | null) => void;

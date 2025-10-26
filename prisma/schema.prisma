@@ -296,6 +296,10 @@ model Reservation {
   idType                String?
   issuingCountry        String?
   phone                 String?
+  guestImageUrl         String?                    // Cropped face photo for guest profile
+  idDocumentUrl         String?                    // Full ID document for Documents tab
+  idExpiryDate          DateTime?                  // Expiry date from ID document
+  idDocumentExpired     Boolean?                   // Flag indicating if document is expired
   propertyId            String
   amountCaptured        Int?
   amountHeld            Int?

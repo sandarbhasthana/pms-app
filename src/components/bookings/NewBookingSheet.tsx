@@ -202,6 +202,10 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     childrenCount,
     checkIn: checkInDate,
     checkOut: checkOutDate,
+    guestImageUrl: undefined,
+    idDocumentUrl: undefined,
+    idExpiryDate: undefined,
+    idDocumentExpired: undefined,
     addons: {
       extraBed: false,
       breakfast: false,
