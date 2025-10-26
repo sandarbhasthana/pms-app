@@ -191,12 +191,12 @@ export async function GET(req: NextRequest) {
           propertyWebsite: "", // Not in Property table
           firstName: "", // Contact person - not in Property table
           lastName: "", // Contact person - not in Property table
-          country: "United States", // Default country
-          street: property.address || "", // Use full address as street
-          suite: "", // Not in Property table
-          city: "", // Not in Property table (address is combined)
-          state: "", // Not in Property table (address is combined)
-          zip: "", // Not in Property table (address is combined)
+          country: property.country || "United States", // Use property country or default
+          street: property.street || "", // Use property street
+          suite: property.suite || "", // Use property suite
+          city: property.city || "", // Use property city
+          state: property.state || "", // Use property state
+          zip: property.zipCode || "", // Use property zipCode
           latitude: 0, // Default coordinates
           longitude: 0, // Default coordinates
           isManuallyPositioned: false, // Enable auto-geocoding

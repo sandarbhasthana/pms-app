@@ -64,36 +64,37 @@ const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
         setLoading(true);
         setError(null);
 
-        // Fetch status history
-        const statusResponse = await fetch(
-          `/api/reservations/${reservationData.id}/status-history?limit=50&includeAutomatic=true`,
-          {
+        // Fetch both status history and audit log in parallel for better performance
+        const [statusResponse, auditResponse] = await Promise.all([
+          fetch(
+            `/api/reservations/${reservationData.id}/status-history?limit=50&includeAutomatic=true`,
+            {
+              credentials: "include"
+            }
+          ),
+          fetch(`/api/reservations/${reservationData.id}/audit-log?limit=100`, {
             credentials: "include"
-          }
-        );
+          })
+        ]);
 
         if (!statusResponse.ok) {
           throw new Error("Failed to fetch status history");
         }
 
-        const statusData = await statusResponse.json();
-        console.log("Status history response:", statusData);
-        setStatusHistory(statusData.statusHistory || []);
-
-        // Fetch audit log
-        const auditResponse = await fetch(
-          `/api/reservations/${reservationData.id}/audit-log?limit=100`,
-          {
-            credentials: "include"
-          }
-        );
-
         if (!auditResponse.ok) {
           throw new Error("Failed to fetch audit log");
         }
 
-        const auditData = await auditResponse.json();
+        // Parse responses in parallel
+        const [statusData, auditData] = await Promise.all([
+          statusResponse.json(),
+          auditResponse.json()
+        ]);
+
+        console.log("Status history response:", statusData);
         console.log("Audit log response:", auditData);
+
+        setStatusHistory(statusData.statusHistory || []);
         setAuditLogs(auditData.auditLogs || []);
       } catch (err) {
         console.error("Error fetching audit data:", err);

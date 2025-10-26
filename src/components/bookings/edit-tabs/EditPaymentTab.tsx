@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { EditTabProps, Payment } from "./types";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -35,6 +35,9 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
   const [verificationNotes, setVerificationNotes] = useState<{
     [key: string]: string;
   }>({});
+
+  // Track if we've already created a payment intent to prevent duplicate creation
+  const paymentIntentCreatedRef = useRef(false);
 
   // Calculate number of nights
   const calculateNights = useCallback(() => {
@@ -269,14 +272,20 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
   }, [reservationData?.id]);
 
   // Create PaymentIntent on mount if card is already selected
+  // Only create once per reservation to prevent duplicate payment intents
   useEffect(() => {
     if (
       formData.payment.paymentMethod === "card" &&
       !clientSecret &&
       !isCreatingPaymentIntent &&
-      totals.remainingBalance > 0
+      totals.remainingBalance > 0 &&
+      !paymentIntentCreatedRef.current
     ) {
+      paymentIntentCreatedRef.current = true;
       createPaymentIntent(totals.remainingBalance);
+    } else if (formData.payment.paymentMethod !== "card") {
+      // Reset the flag when switching away from card payment
+      paymentIntentCreatedRef.current = false;
     }
   }, [
     formData.payment.paymentMethod,

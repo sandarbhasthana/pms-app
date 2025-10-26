@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,12 +9,20 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { ChevronLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ChevronLeftIcon,
+  XMarkIcon,
+  DocumentDuplicateIcon
+} from "@heroicons/react/24/outline";
 import ViewTabNavigation from "./view-tabs/ViewTabNavigation";
+import { shortenId } from "@/lib/utils/cuid-formatter";
+import { toast } from "sonner";
 import { ViewDetailsTab } from "./view-tabs/ViewDetailsTab";
 import { ViewAddonsTab } from "./view-tabs/ViewAddonsTab";
 import { ViewPaymentTab } from "./view-tabs/ViewPaymentTab";
 import { ViewBookingSheetProps, ViewBookingTab } from "./view-tabs/types";
+import StatusBadge from "@/components/reservation-status/StatusBadge";
+import { ReservationStatus } from "@prisma/client";
 
 const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
   viewReservation,
@@ -65,6 +73,24 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
     return `${checkIn} - ${checkOut}`;
   };
 
+  // Calculate payment status based on paymentStatus field
+  const calculatedPaymentStatus = useMemo(() => {
+    if (!viewReservation) return "UNPAID";
+    return viewReservation.paymentStatus || "UNPAID";
+  }, [viewReservation]);
+
+  // Calculate total amount
+  const calculateTotal = () => {
+    const nights = calculateNights();
+    const basePrice = 2500 * nights; // Placeholder - will be dynamic
+    const addonsTotal =
+      viewReservation?.addons?.reduce(
+        (sum, addon) => sum + addon.totalAmount,
+        0
+      ) || 0;
+    return basePrice + addonsTotal;
+  };
+
   if (!viewReservation) return null;
 
   return (
@@ -94,19 +120,71 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
             <span>Back</span>
           </button>
 
-          <SheetTitle className="text-3xl">
-            {viewReservation.guestName}
-          </SheetTitle>
-          <div className="text-md text-muted-foreground">
-            <div className="space-y-1">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Reservation ID: {viewReservation.id}
+          {/* Guest Information - Aligned with form content */}
+          <div className="pl-4 flex justify-between items-start">
+            <div>
+              <SheetTitle className="text-3xl flex items-center gap-3">
+                {viewReservation.guestName}
+                <div className="flex items-center gap-2">
+                  <StatusBadge
+                    status={viewReservation.status as ReservationStatus}
+                    size="sm"
+                  />
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      calculatedPaymentStatus === "PAID"
+                        ? "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-200"
+                        : calculatedPaymentStatus === "PARTIALLY_PAID"
+                        ? "bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200"
+                        : "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-200"
+                    }`}
+                  >
+                    {calculatedPaymentStatus || "UNPAID"}
+                  </span>
+                </div>
+              </SheetTitle>
+              <div className="text-md space-y-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <div className="text-lg text-gray-600 dark:text-gray-400 font-bold font-mono uppercase">
+                    {shortenId(viewReservation.id, 8)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(viewReservation.id);
+                        toast.success("Reservation ID copied to clipboard");
+                      } catch {
+                        toast.error("Failed to copy ID");
+                      }
+                    }}
+                    title="Copy complete reservation ID"
+                    className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center justify-center"
+                  >
+                    <DocumentDuplicateIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="text-sm text-muted-foreground font-bold">
+                  {formatDateRange()} | {calculateNights()} Night(s)
+                  {calculateNights() > 1 ? "s" : ""}
+                </div>
               </div>
-              <div>
-                View booking information for {viewReservation.guestName} •{" "}
-                {formatDateRange()} • {calculateNights()} night
-                {calculateNights() > 1 ? "s" : ""}
-              </div>
+            </div>
+
+            {/* Total Amount on Right Side */}
+            <div className="text-right pr-4">
+              <span>Total Amount</span>
+              <p
+                className={`text-3xl font-bold font-mono ${
+                  calculatedPaymentStatus === "PAID"
+                    ? "text-green-600 dark:text-green-400"
+                    : calculatedPaymentStatus === "PARTIALLY_PAID"
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                ₹{calculateTotal().toLocaleString()}
+              </p>
             </div>
           </div>
         </SheetHeader>

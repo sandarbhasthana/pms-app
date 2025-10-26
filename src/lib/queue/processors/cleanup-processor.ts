@@ -205,6 +205,8 @@ export class CleanupProcessor extends BaseJobProcessor {
     const staleReservations = await prisma.reservation.findMany({
       where: {
         propertyId,
+        // Exclude soft-deleted reservations
+        deletedAt: null,
         OR: [
           // CONFIRMATION_PENDING reservations older than 24 hours
           {

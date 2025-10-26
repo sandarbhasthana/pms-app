@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { clearReservationsCacheForProperty } from "@/lib/reservations/cache";
 import { logFieldUpdate } from "@/lib/audit-log/reservation-audit";
 import { getServerSession } from "next-auth";
+import { ReservationStatus } from "@prisma/client";
 
 /**
  * GET /api/reservations/[id]
@@ -171,7 +172,16 @@ export async function PATCH(
                 roomId: currentReservation.roomId,
                 propertyId: reservation.propertyId,
                 id: { not: id }, // Exclude current reservation
-                status: { in: ["CONFIRMED", "IN_HOUSE"] },
+                // Only check active reservations - exclude CANCELLED and NO_SHOW
+                status: {
+                  in: [
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.IN_HOUSE,
+                    ReservationStatus.CONFIRMATION_PENDING
+                  ]
+                },
+                // Exclude soft-deleted reservations
+                deletedAt: null,
                 OR: [
                   {
                     AND: [

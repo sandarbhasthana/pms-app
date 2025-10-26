@@ -175,6 +175,8 @@ export class NoShowProcessor extends BaseJobProcessor {
       where: {
         propertyId,
         status: ReservationStatus.CONFIRMED,
+        // Exclude soft-deleted reservations
+        deletedAt: null,
         checkIn: {
           gte: lookbackDate,
           lte: currentTime // Only check reservations up to current time

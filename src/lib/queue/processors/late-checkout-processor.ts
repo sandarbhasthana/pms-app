@@ -163,6 +163,8 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
       where: {
         propertyId,
         status: ReservationStatus.IN_HOUSE, // Only guests currently in-house
+        // Exclude soft-deleted reservations
+        deletedAt: null,
         checkOut: {
           gte: lookbackDate,
           lte: currentTime // Only check reservations up to current time

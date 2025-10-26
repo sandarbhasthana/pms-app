@@ -323,8 +323,8 @@
   .dark h5,
   .dark h6,
   .dark p,
-  .dark span,
-  .dark div,
+  .dark span:not(.sidebar-active-label),
+  .dark div:not(.sidebar-active-icon),
   .dark button,
   .dark a,
   .dark label {
@@ -333,7 +333,7 @@
 
   /* Override for unsaved changes text - higher specificity */
   .dark .unsaved-changes-text {
-    color: #FFFF80 !important;
+    color: #ffff80 !important;
   }
 
   /* Muted text in dark mode */

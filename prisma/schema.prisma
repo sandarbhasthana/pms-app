@@ -49,7 +49,14 @@ model Property {
   id                      String              @id @default(cuid())
   organizationId          String
   name                    String
-  address                 String?
+  // Address fields - stored separately for proper formatting and querying
+  suite                   String?             // Apt/Suite #, Floor
+  street                  String?             // Street Address
+  city                    String?             // City
+  state                   String?             // State/Province
+  zipCode                 String?             // ZIP/Postal Code
+  country                 String?             // Country
+  address                 String?             // Legacy: full address string (kept for backward compatibility)
   phone                   String?
   email                   String?
   timezone                String              @default("UTC")
@@ -306,6 +313,7 @@ model Reservation {
   statusUpdatedBy       String?
   statusUpdatedAt       DateTime                   @default(now()) @updatedAt
   statusChangeReason    String?
+  deletedAt             DateTime?                  // Soft-delete timestamp for CANCELLED and NO_SHOW reservations
   payments              Payment[]
   paymentTransactions   PaymentTransaction[]
   Refund                Refund[]
@@ -326,6 +334,7 @@ model Reservation {
   @@index([channelId])
   @@index([status])
   @@index([statusUpdatedAt])
+  @@index([deletedAt])
 }
 
 /// Add-ons for a reservation (extra bed, breakfast, etc.)

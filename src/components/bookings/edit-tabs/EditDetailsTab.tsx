@@ -145,13 +145,6 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
     }
   }, [formData.checkIn, formData.checkOut, checkRoomAvailability]);
 
-  // Effect to check availability when component first loads (if dates are already set)
-  useEffect(() => {
-    if (formData.checkIn && formData.checkOut) {
-      checkRoomAvailability(formData.checkIn, formData.checkOut);
-    }
-  }, [formData.checkIn, formData.checkOut, checkRoomAvailability]); // Run when initial form data is available
-
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
 

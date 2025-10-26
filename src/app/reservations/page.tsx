@@ -24,7 +24,8 @@ import {
   ChevronsRight,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 
 interface Reservation {
@@ -97,6 +98,9 @@ const ReservationsPage = () => {
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // — refresh state —
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // — Sorting function —
   const handleSort = (field: keyof Reservation) => {
     if (sortField === field) {
@@ -113,6 +117,19 @@ const ReservationsPage = () => {
       setSortDirection("asc");
     }
     setPage(1); // Reset to first page when sorting
+  };
+
+  // — Refresh handler —
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Revalidate the SWR cache
+      await mutate("/api/reservations");
+    } catch (error) {
+      console.error("Error refreshing reservations:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // 1. Global report for all reservations (uses current search/filter state)
@@ -419,6 +436,23 @@ const ReservationsPage = () => {
           className="max-w-md"
         />
         <div className="flex items-center space-x-2">
+          {/* Refresh Button */}
+          <button
+            type="button"
+            title="Refresh Reservations"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`p-2 rounded-lg ${
+              isRefreshing
+                ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
+                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            }`}
+          >
+            <RefreshCw
+              className={`h-5 w-5 ${isRefreshing ? "refresh-spinning" : ""}`}
+            />
+          </button>
+
           <Select
             value={filter}
             onValueChange={(v) => {

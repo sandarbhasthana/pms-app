@@ -9,11 +9,13 @@ interface Property {
   id: string;
   name: string;
   description?: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
+  suite?: string | null;
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
+  address?: string | null; // Legacy field
   phone?: string;
   email?: string;
   website?: string;

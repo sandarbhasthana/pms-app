@@ -146,27 +146,9 @@ const DEFAULT_STATUS_BUSINESS_RULES: Omit<
     ]
   },
 
-  {
-    name: "No-Show Grace Period",
-    description: "Cannot mark as no-show until 6 hours after check-in time",
-    category: "TIME_CONSTRAINT",
-    priority: 7,
-    isActive: true,
-    conditions: [
-      {
-        type: "status_to",
-        operator: "equals",
-        value: ReservationStatus.NO_SHOW
-      },
-      { type: "time_before_checkin", operator: "less_than", value: -6 }
-    ],
-    actions: [
-      {
-        type: "add_error",
-        message: "Cannot mark as no-show until 6 hours after check-in time"
-      }
-    ]
-  },
+  // Removed: No-Show Grace Period rule
+  // Front desk staff have direct knowledge of whether a guest showed up or not
+  // They can mark as no-show anytime after check-in time without artificial delays
 
   {
     name: "Full Payment Required for Checkout",

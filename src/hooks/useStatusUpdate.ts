@@ -101,7 +101,23 @@ export function useStatusUpdate(options: StatusUpdateOptions = {}) {
         }
 
         if (!response.ok) {
-          throw new Error(data.error || "Failed to update status");
+          // Build detailed error message from validation details
+          let errorMessage = data.error || "Failed to update status";
+          if (
+            data.details &&
+            Array.isArray(data.details) &&
+            data.details.length > 0
+          ) {
+            errorMessage = data.details[0]; // Show first validation error
+          }
+
+          // Create error object with isValidationError flag to suppress console logging
+          const validationError = new Error(errorMessage);
+          Object.defineProperty(validationError, "isValidationError", {
+            value: true,
+            enumerable: false
+          });
+          throw validationError;
         }
 
         // Success handling
@@ -221,7 +237,23 @@ export function useBulkStatusUpdate(options: StatusUpdateOptions = {}) {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || "Failed to update status");
+            // Build detailed error message from validation details
+            let errorMessage = data.error || "Failed to update status";
+            if (
+              data.details &&
+              Array.isArray(data.details) &&
+              data.details.length > 0
+            ) {
+              errorMessage = data.details[0]; // Show first validation error
+            }
+
+            // Create error object with isValidationError flag to suppress console logging
+            const validationError = new Error(errorMessage);
+            Object.defineProperty(validationError, "isValidationError", {
+              value: true,
+              enumerable: false
+            });
+            throw validationError;
           }
 
           results.push({

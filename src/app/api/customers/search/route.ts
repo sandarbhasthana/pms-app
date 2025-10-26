@@ -12,6 +12,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const results = await prisma.reservation.findMany({
       where: {
+        // Exclude soft-deleted reservations
+        deletedAt: null,
         OR: [
           { guestName: { contains: query, mode: "insensitive" } },
           { email: { contains: query, mode: "insensitive" } },

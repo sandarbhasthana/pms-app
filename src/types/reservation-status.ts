@@ -50,7 +50,7 @@ export interface StatusConfig {
  * Complete status configuration mapping
  * Color scheme:
  * - Confirmation Pending: Pink (#ec4899) - Light: bg-pink-100 text-gray-900, Dark: bg-pink-900 text-alice-blue
- * - Confirmed: Sage Green (#9AB69B) - Light: bg-emerald-100 text-gray-900, Dark: bg-emerald-900 text-alice-blue
+ * - Confirmed: Green (#6c956e) - Light: bg-[#6c956e] text-white, Dark: bg-[#3b513b] text-alice-blue
  * - In-House: Green (#22c55e) - Light: bg-green-100 text-gray-900, Dark: bg-green-900 text-alice-blue
  * - Checked Out: Purple (#8b5cf6) - Light: bg-purple-100 text-gray-900, Dark: bg-purple-900 text-alice-blue
  * - No-Show: Orange (#f97316) - Light: bg-orange-100 text-gray-900, Dark: bg-orange-900 text-alice-blue
@@ -66,8 +66,8 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
     description: "Awaiting confirmation"
   },
   CONFIRMED: {
-    color: "#9AB69B",
-    bgColor: "bg-[#9AB69B] dark:bg-[#3b513b]",
+    color: "#6c956e",
+    bgColor: "bg-[#6c956e] dark:bg-[#3b513b]",
     textColor: "!text-white dark:!text-[#f0f8ff]",
     icon: "check-circle",
     label: "Confirmed",

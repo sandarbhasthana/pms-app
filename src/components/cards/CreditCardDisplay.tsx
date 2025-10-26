@@ -127,9 +127,9 @@ const CreditCardDisplayComponent: React.FC<CreditCardDisplayProps> = ({
   const clipPathId = `clip-${uniqueId}`;
   const maskId = `mask-${uniqueId}`;
 
-  console.log(
-    `💳 CreditCardDisplay rendered: last4=${last4}, isDefault=${isDefault}`
-  );
+  // console.log(
+  //   `💳 CreditCardDisplay rendered: last4=${last4}, isDefault=${isDefault}`
+  // );
 
   const brandKey = (brand?.toLowerCase() ||
     "default") as keyof typeof CARD_BRANDS;

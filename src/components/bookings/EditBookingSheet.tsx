@@ -20,7 +20,8 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   ChevronLeftIcon,
   XMarkIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  DocumentDuplicateIcon
 } from "@heroicons/react/24/outline";
 import EditTabNavigation from "./edit-tabs/EditTabNavigation";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ import {
   EditBookingTab,
   EditBookingFormData
 } from "./edit-tabs/types";
+import { shortenId } from "@/lib/utils/cuid-formatter";
 
 const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   editingReservation,
@@ -141,25 +143,25 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
             }
 
             const fullReservation = await res.json();
-            console.log(`✅ Full reservation data loaded:`, {
-              id: fullReservation.id,
-              depositAmount: fullReservation.depositAmount,
-              paidAmount: fullReservation.paidAmount,
-              status: fullReservation.status,
-              checkIn: fullReservation.checkIn,
-              checkOut: fullReservation.checkOut,
-              paymentStatus: fullReservation.paymentStatus,
-              payments: fullReservation.payments?.length || 0,
-              addons: fullReservation.addons?.length || 0
-            });
-            console.log(`📋 Full reservation object:`, fullReservation);
+            // console.log(`✅ Full reservation data loaded:`, {
+            //   id: fullReservation.id,
+            //   depositAmount: fullReservation.depositAmount,
+            //   paidAmount: fullReservation.paidAmount,
+            //   status: fullReservation.status,
+            //   checkIn: fullReservation.checkIn,
+            //   checkOut: fullReservation.checkOut,
+            //   paymentStatus: fullReservation.paymentStatus,
+            //   payments: fullReservation.payments?.length || 0,
+            //   addons: fullReservation.addons?.length || 0
+            // });
+            // console.log(`📋 Full reservation object:`, fullReservation);
             initializeFormData(fullReservation);
 
             // Set calculated payment status from API response
-            console.log(
-              `💳 Payment status for ${editingReservation.id}:`,
-              fullReservation.paymentStatus
-            );
+            // console.log(
+            //   `💳 Payment status for ${editingReservation.id}:`,
+            //   fullReservation.paymentStatus
+            // );
             setCalculatedPaymentStatus(
               fullReservation.paymentStatus || "UNPAID"
             );
@@ -199,12 +201,12 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
     }
 
     // Log payment data for debugging
-    console.log(`💳 Payment data for reservation ${reservation.id}:`, {
-      depositAmount: reservation.depositAmount,
-      paidAmount: reservation.paidAmount,
-      paymentStatus: reservation.paymentStatus,
-      status: reservation.status
-    });
+    // console.log(`💳 Payment data for reservation ${reservation.id}:`, {
+    //   depositAmount: reservation.depositAmount,
+    //   paidAmount: reservation.paidAmount,
+    //   paymentStatus: reservation.paymentStatus,
+    //   status: reservation.status
+    // });
 
     // Helper to format dates to YYYY-MM-DD string format
     const formatDateString = (
@@ -326,15 +328,34 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
     // Only update state if the value actually changed
     setHasUnsavedChanges((prev) => (prev !== hasChanges ? hasChanges : prev));
-  }, [formData, editingReservation]);
+  }, [
+    formData.guestName,
+    formData.email,
+    formData.phone,
+    formData.roomId,
+    formData.checkIn,
+    formData.checkOut,
+    formData.adults,
+    formData.children,
+    formData.notes,
+    editingReservation,
+    editingReservation?.guestName,
+    editingReservation?.email,
+    editingReservation?.phone,
+    editingReservation?.roomId,
+    editingReservation?.checkIn,
+    editingReservation?.checkOut,
+    editingReservation?.adults,
+    editingReservation?.children,
+    editingReservation?.notes
+  ]);
 
   // Reset refs when reservation is cleared
   useEffect(() => {
-    if (!editingReservation) {
+    if (!editingReservation?.id) {
       lastReservationIdRef.current = null;
       isInitializingRef.current = true; // Reset initialization flag for next reservation
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingReservation?.id]);
 
   const updateFormData = useCallback(
@@ -507,7 +528,13 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
           errorMessage = error.details[0]; // Show first validation error
         }
 
-        throw new Error(errorMessage);
+        // Create error object with isValidationError flag to suppress console logging
+        const validationError = new Error(errorMessage);
+        Object.defineProperty(validationError, "isValidationError", {
+          value: true,
+          enumerable: false
+        });
+        throw validationError;
       }
 
       await response.json();
@@ -530,7 +557,16 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
         await onUpdate(editingReservation.id, {});
       }
     } catch (error) {
-      console.error("Failed to update status:", error);
+      // Only log to console if it's not a validation error (those are expected and already shown as toast)
+      const isValidationError =
+        error instanceof Error &&
+        Object.getOwnPropertyDescriptor(error, "isValidationError")?.value ===
+          true;
+
+      if (!isValidationError) {
+        console.error("Failed to update status:", error);
+      }
+
       toast.error(
         error instanceof Error ? error.message : "Failed to update status"
       );
@@ -649,8 +685,8 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                       backgroundColor:
                         editingReservation.status === "CONFIRMED"
                           ? document.documentElement.classList.contains("dark")
-                            ? "#3b513b" // Dark mode: Dark sage green
-                            : "#9AB69B" // Light mode: Sage green
+                            ? "#3b513b" // Dark mode: Dark green
+                            : "#6c956e" // Light mode: Green
                           : editingReservation.status === "CONFIRMATION_PENDING"
                           ? "#ec4899" // Pink
                           : editingReservation.status === "IN_HOUSE"
@@ -823,12 +859,12 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                   size="sm"
                 />
                 <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     calculatedPaymentStatus === "PAID"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      ? "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-200"
                       : calculatedPaymentStatus === "PARTIALLY_PAID"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                      ? "bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200"
+                      : "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-200"
                   }`}
                 >
                   {calculatedPaymentStatus || "UNPAID"}
@@ -836,9 +872,27 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
               </div>
             </SheetTitle>
             <div className="text-md space-y-2 mt-2">
-              <div className="text-sm text-gray-600 pt-2 dark:text-gray-400 font-bold font-mono uppercase">
-                {editingReservation.id}
-                {/* Res ID:  */}
+              <div className="flex items-center gap-2">
+                <div className="text-lg text-gray-600 dark:text-gray-400 font-bold font-mono uppercase">
+                  {shortenId(editingReservation.id, 8)}
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        editingReservation.id
+                      );
+                      toast.success("Reservation ID copied to clipboard");
+                    } catch {
+                      toast.error("Failed to copy ID");
+                    }
+                  }}
+                  title="Copy complete reservation ID"
+                  className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center justify-center"
+                >
+                  <DocumentDuplicateIcon className="h-4 w-4" />
+                </button>
               </div>
               <div className="text-sm text-muted-foreground font-bold">
                 {/* Modify booking details for{" "}

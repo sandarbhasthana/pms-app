@@ -34,7 +34,7 @@ export default function LegendBar() {
     {
       label: "Confirmed",
       description: "Payment received",
-      lightColor: "#9AB69B",
+      lightColor: "#6c956e",
       darkColor: "#3b513b"
     },
     {

@@ -6,7 +6,6 @@ import {
   withPropertyContext,
   validatePropertyAccess
 } from "@/lib/property-context";
-import { calculatePaymentStatus } from "@/lib/payments/utils";
 import {
   ReservationStatus,
   PropertyRole,
@@ -15,10 +14,7 @@ import {
 import { logReservationCreated } from "@/lib/audit-log/reservation-audit";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import {
-  reservationsCache,
-  RESERVATIONS_CACHE_DURATION
-} from "@/lib/reservations/cache";
+import { reservationsCache } from "@/lib/reservations/cache";
 
 // Payment data types
 interface PaymentData {
@@ -62,10 +58,14 @@ type ReservationFromDB = {
   phone: string | null;
   depositAmount: number | null;
   paidAmount: number | null;
+  paymentStatus: string | null;
   room: {
     id: string;
     name: string;
     type: string;
+    pricing: {
+      basePrice: number;
+    } | null;
   };
   property: {
     id: string;
@@ -75,6 +75,11 @@ type ReservationFromDB = {
     id: string;
     amount: number;
     status: string;
+  }>;
+  addons?: Array<{
+    id: string;
+    price: number;
+    quantity: number | null;
   }>;
 };
 
@@ -113,24 +118,24 @@ export async function GET(req: NextRequest) {
 
     // console.log("🔍 Query parameters:", { status, startDate, endDate, roomId });
 
-    // OPTIMIZATION: Check cache first
-    const cacheKey = `reservations-${propertyId}-${status || "all"}-${
-      startDate || "all"
-    }-${endDate || "all"}-${roomId || "all"}`;
-    const now = Date.now();
-    const cached = reservationsCache.get(cacheKey);
+    // OPTIMIZATION: Check cache first (DISABLED for debugging)
+    // const cacheKey = `reservations-${propertyId}-${status || "all"}-${
+    //   startDate || "all"
+    // }-${endDate || "all"}-${roomId || "all"}`;
+    // const now = Date.now();
+    // const cached = reservationsCache.get(cacheKey);
 
-    console.log(`🔍 Cache lookup for key: ${cacheKey}`);
-    console.log(`📊 Cache size: ${reservationsCache.size}`);
+    // console.log(`🔍 Cache lookup for key: ${cacheKey}`);
+    // console.log(`📊 Cache size: ${reservationsCache.size}`);
 
-    if (cached && now - cached.timestamp < RESERVATIONS_CACHE_DURATION) {
-      console.log(`📦 Cache hit for reservations: ${cacheKey}`);
-      const response = NextResponse.json(cached.data);
-      response.headers.set("X-Cache", "HIT");
-      return response;
-    }
+    // if (cached && now - cached.timestamp < RESERVATIONS_CACHE_DURATION) {
+    //   console.log(`📦 Cache hit for reservations: ${cacheKey}`);
+    //   const response = NextResponse.json(cached.data);
+    //   response.headers.set("X-Cache", "HIT");
+    //   return response;
+    // }
 
-    console.log(`❌ Cache miss for reservations: ${cacheKey}`);
+    // console.log(`❌ Cache miss for reservations: ${cacheKey}`);
 
     const reservations: ReservationFromDB[] = await withPropertyContext(
       propertyId!,
@@ -138,6 +143,8 @@ export async function GET(req: NextRequest) {
         tx.reservation.findMany({
           where: {
             propertyId: propertyId,
+            // Exclude soft-deleted reservations (CANCELLED and NO_SHOW with deletedAt set)
+            deletedAt: null,
             ...(status && { status: status as ReservationStatus }),
             ...(roomId && { roomId }),
             ...(startDate &&
@@ -178,11 +185,17 @@ export async function GET(req: NextRequest) {
             phone: true,
             depositAmount: true,
             paidAmount: true,
+            paymentStatus: true, // Include the stored payment status
             room: {
               select: {
                 id: true,
                 name: true,
-                type: true
+                type: true,
+                pricing: {
+                  select: {
+                    basePrice: true
+                  }
+                }
               }
             },
             property: {
@@ -197,45 +210,69 @@ export async function GET(req: NextRequest) {
                 amount: true,
                 status: true
               }
+            },
+            addons: {
+              select: {
+                id: true,
+                price: true,
+                quantity: true
+              }
             }
           },
           orderBy: { checkIn: "asc" }
         })
     );
 
-    // Add paymentStatus to each reservation with property context
-    const enriched = await Promise.all(
-      reservations.map(async (r: ReservationFromDB) => {
-        // Get organization ID for payment status calculation (still needed for backward compatibility)
-        const property = await withPropertyContext(propertyId!, async (tx) => {
-          return await tx.property.findUnique({
-            where: { id: propertyId },
-            select: { organizationId: true }
-          });
-        });
+    // Add paymentStatus to each reservation - use stored value or calculate if missing
+    const enriched = reservations.map((r: ReservationFromDB) => {
+      // Use stored paymentStatus if available
+      if (r.paymentStatus) {
+        return {
+          ...r,
+          paymentStatus: r.paymentStatus,
+          paidAmount: r.paidAmount || 0
+        };
+      }
 
-        const paymentStatus = await calculatePaymentStatus(
-          r.id,
-          property?.organizationId || ""
-        );
+      // Fallback: Calculate payment status if not stored (for old reservations)
+      const totalPaid = r.payments.reduce((sum, p) => sum + p.amount, 0);
 
-        // Calculate paidAmount from payments array if not set in database
-        const calculatedPaidAmount =
-          r.paidAmount !== null && r.paidAmount !== undefined
-            ? r.paidAmount
-            : r.payments.reduce((sum, p) => sum + p.amount, 0);
+      const nights =
+        (new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) /
+        (1000 * 60 * 60 * 24);
 
-        return { ...r, paymentStatus, paidAmount: calculatedPaidAmount };
-      })
-    );
+      const basePrice = r.room.pricing?.basePrice || 2000;
+      const roomTotal = basePrice * nights;
+
+      const addonsTotal = (r.addons || []).reduce((sum, addon) => {
+        return sum + addon.price * (addon.quantity || 1);
+      }, 0);
+
+      const totalDue = roomTotal + addonsTotal;
+
+      let paymentStatus: "PAID" | "PARTIALLY_PAID" | "UNPAID";
+      if (totalPaid === 0) {
+        paymentStatus = "UNPAID";
+      } else if (totalPaid >= totalDue) {
+        paymentStatus = "PAID";
+      } else {
+        paymentStatus = "PARTIALLY_PAID";
+      }
+
+      return {
+        ...r,
+        paymentStatus,
+        paidAmount: r.paidAmount !== null ? r.paidAmount : totalPaid
+      };
+    });
 
     const result = {
       count: enriched.length,
       reservations: enriched
     };
 
-    // OPTIMIZATION: Store in cache
-    reservationsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    // OPTIMIZATION: Store in cache (DISABLED for debugging)
+    // reservationsCache.set(cacheKey, { data: result, timestamp: Date.now() });
 
     const response = NextResponse.json(result);
     response.headers.set("X-Cache", "MISS");
@@ -343,7 +380,16 @@ export async function POST(req: NextRequest) {
           where: {
             roomId: roomId,
             propertyId: propertyId,
-            status: { in: ["CONFIRMED", "IN_HOUSE"] },
+            // Only check active reservations - exclude CANCELLED and NO_SHOW (soft-deleted)
+            status: {
+              in: [
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.IN_HOUSE,
+                ReservationStatus.CONFIRMATION_PENDING
+              ]
+            },
+            // Exclude soft-deleted reservations
+            deletedAt: null,
             OR: [
               {
                 AND: [
@@ -364,10 +410,57 @@ export async function POST(req: NextRequest) {
                 ]
               }
             ]
+          },
+          select: {
+            id: true,
+            guestName: true,
+            checkIn: true,
+            checkOut: true,
+            status: true
           }
         });
       }
     );
+
+    // Also check ALL reservations for this room to debug
+    const allReservationsForRoom = await withPropertyContext(
+      propertyId!,
+      async (tx) => {
+        return await tx.reservation.findMany({
+          where: {
+            roomId: roomId,
+            propertyId: propertyId
+          },
+          select: {
+            id: true,
+            guestName: true,
+            checkIn: true,
+            checkOut: true,
+            status: true
+          }
+        });
+      }
+    );
+
+    console.log(`🔍 Conflict check for room ${roomId}:`, {
+      checkInDate,
+      checkOutDate,
+      conflictCount: conflictingReservations.length,
+      conflicts: conflictingReservations.map((r) => ({
+        id: r.id,
+        status: r.status,
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+        guestName: r.guestName
+      })),
+      allReservationsForRoom: allReservationsForRoom.map((r) => ({
+        id: r.id,
+        status: r.status,
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+        guestName: r.guestName
+      }))
+    });
 
     if (conflictingReservations.length > 0) {
       return NextResponse.json(
@@ -377,7 +470,8 @@ export async function POST(req: NextRequest) {
             id: r.id,
             checkIn: r.checkIn,
             checkOut: r.checkOut,
-            guestName: r.guestName
+            guestName: r.guestName,
+            status: r.status
           }))
         },
         { status: 409 }
@@ -421,16 +515,14 @@ export async function POST(req: NextRequest) {
             ? Math.round(payment.totalAmount * 100)
             : null,
           paidAmount:
-            payment?.paymentMethod === "card" ? payment.totalAmount : 0, // Initialize paidAmount: 0 for unpaid, or full amount for card payments
+            payment?.paymentMethod === "pay_at_checkin"
+              ? 0 // Not paid yet
+              : payment?.totalAmount || 0, // Full amount paid for card/cash/bank_transfer
           paymentStatus:
-            payment?.paymentMethod === "card"
-              ? "PAID"
-              : payment?.paymentMethod === "cash"
-              ? "UNPAID"
-              : payment?.paymentMethod === "bank_transfer"
-              ? "UNPAID"
-              : payment?.paymentMethod === "pay_at_checkin"
-              ? "UNPAID"
+            payment?.paymentMethod === "pay_at_checkin"
+              ? "UNPAID" // Only pay_at_checkin is unpaid
+              : payment?.totalAmount && payment.totalAmount > 0
+              ? "PAID" // Card, cash, and bank_transfer are paid immediately
               : "UNPAID"
         },
         include: {
@@ -443,44 +535,42 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Create payment record ONLY for card payments (which are immediately paid)
-      // For cash, bank_transfer, and pay_at_checkin, payment records are created when payment is actually made
+      // Create payment record for all payment methods EXCEPT pay_at_checkin
+      // pay_at_checkin: payment record created when payment is actually made at check-in
       if (
         payment &&
         payment.totalAmount > 0 &&
-        payment.paymentMethod === "card"
+        payment.paymentMethod !== "pay_at_checkin"
       ) {
-        console.log("Creating payment record for card payment:", payment);
-        console.log("Payment creditCard data:", payment.creditCard);
-        let paymentMethodRecord = null;
-
-        // Validate card payment data
-        console.log("Validating card payment data...");
-        console.log("payment.creditCard exists:", !!payment.creditCard);
         console.log(
-          "paymentMethodId exists:",
-          payment.creditCard?.paymentMethodId
+          `Creating payment record for ${payment.paymentMethod} payment:`,
+          payment
         );
 
-        if (!payment.creditCard || !payment.creditCard.paymentMethodId) {
-          console.error("Missing payment data:", {
-            hasCreditCard: !!payment.creditCard,
-            creditCardData: payment.creditCard,
-            paymentMethodId: payment.creditCard?.paymentMethodId,
-            fullPaymentData: payment
-          });
-          throw new Error(
-            "Card payment failed - missing payment method details. Please try again."
-          );
-        }
-
         try {
-          // Create PaymentMethod record for card payments
-          if (payment.creditCard) {
+          let paymentMethodRecord = null;
+
+          // For card payments, create PaymentMethod record
+          if (payment.paymentMethod === "card") {
+            console.log("Payment creditCard data:", payment.creditCard);
+
+            // Validate card payment data
+            if (!payment.creditCard || !payment.creditCard.paymentMethodId) {
+              console.error("Missing payment data:", {
+                hasCreditCard: !!payment.creditCard,
+                creditCardData: payment.creditCard,
+                paymentMethodId: payment.creditCard?.paymentMethodId,
+                fullPaymentData: payment
+              });
+              throw new Error(
+                "Card payment failed - missing payment method details. Please try again."
+              );
+            }
+
             console.log("Creating PaymentMethod record:", payment.creditCard);
             paymentMethodRecord = await tx.paymentMethod.create({
               data: {
-                customerId: guestName || "unknown", // Using guest name as customer ID for now
+                customerId: guestName || "unknown",
                 stripePaymentMethodId: payment.creditCard.paymentMethodId,
                 type: "card",
                 cardBrand: payment.creditCard.brand,
@@ -493,29 +583,38 @@ export async function POST(req: NextRequest) {
             console.log("PaymentMethod created:", paymentMethodRecord.id);
           }
 
-          // Create Payment record for card payment
-          console.log("Creating Payment record for card payment...");
+          // Create Payment record for card, cash, and bank_transfer
+          console.log(
+            `Creating Payment record for ${payment.paymentMethod} payment...`
+          );
           await tx.payment.create({
             data: {
               reservationId: newReservation.id,
               type: "payment",
-              method: "card",
+              method: payment.paymentMethod,
               status: "COMPLETED",
               amount: payment.totalAmount,
               currency: "INR",
               paymentMethodId: paymentMethodRecord?.id,
-              description: `Payment for reservation ${newReservation.id}`,
+              description: `${payment.paymentMethod.toUpperCase()} payment for reservation ${
+                newReservation.id
+              }`,
               processedAt: new Date()
             }
           });
-          console.log("Card payment record created successfully");
+          console.log(
+            `${payment.paymentMethod} payment record created successfully`
+          );
         } catch (paymentError) {
-          console.error("Error creating card payment records:", paymentError);
+          console.error(
+            `Error creating ${payment.paymentMethod} payment records:`,
+            paymentError
+          );
           // Don't throw here - let the reservation be created even if payment record fails
         }
-      } else if (payment && payment.totalAmount > 0) {
+      } else if (payment?.paymentMethod === "pay_at_checkin") {
         console.log(
-          `ℹ️ Payment method '${payment.paymentMethod}' selected - payment record will be created when payment is actually made`
+          `ℹ️ Payment method 'pay_at_checkin' selected - payment record will be created when payment is actually made at check-in`
         );
       }
 

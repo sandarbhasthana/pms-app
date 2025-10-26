@@ -94,7 +94,7 @@ const STATUS_BUSINESS_RULES = {
   // No-show rules
   NO_SHOW: {
     timeConstraints: {
-      minimumHoursAfterCheckIn: 6, // Must be at least 6 hours after check-in time
+      minimumHoursAfterCheckIn: 0, // Can mark anytime after check-in time (front desk has direct knowledge)
       maximumDaysAfterCheckIn: 3 // Cannot mark no-show more than 3 days after
     },
     paymentHandling: {
@@ -546,10 +546,11 @@ export class StatusTransitionValidator {
       const hoursAfterCheckIn =
         (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
 
-      if (hoursAfterCheckIn < 6) {
-        result.errors.push(
-          "Cannot mark as no-show until 6 hours after check-in time"
-        );
+      // Allow front desk to mark as no-show anytime after check-in time
+      // They have direct knowledge of whether guest showed up or not
+      if (hoursAfterCheckIn < 0) {
+        // Only error if trying to mark before check-in time
+        result.errors.push("Cannot mark as no-show before check-in time");
       }
 
       if (hoursAfterCheckIn > 72) {

@@ -185,10 +185,17 @@ export class DataIntegrityService {
       const conflictingReservations = await prisma.reservation.findMany({
         where: {
           roomId: reservation.roomId,
+          // Only check active reservations - exclude CANCELLED and NO_SHOW
           status: {
-            in: [ReservationStatus.IN_HOUSE, ReservationStatus.CONFIRMED]
+            in: [
+              ReservationStatus.IN_HOUSE,
+              ReservationStatus.CONFIRMED,
+              ReservationStatus.CONFIRMATION_PENDING
+            ]
           },
           id: { not: context.reservationId },
+          // Exclude soft-deleted reservations
+          deletedAt: null,
           OR: [
             {
               checkIn: { lte: reservation.checkOut },
@@ -444,14 +451,15 @@ export class DataIntegrityService {
       const hoursAfterCheckIn =
         (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
 
-      if (hoursAfterCheckIn < 6) {
+      // Allow front desk to mark as no-show anytime after check-in time
+      // They have direct knowledge of whether guest showed up or not
+      if (hoursAfterCheckIn < 0) {
         result.issues.push({
           type: "BUSINESS_RULE_VIOLATION",
-          severity: "MEDIUM",
-          description:
-            "No-show can only be marked 6+ hours after check-in time",
+          severity: "HIGH",
+          description: "No-show cannot be marked before check-in time",
           affectedFields: ["status"],
-          suggestedFix: "Wait until 6 hours after check-in time",
+          suggestedFix: "Wait until after check-in time",
           autoFixable: false
         });
       }

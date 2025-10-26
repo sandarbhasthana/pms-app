@@ -102,9 +102,13 @@ interface DashboardActivities {
 interface PropertyInfo {
   id: string;
   name: string;
-  address: string;
-  city: string;
-  state: string;
+  suite?: string | null;
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
+  address?: string | null; // Legacy field
 }
 
 export function PropertyDashboard() {
@@ -113,6 +117,7 @@ export function PropertyDashboard() {
   const [propertyInfo, setPropertyInfo] = useState<PropertyInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   // New state for reservations and activities
@@ -273,6 +278,74 @@ export function PropertyDashboard() {
     [currentPropertyId]
   );
 
+  // Refresh handler for the refresh button - refreshes data without showing loading skeleton
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      setError(null);
+
+      // Load fresh data without triggering the full loading skeleton
+      const [propertyResponse, statsResponse, reservationsResponse] =
+        await Promise.all([
+          fetch(`/api/properties/${currentPropertyId}`),
+          fetch(`/api/dashboard/stats?propertyId=${currentPropertyId}`),
+          fetch(
+            `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=today`
+          )
+        ]);
+
+      if (!propertyResponse.ok || !statsResponse.ok) {
+        throw new Error("Failed to refresh dashboard data");
+      }
+
+      const [propertyData, statsData] = await Promise.all([
+        propertyResponse.json(),
+        statsResponse.json()
+      ]);
+
+      setPropertyInfo(propertyData);
+      setStats(statsData);
+
+      // Load today's reservations
+      try {
+        if (reservationsResponse.ok) {
+          const reservationsData = await reservationsResponse.json();
+          setReservations(reservationsData);
+        }
+      } catch (error) {
+        console.warn("Failed to load today's reservations:", error);
+      }
+
+      // Refresh tomorrow reservations and activities - wait for these to complete
+      await Promise.all([
+        fetch(
+          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=tomorrow`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            setTomorrowReservations(data);
+          })
+          .catch((err) => {
+            console.warn("Failed to load tomorrow's reservations:", err);
+          }),
+        fetch(
+          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${selectedActivityType}`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            setActivities(data);
+          })
+          .catch((err) => {
+            console.warn("Failed to load activities:", err);
+          })
+      ]);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [currentPropertyId, selectedActivityType]);
+
   // Handle activity type change
   const handleActivityTypeChange = useCallback(
     (type: "sales" | "cancellations" | "overbookings") => {
@@ -382,8 +455,22 @@ export function PropertyDashboard() {
                   </h1>
                   {propertyInfo && (
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {propertyInfo.address}, {propertyInfo.city},{" "}
-                      {propertyInfo.state}
+                      {(() => {
+                        // Try to use new separate fields first
+                        const newFormatAddress = [
+                          propertyInfo.suite,
+                          propertyInfo.street,
+                          propertyInfo.city,
+                          propertyInfo.state,
+                          propertyInfo.zipCode,
+                          propertyInfo.country
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+
+                        // Fall back to legacy address field if new fields are empty
+                        return newFormatAddress || propertyInfo.address || "";
+                      })()}
                     </p>
                   )}
                 </div>
@@ -402,9 +489,19 @@ export function PropertyDashboard() {
               <button
                 type="button"
                 title="Refresh Dashboard"
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`p-2 rounded-lg ${
+                  isRefreshing
+                    ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                }`}
               >
-                <RefreshCw className="h-5 w-5" />
+                <RefreshCw
+                  className={`h-5 w-5 ${
+                    isRefreshing ? "refresh-spinning" : ""
+                  }`}
+                />
               </button>
               <button
                 type="button"

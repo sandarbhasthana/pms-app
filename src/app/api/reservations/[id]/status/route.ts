@@ -263,6 +263,11 @@ export async function PATCH(
             }),
             ...(newStatus === ReservationStatus.CHECKED_OUT && {
               checkedOutAt: new Date()
+            }),
+            // Soft-delete for CANCELLED and NO_SHOW - marks as deleted but keeps logs
+            ...((newStatus === ReservationStatus.CANCELLED ||
+              newStatus === ReservationStatus.NO_SHOW) && {
+              deletedAt: new Date()
             })
           },
           include: {
@@ -288,6 +293,18 @@ export async function PATCH(
             isAutomatic: isAutomatic
           }
         });
+
+        // Log room vacation for CANCELLED and NO_SHOW statuses
+        if (
+          newStatus === ReservationStatus.CANCELLED ||
+          newStatus === ReservationStatus.NO_SHOW
+        ) {
+          console.log(
+            `🏨 Room ${updated.room?.name} (${updated.roomId}) vacated due to ${newStatus} status`
+          );
+          // Room is automatically available since the reservation is no longer active
+          // No need to update room record - availability is determined by active reservations
+        }
 
         return updated;
       }

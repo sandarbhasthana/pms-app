@@ -306,7 +306,7 @@ export default function CalendarViewRowStyle({
                             {occupancy.occupied}/{occupancy.total}
                           </div>
                           {/* Price display */}
-                          <div className="text-green-600 dark:text-green-400 font-bold text-sm">
+                          <div className="text-green-600 dark:text-green-400 font-bold text-xs">
                             {displayPrice}
                           </div>
                         </>

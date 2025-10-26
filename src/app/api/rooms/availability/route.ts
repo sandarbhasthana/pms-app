@@ -77,6 +77,10 @@ export async function GET(request: NextRequest) {
                     status: {
                       in: ["CONFIRMED", "IN_HOUSE", "CONFIRMATION_PENDING"]
                     }
+                  },
+                  // Exclude soft-deleted reservations
+                  {
+                    deletedAt: null
                   }
                 ]
               },

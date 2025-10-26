@@ -517,11 +517,13 @@ export default function GeneralSettingsFormFixed({
         const propertyData = {
           name: data.propertyName,
           description: data.description || "",
-          address: [data.street, data.suite].filter(Boolean).join(", "),
-          city: data.city,
-          state: data.state,
-          zipCode: data.zip,
-          country: data.country,
+          // Send address components separately
+          suite: data.suite || null,
+          street: data.street || null,
+          city: data.city || null,
+          state: data.state || null,
+          zipCode: data.zip || null,
+          country: data.country || null,
           phone: data.propertyPhone,
           email: data.propertyEmail,
           website: data.propertyWebsite,
@@ -560,11 +562,13 @@ export default function GeneralSettingsFormFixed({
           name: data.propertyName,
           phone: data.propertyPhone,
           email: data.propertyEmail,
-          address: [data.street, data.suite].filter(Boolean).join(", "),
-          city: data.city,
-          state: data.state,
-          zipCode: data.zip,
-          country: data.country
+          // Send address components separately
+          suite: data.suite || null,
+          street: data.street || null,
+          city: data.city || null,
+          state: data.state || null,
+          zipCode: data.zip || null,
+          country: data.country || null
         };
 
         const propertyResponse = await fetch(

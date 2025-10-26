@@ -95,8 +95,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 )}
                 onClick={onClose} // Close sidebar when navigation item is clicked
               >
-                <Icon className="h-5 w-5" />
-                <span className="ml-3">{item.label}</span>
+                <Icon
+                  className={cn("h-5 w-5", active && "sidebar-active-icon")}
+                />
+                <span className={cn("ml-3", active && "sidebar-active-label")}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}

@@ -27,11 +27,13 @@ interface Property {
   id: string;
   name: string;
   description?: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
+  suite?: string | null;
+  street?: string | null;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   phone?: string;
   email?: string;
   website?: string;
@@ -107,7 +109,7 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
       if (!propertyToDelete) return;
 
       try {
-        await onDelete(propertyToDelete.id);
+        onDelete(propertyToDelete.id);
         setProperties(properties.filter((p) => p.id !== propertyToDelete.id));
         setDeleteDialogOpen(false);
         setPropertyToDelete(null);
@@ -257,7 +259,8 @@ export const PropertyList = forwardRef<PropertyListRef, PropertyListProps>(
                       <div>
                         <p>
                           {[
-                            property.address,
+                            property.suite,
+                            property.street,
                             property.city,
                             property.state,
                             property.zipCode,

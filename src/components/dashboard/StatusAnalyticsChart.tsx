@@ -63,7 +63,7 @@ interface StatusAnalyticsChartProps {
 // Status colors for charts
 const STATUS_COLORS = {
   [ReservationStatus.CONFIRMATION_PENDING]: "#ec4899", // pink
-  [ReservationStatus.CONFIRMED]: "#9AB69B", // sage green
+  [ReservationStatus.CONFIRMED]: "#6c956e", // green
   [ReservationStatus.IN_HOUSE]: "#22c55e", // green
   [ReservationStatus.CHECKED_OUT]: "#8b5cf6", // purple
   [ReservationStatus.NO_SHOW]: "#f97316", // orange

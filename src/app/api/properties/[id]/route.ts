@@ -96,13 +96,14 @@ export async function PUT(
 
     const {
       name,
-      address,
       phone,
       email,
       timezone,
       currency,
       isActive,
-      // Additional form fields (for future use)
+      // Address components
+      suite,
+      street,
       city,
       state,
       zipCode,
@@ -147,15 +148,21 @@ export async function PUT(
       );
     }
 
-    // Update property
-    // Combine address fields into a single address string if individual fields are provided
-    const fullAddress = [address, city, state, zipCode, country]
+    // Update property with separate address fields
+    // Format: Apt/Suite #, Street, City, State, Zip, Country
+    const fullAddress = [suite, street, city, state, zipCode, country]
       .filter(Boolean)
       .join(", ");
 
     const updateData = {
       name,
-      address: fullAddress || address || null,
+      suite: suite || null,
+      street: street || null,
+      city: city || null,
+      state: state || null,
+      zipCode: zipCode || null,
+      country: country || null,
+      address: fullAddress || null, // Keep for backward compatibility
       phone: phone || null,
       email: email || null,
       timezone: timezone || "UTC",

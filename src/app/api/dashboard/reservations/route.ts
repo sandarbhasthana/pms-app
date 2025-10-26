@@ -79,6 +79,8 @@ export async function GET(req: NextRequest) {
         const reservations = await tx.reservation.findMany({
           where: {
             propertyId: propertyId,
+            // Exclude soft-deleted reservations
+            deletedAt: null,
             OR: [
               // Check-ins today/tomorrow
               {

@@ -64,7 +64,7 @@ const getEventColor = (
   isDarkMode: boolean = false
 ): { backgroundColor: string; textColor: string } => {
   const lightColorMap: Record<string, { bg: string; text: string }> = {
-    CONFIRMED: { bg: "#9AB69B", text: "#1f2937" }, // Sage Green with gray-900 text
+    CONFIRMED: { bg: "#6c956e", text: "#1f2937" }, // Green with gray-900 text
     CONFIRMATION_PENDING: { bg: "#ec4899", text: "#f0f8f9" }, // Pink with alice blue text
     IN_HOUSE: { bg: "#22c55e", text: "#f0f8f9" }, // Green with alice blue text
     CANCELLED: { bg: "#6b7280", text: "#f0f8f9" }, // Gray with alice blue text
@@ -86,7 +86,7 @@ const getEventColor = (
     colorMap[status || "CONFIRMED"] ||
     (isDarkMode
       ? { bg: "#047857", text: "#f0f8f9" }
-      : { bg: "#9AB69B", text: "#1f2937" });
+      : { bg: "#6c956e", text: "#1f2937" });
 
   return {
     backgroundColor: colors.bg,
@@ -253,6 +253,7 @@ export default function BookingsRowStylePage() {
           });
           const { reservations } = await res.json();
 
+          // No need to filter - backend now excludes soft-deleted reservations (deletedAt != null)
           success(
             reservations.map((r: Reservation) => {
               const colors = getEventColor(r.status, isDarkMode);
@@ -777,7 +778,24 @@ export default function BookingsRowStylePage() {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || "Failed to update status");
+
+          // Build detailed error message from validation details
+          let errorMessage = error.error || "Failed to update status";
+          if (
+            error.details &&
+            Array.isArray(error.details) &&
+            error.details.length > 0
+          ) {
+            errorMessage = error.details[0]; // Show first validation error
+          }
+
+          // Create error object with isValidationError flag to suppress console logging
+          const validationError = new Error(errorMessage);
+          Object.defineProperty(validationError, "isValidationError", {
+            value: true,
+            enumerable: false
+          });
+          throw validationError;
         }
 
         // Refresh the calendar to show updated status
@@ -785,7 +803,16 @@ export default function BookingsRowStylePage() {
 
         toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
       } catch (error) {
-        console.error("Failed to update status:", error);
+        // Only log to console if it's not a validation error (those are expected and already shown as toast)
+        const isValidationError =
+          error instanceof Error &&
+          Object.getOwnPropertyDescriptor(error, "isValidationError")?.value ===
+            true;
+
+        if (!isValidationError) {
+          console.error("Failed to update status:", error);
+        }
+
         toast.error(
           error instanceof Error ? error.message : "Failed to update status"
         );
@@ -939,7 +966,12 @@ export default function BookingsRowStylePage() {
 
             if (res.ok) {
               const data = await res.json();
-              setEvents(data.reservations || []);
+              // Filter out CANCELLED and NO_SHOW reservations from calendar view
+              const activeReservations = (data.reservations || []).filter(
+                (r: Reservation) =>
+                  r.status !== "CANCELLED" && r.status !== "NO_SHOW"
+              );
+              setEvents(activeReservations);
               setResources(data.rooms || []);
 
               // Force calendar refresh
@@ -982,7 +1014,12 @@ export default function BookingsRowStylePage() {
 
         if (res.ok) {
           const data = await res.json();
-          setEvents(data.reservations || []);
+          // Filter out CANCELLED and NO_SHOW reservations from calendar view
+          const activeReservations = (data.reservations || []).filter(
+            (r: Reservation) =>
+              r.status !== "CANCELLED" && r.status !== "NO_SHOW"
+          );
+          setEvents(activeReservations);
           setResources(data.rooms || []);
 
           // Force calendar refresh
@@ -1071,6 +1108,7 @@ export default function BookingsRowStylePage() {
           // Wait for removal to complete
           await new Promise((resolve) => setTimeout(resolve, 100));
 
+          // No need to filter - backend now excludes soft-deleted reservations (deletedAt != null)
           // Convert reservations to calendar events and add them directly
           const calendarEvents = (reservations || []).map((r: Reservation) => {
             const colors = getEventColor(r.status, isDarkMode);

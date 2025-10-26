@@ -69,14 +69,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       name,
-      address,
       phone,
       email,
       timezone,
       currency,
       isActive,
-      // Note: Additional form fields like city, state, zipCode, country, website, description
-      // are not stored in the current database schema but could be added to address field
+      // Address components
+      suite,
+      street,
       city,
       state,
       zipCode,
@@ -107,9 +107,9 @@ export async function POST(req: NextRequest) {
         throw new Error("Property name already exists in this organization");
       }
 
-      // Create the property
-      // Combine address fields into a single address string
-      const fullAddress = [address, city, state, zipCode, country]
+      // Create the property with separate address fields
+      // Format: Apt/Suite #, Street, City, State, Zip, Country
+      const fullAddress = [suite, street, city, state, zipCode, country]
         .filter(Boolean)
         .join(", ");
 
@@ -117,7 +117,13 @@ export async function POST(req: NextRequest) {
         data: {
           organizationId: orgId,
           name,
-          address: fullAddress || address || null,
+          suite: suite || null,
+          street: street || null,
+          city: city || null,
+          state: state || null,
+          zipCode: zipCode || null,
+          country: country || null,
+          address: fullAddress || null, // Keep for backward compatibility
           phone: phone || null,
           email: email || null,
           timezone: timezone || "UTC",
