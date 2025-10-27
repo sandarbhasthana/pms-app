@@ -8,6 +8,7 @@ import {
   IdentificationIcon,
   HomeIcon
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 
 export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
   const calculateNights = () => {
@@ -43,23 +44,33 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
         <div className="flex gap-6">
           {/* Left Side: Image Placeholder */}
           <div className="flex-shrink-0">
-            <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-gray-600"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+            <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden">
+              {reservationData.guestImageUrl ? (
+                <Image
+                  src={reservationData.guestImageUrl}
+                  alt="Guest Photo"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-gray-500">ID Image</p>
                 </div>
-                <p className="text-xs text-gray-500">ID Image</p>
-              </div>
+              )}
             </div>
           </div>
 

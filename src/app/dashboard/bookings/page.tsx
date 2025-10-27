@@ -19,6 +19,7 @@ import FullCalendar from "@fullcalendar/react";
 import { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import { DateClickArg } from "@fullcalendar/interaction";
 import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
@@ -138,6 +139,12 @@ export default function BookingsRowStylePage() {
   const [idType, setIdType] = useState("passport");
   const [idNumber, setIdNumber] = useState("");
   const [issuingCountry, setIssuingCountry] = useState("");
+  const [guestImageUrl, setGuestImageUrl] = useState<string | undefined>();
+  const [idDocumentUrl, setIdDocumentUrl] = useState<string | undefined>();
+  const [idExpiryDate, setIdExpiryDate] = useState<string | undefined>();
+  const [idDocumentExpired, setIdDocumentExpired] = useState<
+    boolean | undefined
+  >();
   const [showScanner, setShowScanner] = useState(false);
 
   // Edit/Delete modal state
@@ -685,18 +692,47 @@ export default function BookingsRowStylePage() {
   // Event‐click handler opens flyout menu
   // ------------------------
   const handleEventClick = useCallback(
-    (arg: EventClickArg) => {
+    async (arg: EventClickArg) => {
       arg.jsEvent.preventDefault();
       arg.jsEvent.stopPropagation();
       const resv = events.find((e) => e.id === arg.event.id);
       if (!resv) return;
-      const rect = arg.el.getBoundingClientRect();
-      setFlyout({
-        reservation: resv,
-        x: rect.left + window.scrollX,
-        y: rect.bottom + window.scrollY,
-        showDetails: false
-      });
+
+      // Fetch fresh reservation data to ensure we have the latest status
+      try {
+        const res = await fetch(`/api/reservations/${resv.id}`, {
+          credentials: "include"
+        });
+        if (res.ok) {
+          const freshResv = await res.json();
+          const rect = arg.el.getBoundingClientRect();
+          setFlyout({
+            reservation: freshResv,
+            x: rect.left + window.scrollX,
+            y: rect.bottom + window.scrollY,
+            showDetails: false
+          });
+        } else {
+          // Fallback to cached data if fetch fails
+          const rect = arg.el.getBoundingClientRect();
+          setFlyout({
+            reservation: resv,
+            x: rect.left + window.scrollX,
+            y: rect.bottom + window.scrollY,
+            showDetails: false
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch fresh reservation data:", error);
+        // Fallback to cached data if fetch fails
+        const rect = arg.el.getBoundingClientRect();
+        setFlyout({
+          reservation: resv,
+          x: rect.left + window.scrollX,
+          y: rect.bottom + window.scrollY,
+          showDetails: false
+        });
+      }
     },
     [events]
   );
@@ -1039,6 +1075,48 @@ export default function BookingsRowStylePage() {
     setEditingReservation(null);
   }, []);
 
+  // Handle refresh button click
+  const handleRefreshClick = useCallback(async () => {
+    setIsRefetching(true);
+    try {
+      // Get orgId from cookies for API calls
+      const orgId = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("orgId="))
+        ?.split("=")[1];
+
+      // Add timestamp to force cache bust
+      const timestamp = Date.now();
+      const res = await fetch(`/api/reservations?t=${timestamp}`, {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          ...(orgId && { "x-organization-id": orgId })
+        }
+      });
+
+      if (res.ok) {
+        const { reservations } = await res.json();
+        setEvents(reservations);
+
+        const api = calendarRef.current?.getApi();
+        if (api) {
+          api.removeAllEvents();
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          api.refetchEvents();
+        }
+        toast.success("Calendar refreshed");
+      }
+    } catch (error) {
+      console.error("Failed to refresh calendar:", error);
+      toast.error("Failed to refresh calendar");
+    } finally {
+      setIsRefetching(false);
+    }
+  }, []);
+
   // Click-outside listener for flyout
   // ------------------------
   useEffect(() => {
@@ -1097,7 +1175,7 @@ export default function BookingsRowStylePage() {
         // Update local state first
         setEvents(reservations);
 
-        // FIXED: Force immediate calendar refresh by removing and re-adding events
+        // FIXED: Force immediate calendar refresh by removing and re-fetching all events
         console.log(`🔄 Refreshing calendar events...`);
         const api = calendarRef.current?.getApi();
         if (api) {
@@ -1108,31 +1186,9 @@ export default function BookingsRowStylePage() {
           // Wait for removal to complete
           await new Promise((resolve) => setTimeout(resolve, 100));
 
-          // No need to filter - backend now excludes soft-deleted reservations (deletedAt != null)
-          // Convert reservations to calendar events and add them directly
-          const calendarEvents = (reservations || []).map((r: Reservation) => {
-            const colors = getEventColor(r.status, isDarkMode);
-            return {
-              id: r.id,
-              resourceId: r.roomId,
-              title: formatGuestNameForCalendar(r.guestName),
-              start: r.checkIn,
-              end: r.checkOut,
-              allDay: true,
-              backgroundColor: colors.backgroundColor,
-              borderColor: colors.backgroundColor,
-              textColor: colors.textColor,
-              extendedProps: {
-                isPartialDay: true,
-                status: r.status,
-                paymentStatus: r.paymentStatus
-              }
-            };
-          });
-
-          // Add events directly to calendar
-          api.addEventSource(calendarEvents);
-          console.log(`✅ ${calendarEvents.length} events added to calendar`);
+          // Re-fetch all event sources (reservations + highlights)
+          api.refetchEvents();
+          console.log(`✅ Calendar events refetched`);
         }
       } else {
         console.error("Reload failed:", res.status, res.statusText);
@@ -1145,7 +1201,24 @@ export default function BookingsRowStylePage() {
 
   return (
     <div ref={containerRef} className="relative p-6">
-      <h1 className="text-2xl font-semibold mb-4">Booking Calendar</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Booking Calendar</h1>
+        <button
+          type="button"
+          title="Refresh Calendar"
+          onClick={handleRefreshClick}
+          disabled={isRefetching}
+          className={`p-2 rounded-lg ${
+            isRefetching
+              ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
+              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          }`}
+        >
+          <RefreshCw
+            className={`h-5 w-5 ${isRefetching ? "refresh-spinning" : ""}`}
+          />
+        </button>
+      </div>
 
       {/* Toolbar */}
       <CalendarToolbar
@@ -1191,6 +1264,11 @@ export default function BookingsRowStylePage() {
               checkOut: bookingData.checkOut,
               adults: bookingData.adults,
               children: bookingData.childrenCount,
+              // Add image URLs from scanner
+              guestImageUrl: bookingData.guestImageUrl,
+              idDocumentUrl: bookingData.idDocumentUrl,
+              idExpiryDate: bookingData.idExpiryDate,
+              idDocumentExpired: bookingData.idDocumentExpired,
               // Add payment data
               payment: bookingData.payment,
               addons: bookingData.addons
@@ -1213,6 +1291,14 @@ export default function BookingsRowStylePage() {
         setIdNumber={setIdNumber}
         issuingCountry={issuingCountry}
         setIssuingCountry={setIssuingCountry}
+        guestImageUrl={guestImageUrl}
+        setGuestImageUrl={setGuestImageUrl}
+        idDocumentUrl={idDocumentUrl}
+        setIdDocumentUrl={setIdDocumentUrl}
+        idExpiryDate={idExpiryDate}
+        setIdExpiryDate={setIdExpiryDate}
+        idDocumentExpired={idDocumentExpired}
+        setIdDocumentExpired={setIdDocumentExpired}
         adults={adults}
         setAdults={setAdults}
         childrenCount={children}
@@ -1225,6 +1311,11 @@ export default function BookingsRowStylePage() {
           setIdNumber(result.idNumber);
           setFullName(result.fullName);
           setIssuingCountry(result.issuingCountry);
+          setIdType(result.idType || "passport");
+          setGuestImageUrl(result.guestImageUrl);
+          setIdDocumentUrl(result.idDocumentUrl);
+          setIdExpiryDate(result.idExpiryDate);
+          setIdDocumentExpired(result.idDocumentExpired);
           setShowScanner(false);
           setOcrEnabled(false);
         }}

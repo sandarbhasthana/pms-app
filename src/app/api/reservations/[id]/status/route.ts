@@ -7,7 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { validatePropertyAccess } from "@/lib/property-context";
 import { withPropertyContext } from "@/lib/property-context";
 import { validateStatusTransition } from "@/lib/reservation-status/utils";
-import { statusTransitionValidator } from "@/lib/reservation-status/advanced-validation";
+import {
+  statusTransitionValidator,
+  ValidationResult
+} from "@/lib/reservation-status/advanced-validation";
 import { statusBusinessRulesService } from "@/lib/reservation-status/business-rules-service";
 import { clearReservationsCacheForProperty } from "@/lib/reservations/cache";
 
@@ -36,11 +39,13 @@ export async function PATCH(
     const {
       newStatus,
       reason,
-      isAutomatic = false
+      isAutomatic = false,
+      isUndoCheckIn = false
     }: {
       newStatus: ReservationStatus;
       reason?: string;
       isAutomatic?: boolean;
+      isUndoCheckIn?: boolean;
     } = await req.json();
 
     if (!newStatus) {
@@ -88,20 +93,36 @@ export async function PATCH(
       paymentStatus: reservation.paymentStatus,
       paidAmount: reservation.paidAmount,
       depositAmount: reservation.depositAmount,
-      newStatus
+      newStatus,
+      isUndoCheckIn
     });
 
-    // Basic status transition validation
-    const basicValidation = validateStatusTransition(
-      reservation.status,
-      newStatus
-    );
-
-    if (!basicValidation.isValid) {
-      return NextResponse.json(
-        { error: basicValidation.reason },
-        { status: 400 }
+    // Basic status transition validation (skip for undo check-in)
+    if (!isUndoCheckIn) {
+      const basicValidation = validateStatusTransition(
+        reservation.status,
+        newStatus
       );
+
+      if (!basicValidation.isValid) {
+        return NextResponse.json(
+          { error: basicValidation.reason },
+          { status: 400 }
+        );
+      }
+    } else {
+      // For undo check-in, only allow IN_HOUSE -> CONFIRMED transition
+      if (
+        reservation.status !== ReservationStatus.IN_HOUSE ||
+        newStatus !== ReservationStatus.CONFIRMED
+      ) {
+        return NextResponse.json(
+          {
+            error: "Undo check-in can only revert IN_HOUSE status to CONFIRMED"
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Get user's property role for advanced validation
@@ -192,14 +213,34 @@ export async function PATCH(
       }
     };
 
-    const advancedValidation =
-      await statusTransitionValidator.validateTransition(
+    // Skip advanced validation for undo check-in
+    let advancedValidation: ValidationResult = {
+      isValid: true,
+      errors: [],
+      warnings: [],
+      requiresApproval: false,
+      businessRuleViolations: [],
+      dataIntegrityIssues: []
+    };
+    let businessRulesValidation: ValidationResult = {
+      isValid: true,
+      errors: [],
+      warnings: [],
+      requiresApproval: false,
+      businessRuleViolations: [],
+      dataIntegrityIssues: []
+    };
+
+    if (!isUndoCheckIn) {
+      advancedValidation = await statusTransitionValidator.validateTransition(
         advancedValidationContext
       );
 
-    // Check business rules
-    const businessRulesValidation =
-      await statusBusinessRulesService.evaluateRules(advancedValidationContext);
+      // Check business rules
+      businessRulesValidation = await statusBusinessRulesService.evaluateRules(
+        advancedValidationContext
+      );
+    }
 
     // Combine validation results
     const combinedErrors = [

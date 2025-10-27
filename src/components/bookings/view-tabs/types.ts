@@ -8,6 +8,12 @@ export interface ViewReservationData {
   idNumber?: string;
   issuingCountry?: string;
 
+  // Guest images (from AI ID processing)
+  guestImageUrl?: string; // Cropped face photo for guest profile
+  idDocumentUrl?: string; // Full ID document for Documents tab
+  idExpiryDate?: string; // Expiry date from ID document
+  idDocumentExpired?: boolean; // Flag indicating if document is expired
+
   // Booking details
   roomId: string;
   roomName?: string;

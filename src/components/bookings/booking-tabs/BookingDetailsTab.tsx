@@ -9,9 +9,35 @@ import {
   InformationCircleIcon
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
-import IDScannerWithAI from "@/components/bookings/IDScannerWithAI";
+import IDScannerWithEdgeRefinement from "@/components/bookings/IDScannerWithEdgeRefinement";
 import { uploadGuestImages, resizeImage } from "@/lib/utils/image-processing";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+
+// Type for extracted ID data
+interface ExtractedIDData {
+  fullName: string;
+  idType: string;
+  idNumber: string;
+  issuingCountry: string;
+  expiryDate: string;
+  isExpired: boolean;
+  confidence: number;
+  facePhotoLocation?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
 
 // Extended props for details tab to include scanner functionality
 interface BookingDetailsTabProps extends BookingTabProps {
@@ -50,6 +76,15 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
     height: number;
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [extractedDataForConfirm, setExtractedDataForConfirm] =
+    useState<ExtractedIDData | null>(null);
+  const [croppedImageForConfirm, setCroppedImageForConfirm] = useState<
+    string | null
+  >(null);
+  const [documentImageForConfirm, setDocumentImageForConfirm] = useState<
+    string | null
+  >(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -140,26 +175,118 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
     setOcrEnabled(true);
   };
 
-  const handleAIScanComplete = async (result: {
-    croppedFaceBase64: string | null;
-    fullDocumentBase64: string;
-    extractedData: {
-      fullName: string;
-      idType: string;
-      idNumber: string;
-      issuingCountry: string;
-      expiryDate: string;
-      isExpired: boolean;
-    };
-  }) => {
+  const handleEdgeRefinedCapture = async (croppedImageBase64: string) => {
     try {
       setIsUploading(true);
       setShowScanner(false);
 
-      // Display cropped face in the image placeholder
-      if (result.croppedFaceBase64) {
-        setUploadedImage(result.croppedFaceBase64);
+      // Show processing toast
+      toast({
+        title: "Processing ID Document...",
+        description: "Sending to AI for data extraction..."
+      });
+
+      // Send cropped image to AI for processing
+      const response = await fetch("/api/ai/process-id", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          documentImageBase64: croppedImageBase64,
+          imageType: "image/jpeg"
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to process ID document");
       }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to process ID document");
+      }
+
+      const extractedData = result.data;
+
+      // Extract face from document if coordinates available
+      let faceImageBase64 = croppedImageBase64;
+      if (extractedData.facePhotoLocation) {
+        try {
+          const faceCanvas = document.createElement("canvas");
+          const faceCtx = faceCanvas.getContext("2d");
+          if (!faceCtx) throw new Error("Failed to get face canvas context");
+
+          // Create a promise-based image loader
+          const faceImage = await new Promise<HTMLImageElement>(
+            (resolve, reject) => {
+              const img = new window.Image();
+              img.onload = () => resolve(img);
+              img.onerror = () =>
+                reject(new Error("Failed to load face image"));
+              img.src = croppedImageBase64;
+            }
+          );
+
+          const faceCoords = extractedData.facePhotoLocation;
+          faceCanvas.width = faceCoords.width;
+          faceCanvas.height = faceCoords.height;
+
+          faceCtx.drawImage(
+            faceImage,
+            faceCoords.x,
+            faceCoords.y,
+            faceCoords.width,
+            faceCoords.height,
+            0,
+            0,
+            faceCoords.width,
+            faceCoords.height
+          );
+
+          faceImageBase64 = faceCanvas.toDataURL("image/jpeg", 0.95);
+        } catch (cropError) {
+          console.error("Failed to crop face:", cropError);
+          // Fallback to using full document as face
+        }
+      }
+
+      // Store data for confirmation dialog
+      setExtractedDataForConfirm(extractedData);
+      setCroppedImageForConfirm(faceImageBase64);
+      setDocumentImageForConfirm(croppedImageBase64);
+      setShowConfirmDialog(true);
+      setIsUploading(false);
+    } catch (error) {
+      console.error("Error processing ID document:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to process ID document. Please try again.";
+      toast({
+        title: "Processing Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      const err = error instanceof Error ? error : new Error(errorMessage);
+      handleScanError(err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleConfirmExtraction = async () => {
+    if (
+      !extractedDataForConfirm ||
+      !croppedImageForConfirm ||
+      !documentImageForConfirm
+    )
+      return;
+
+    try {
+      setIsUploading(true);
 
       // Upload both images to S3
       toast({
@@ -168,27 +295,35 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
       });
 
       const { personImageUrl, documentImageUrl } = await uploadGuestImages(
-        result.croppedFaceBase64 || result.fullDocumentBase64, // Fallback to full document if no face
-        result.fullDocumentBase64,
-        result.extractedData.fullName || "guest"
+        croppedImageForConfirm, // Use the extracted face
+        documentImageForConfirm, // Use the refined cropped document
+        extractedDataForConfirm.fullName || "guest"
       );
+
+      // Display face image in the image placeholder
+      setUploadedImage(croppedImageForConfirm);
 
       // Call the parent handler with all extracted data
       handleScanComplete({
-        fullName: result.extractedData.fullName,
-        idNumber: result.extractedData.idNumber,
-        issuingCountry: result.extractedData.issuingCountry,
-        idType: result.extractedData.idType,
+        fullName: extractedDataForConfirm.fullName,
+        idNumber: extractedDataForConfirm.idNumber,
+        issuingCountry: extractedDataForConfirm.issuingCountry,
+        idType: extractedDataForConfirm.idType,
         guestImageUrl: personImageUrl,
         idDocumentUrl: documentImageUrl,
-        idExpiryDate: result.extractedData.expiryDate,
-        idDocumentExpired: result.extractedData.isExpired
+        idExpiryDate: extractedDataForConfirm.expiryDate,
+        idDocumentExpired: extractedDataForConfirm.isExpired
       });
 
       toast({
         title: "Success!",
         description: "ID document processed and images uploaded successfully."
       });
+
+      setShowConfirmDialog(false);
+      setExtractedDataForConfirm(null);
+      setCroppedImageForConfirm(null);
+      setDocumentImageForConfirm(null);
     } catch (error) {
       console.error("Error uploading images:", error);
       const errorMessage =
@@ -200,8 +335,6 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
         description: errorMessage,
         variant: "destructive"
       });
-      const err = error instanceof Error ? error : new Error(errorMessage);
-      handleScanError(err);
     } finally {
       setIsUploading(false);
     }
@@ -493,17 +626,93 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
         </div>
       </div>
 
-      {/* ID Scanner Modal */}
-      {showScanner && (
-        <IDScannerWithAI
-          onComplete={handleAIScanComplete}
-          onError={(error) => {
-            handleScanError(error);
-            setShowScanner(false);
-          }}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
+      {/* ID Scanner with Edge Refinement Modal */}
+      <IDScannerWithEdgeRefinement
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onCapture={handleEdgeRefinedCapture}
+        onError={(error) => {
+          handleScanError(error);
+          setShowScanner(false);
+        }}
+      />
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent className="max-w-md z-[9999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Extracted Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please review the extracted information
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {extractedDataForConfirm && (
+            <div className="space-y-4">
+              {/* Face Preview */}
+              {croppedImageForConfirm && (
+                <div className="flex justify-center">
+                  <Image
+                    src={croppedImageForConfirm}
+                    alt="Extracted Face"
+                    width={300}
+                    height={240}
+                    className="rounded-lg border border-gray-300"
+                  />
+                </div>
+              )}
+
+              {/* Extracted Data */}
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold">Name:</span>{" "}
+                  {extractedDataForConfirm.fullName}
+                </div>
+                <div>
+                  <span className="font-semibold">ID Type:</span>{" "}
+                  {extractedDataForConfirm.idType}
+                </div>
+                <div>
+                  <span className="font-semibold">ID Number:</span>{" "}
+                  {extractedDataForConfirm.idNumber}
+                </div>
+                <div>
+                  <span className="font-semibold">Country:</span>{" "}
+                  {extractedDataForConfirm.issuingCountry}
+                </div>
+                <div>
+                  <span className="font-semibold">Expiry Date:</span>{" "}
+                  {extractedDataForConfirm.expiryDate}
+                </div>
+                <div>
+                  <span className="font-semibold">Confidence:</span>{" "}
+                  <span className="text-green-600 font-bold">
+                    {Math.round(
+                      (extractedDataForConfirm.confidence || 0) * 100
+                    )}
+                    %
+                  </span>
+                </div>
+                {extractedDataForConfirm.isExpired && (
+                  <div className="text-red-600 font-semibold">
+                    ⚠️ Document Expired
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <AlertDialogCancel disabled={isUploading}>Retake</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmExtraction}
+              disabled={isUploading}
+            >
+              {isUploading ? "Uploading..." : "Confirm & Continue"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Upload Loading Overlay */}
       {isUploading && (

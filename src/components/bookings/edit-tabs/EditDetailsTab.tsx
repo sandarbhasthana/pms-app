@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { EditTabProps, GroupedRooms, AvailableRoom } from "./types";
 import {
   CalendarIcon,
   UserIcon,
   IdentificationIcon,
   HomeIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CameraIcon,
+  ArrowUpTrayIcon,
+  InformationCircleIcon
 } from "@heroicons/react/24/outline";
 import {
   Select,
@@ -17,6 +20,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export const EditDetailsTab: React.FC<EditTabProps> = ({
   reservationData,
@@ -31,6 +35,11 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
     null
   );
   const [availableRooms, setAvailableRooms] = useState(initialAvailableRooms);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageDimensions, setImageDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const calculateNights = () => {
     const checkIn = new Date(formData.checkIn);
@@ -300,24 +309,94 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
         <div className="flex gap-6">
           {/* Left Side: Image Placeholder */}
           <div className="flex-shrink-0">
-            <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-gray-600"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+            <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden">
+              {reservationData.guestImageUrl ? (
+                <Image
+                  src={reservationData.guestImageUrl}
+                  alt="Guest Photo"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-gray-500">ID Image</p>
                 </div>
-                <p className="text-xs text-gray-500">ID Image</p>
-              </div>
+              )}
             </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2 w-32 mt-3">
+              <Button
+                type="button"
+                onClick={() => {
+                  // Placeholder for take photo functionality
+                  alert("Take Photo functionality would open camera");
+                }}
+                className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-700 text-white w-full text-xs py-2"
+              >
+                <CameraIcon className="h-3 w-3" />
+                TAKE PHOTO
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="flex items-center justify-center gap-2 w-full text-xs py-2"
+              >
+                <ArrowUpTrayIcon className="h-3 w-3" />
+                UPLOAD
+              </Button>
+
+              {/* Image Dimensions */}
+              {imageDimensions && (
+                <div className="flex items-center justify-center gap-1 text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <InformationCircleIcon className="h-3 w-3" />
+                  <span>
+                    {imageDimensions.width}x{imageDimensions.height}px
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Hidden File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    const img = new window.Image();
+                    img.onload = () => {
+                      setImageDimensions({
+                        width: img.width,
+                        height: img.height
+                      });
+                    };
+                    img.src = event.target?.result as string;
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="hidden"
+            />
           </div>
 
           {/* Right Side: Guest Details */}

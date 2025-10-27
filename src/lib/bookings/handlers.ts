@@ -27,6 +27,10 @@ export async function handleCreateBooking({
     checkOut: string;
     adults: number;
     children: number;
+    guestImageUrl?: string;
+    idDocumentUrl?: string;
+    idExpiryDate?: string;
+    idDocumentExpired?: boolean;
     payment?: {
       totalAmount: number;
       paymentMethod: string;

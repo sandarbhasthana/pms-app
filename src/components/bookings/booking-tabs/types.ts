@@ -80,6 +80,14 @@ export interface NewBookingSheetProps {
   setIdNumber: (v: string) => void;
   issuingCountry: string;
   setIssuingCountry: (v: string) => void;
+  guestImageUrl?: string;
+  setGuestImageUrl?: (v: string | undefined) => void;
+  idDocumentUrl?: string;
+  setIdDocumentUrl?: (v: string | undefined) => void;
+  idExpiryDate?: string;
+  setIdExpiryDate?: (v: string | undefined) => void;
+  idDocumentExpired?: boolean;
+  setIdDocumentExpired?: (v: boolean | undefined) => void;
   adults: number;
   setAdults: (v: number) => void;
   childrenCount: number;

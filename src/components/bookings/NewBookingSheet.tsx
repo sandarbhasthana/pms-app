@@ -39,6 +39,14 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   setIdNumber,
   issuingCountry,
   setIssuingCountry,
+  guestImageUrl,
+  setGuestImageUrl,
+  idDocumentUrl,
+  setIdDocumentUrl,
+  idExpiryDate,
+  setIdExpiryDate,
+  idDocumentExpired,
+  setIdDocumentExpired,
   adults,
   setAdults,
   childrenCount,
@@ -227,6 +235,10 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       idType,
       idNumber,
       issuingCountry,
+      guestImageUrl,
+      idDocumentUrl,
+      idExpiryDate,
+      idDocumentExpired,
       adults,
       childrenCount,
       checkIn: checkInDate,
@@ -239,6 +251,10 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     idType,
     idNumber,
     issuingCountry,
+    guestImageUrl,
+    idDocumentUrl,
+    idExpiryDate,
+    idDocumentExpired,
     adults,
     childrenCount,
     checkInDate,
@@ -258,6 +274,14 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
         if (updates.idNumber !== undefined) setIdNumber(updates.idNumber);
         if (updates.issuingCountry !== undefined)
           setIssuingCountry(updates.issuingCountry);
+        if (updates.guestImageUrl !== undefined)
+          setGuestImageUrl?.(updates.guestImageUrl);
+        if (updates.idDocumentUrl !== undefined)
+          setIdDocumentUrl?.(updates.idDocumentUrl);
+        if (updates.idExpiryDate !== undefined)
+          setIdExpiryDate?.(updates.idExpiryDate);
+        if (updates.idDocumentExpired !== undefined)
+          setIdDocumentExpired?.(updates.idDocumentExpired);
         if (updates.adults !== undefined) setAdults(updates.adults);
         if (updates.childrenCount !== undefined)
           setChildrenCount(updates.childrenCount);
@@ -270,6 +294,10 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       setIdType,
       setIdNumber,
       setIssuingCountry,
+      setGuestImageUrl,
+      setIdDocumentUrl,
+      setIdExpiryDate,
+      setIdDocumentExpired,
       setAdults,
       setChildrenCount
     ]
