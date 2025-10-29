@@ -487,9 +487,13 @@ export default function CalendarViewRowStyle({
           className={cn(
             args.date.toLocaleDateString("en-CA") === selectedDate &&
               "bg-purple-300",
-            isToday(args.date) && "bg-[#008080]",
             "px-2 py-1 text-sm"
           )}
+          style={
+            isToday(args.date)
+              ? { color: "#008080", fontWeight: "bold" }
+              : undefined
+          }
         >
           {args.date.toLocaleDateString(undefined, {
             weekday: "short",
@@ -533,16 +537,18 @@ export default function CalendarViewRowStyle({
           {info.resource.title}
         </span>
       )}
+      slotLaneClassNames={({ date }) => {
+        // Highlight today's lane with a subtle background
+        const isTodayLane = date && isToday(date);
+        return isTodayLane ? ["today-lane-highlight"] : [];
+      }}
       slotLabelClassNames={({ date }) => {
         const cls: string[] = [
           "bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
         ];
-        const dow = date.getDay();
-        // HighlightFriday's and Saturday's
-        if (dow === 5 || dow === 6) cls.push("bg-pink-100");
         if (date.toLocaleDateString("en-CA") === selectedDate)
           cls.push("bg-blue-100");
-        if (isToday(date)) cls.push("bg-[#008080]");
+        // Don't highlight weekends or today's column
         return cls;
       }}
       height="auto"

@@ -578,12 +578,12 @@ span.fc-scrollgrid-sync-inner {
 
 /* Weekend highlight styling - Friday & Saturday with yellow color */
 .weekend-highlight {
-  background-color: #fdeda5 !important; /* Light yellow for light mode (same as Sunday) */
+  background-color: #f7e386 !important; /* Light yellow for light mode */
 }
 
 /* Dark mode version */
 .dark .weekend-highlight {
-  background-color: #fde57f !important; /* Darker yellow for dark mode (same as Sunday) */
+  background-color: #f7e386 !important; /* Same yellow for dark mode */
 }
 
 /* Weekend highlight styling */
@@ -605,6 +605,25 @@ span.fc-scrollgrid-sync-inner {
 /* Dark mode version */
 .dark .today-highlight {
   background-color: #74d4ff !important; /* Same light sky blue for dark mode */
+}
+
+/* Today lane highlight - subtle background for the entire lane */
+.today-lane-highlight {
+  background-color: rgba(
+    116,
+    212,
+    255,
+    0.4
+  ) !important; /* #74d4ff with 40% opacity */
+}
+
+.dark .today-lane-highlight {
+  background-color: rgba(
+    116,
+    212,
+    255,
+    0.3
+  ) !important; /* #74d4ff with 30% opacity for dark mode */
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {

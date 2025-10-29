@@ -28,7 +28,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   calendarRef
 }) => {
   return (
-    <div className="flex items-center gap-4 mb-6" role="toolbar">
+    <div className="flex items-center gap-4" role="toolbar">
       <div className="flex items-center justify-center rounded-bl-sm rounded-tl-sm">
         <div className="bg-[#7210a2] dark:bg-[#8b4aff] flex items-center justify-center rounded-bl-sm rounded-tl-sm border-r border-purple-600">
           <button

@@ -71,12 +71,12 @@ export function ApprovalBell({ className }: ApprovalBellProps) {
         <Button
           variant="ghost"
           className={cn(
-            "relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-gray-700 transition-colors z-50",
+            "relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors z-50",
             className
           )}
           title="Approval Requests"
         >
-          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9]" />
+          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#ab2aea]" />
 
           {/* Badge for pending count */}
           {pendingCount > 0 && (

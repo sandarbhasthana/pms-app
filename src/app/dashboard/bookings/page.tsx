@@ -168,16 +168,6 @@ export default function BookingsRowStylePage() {
   const [country, setCountry] = useState<string>("");
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
-  // Stable today highlight using local timezone consistently
-  const todayDateString = useMemo(() => {
-    const now = new Date();
-    // Use local timezone instead of UTC
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`; // YYYY-MM-DD format in local timezone
-  }, []);
-
   const isToday = (date: Date) => {
     const now = new Date();
     return (
@@ -186,18 +176,6 @@ export default function BookingsRowStylePage() {
       date.getDate() === now.getDate()
     );
   };
-
-  // Use stable date for today highlight in local timezone
-  const startOfToday = useMemo(() => {
-    const [year, month, day] = todayDateString.split("-").map(Number);
-    return new Date(year, month - 1, day); // Local timezone
-  }, [todayDateString]);
-
-  const endOfToday = useMemo(() => {
-    const dt = new Date(startOfToday);
-    dt.setDate(dt.getDate() + 1);
-    return dt;
-  }, [startOfToday]);
 
   // Debounced refetch function to prevent rapid successive calls
   const debouncedRefetch = useCallback(() => {
@@ -286,21 +264,7 @@ export default function BookingsRowStylePage() {
           failure(e as Error);
         }
       },
-      // Static today highlight that doesn't cause re-renders
-      {
-        events: [
-          {
-            id: "todayHighlight",
-            start: startOfToday.toISOString(),
-            end: endOfToday.toISOString(),
-            display: "background" as const,
-            backgroundColor: "#f0f9ff", // very light sky blue (sky-50)
-            classNames: ["today-highlight"],
-            allDay: true,
-            overlap: false
-          }
-        ]
-      },
+
       (
         info: { start: Date; end: Date },
         success: (
@@ -346,7 +310,7 @@ export default function BookingsRowStylePage() {
         success(wknd);
       }
     ];
-  }, [startOfToday, endOfToday, isDarkMode]); // Include dependencies used in the memoized value
+  }, [isDarkMode]); // Only isDarkMode is used in the memoized value
 
   // ------------------------
   // Load rooms function (separated for reuse)
@@ -835,7 +799,7 @@ export default function BookingsRowStylePage() {
         }
 
         // Refresh the calendar to show updated status
-        await debouncedRefetch();
+        debouncedRefetch();
 
         toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
       } catch (error) {
@@ -1201,35 +1165,37 @@ export default function BookingsRowStylePage() {
 
   return (
     <div ref={containerRef} className="relative p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Booking Calendar</h1>
-        <button
-          type="button"
-          title="Refresh Calendar"
-          onClick={handleRefreshClick}
-          disabled={isRefetching}
-          className={`p-2 rounded-lg ${
-            isRefetching
-              ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
-              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-          }`}
-        >
-          <RefreshCw
-            className={`h-5 w-5 ${isRefetching ? "refresh-spinning" : ""}`}
+        <div className="flex items-center gap-4 h-[50px]">
+          {/* Refresh Button */}
+          <button
+            type="button"
+            title="Refresh Calendar"
+            onClick={handleRefreshClick}
+            disabled={isRefetching}
+            className={`p-2 rounded-lg transition-colors ${
+              isRefetching
+                ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
+                : "text-slate-600 dark:text-slate-300 hover:text-white hover:bg-[#7210a2] dark:hover:bg-[#8b4aff]"
+            }`}
+          >
+            <RefreshCw
+              className={`h-5 w-5 ${isRefetching ? "refresh-spinning" : ""}`}
+            />
+          </button>
+          {/* Toolbar - moved to right side */}
+          <CalendarToolbar
+            datePickerDate={datePickerDate}
+            setDatePickerDate={setDatePickerDate}
+            handlePrev={handlePrev}
+            handleNext={handleNext}
+            handleToday={handleToday}
+            setSelectedDate={setSelectedDate}
+            calendarRef={calendarRef}
           />
-        </button>
+        </div>
       </div>
-
-      {/* Toolbar */}
-      <CalendarToolbar
-        datePickerDate={datePickerDate}
-        setDatePickerDate={setDatePickerDate}
-        handlePrev={handlePrev}
-        handleNext={handleNext}
-        handleToday={handleToday}
-        setSelectedDate={setSelectedDate}
-        calendarRef={calendarRef}
-      />
 
       {/* FullCalendar with Row Style */}
       <CalendarViewRowStyle
