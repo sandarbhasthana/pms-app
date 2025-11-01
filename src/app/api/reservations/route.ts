@@ -15,6 +15,10 @@ import { logReservationCreated } from "@/lib/audit-log/reservation-audit";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { reservationsCache } from "@/lib/reservations/cache";
+import {
+  getOperationalDayStart,
+  getOperationalDayEnd
+} from "@/lib/timezone/day-boundaries";
 
 // Payment data types
 interface PaymentData {
@@ -365,11 +369,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get property details for organizationId (still needed for backward compatibility)
+    // Get property details for organizationId and timezone
     const property = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.property.findUnique({
         where: { id: propertyId },
-        select: { organizationId: true }
+        select: { organizationId: true, timezone: true }
       });
     });
 
@@ -377,9 +381,17 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Property not found", { status: 404 });
     }
 
-    // Check for room availability (basic overlap check)
+    // Check for room availability using operational day boundaries (6 AM start)
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
+
+    // Get operational day boundaries using property timezone
+    const timezone = property?.timezone || "UTC";
+    const operationalCheckInStart = getOperationalDayStart(
+      checkInDate,
+      timezone
+    );
+    const operationalCheckOutEnd = getOperationalDayEnd(checkOutDate, timezone);
 
     const conflictingReservations = await withPropertyContext(
       propertyId!,
@@ -401,20 +413,20 @@ export async function POST(req: NextRequest) {
             OR: [
               {
                 AND: [
-                  { checkIn: { lte: checkInDate } },
-                  { checkOut: { gt: checkInDate } }
+                  { checkIn: { lte: operationalCheckInStart } },
+                  { checkOut: { gt: operationalCheckInStart } }
                 ]
               },
               {
                 AND: [
-                  { checkIn: { lt: checkOutDate } },
-                  { checkOut: { gte: checkOutDate } }
+                  { checkIn: { lt: operationalCheckOutEnd } },
+                  { checkOut: { gte: operationalCheckOutEnd } }
                 ]
               },
               {
                 AND: [
-                  { checkIn: { gte: checkInDate } },
-                  { checkOut: { lte: checkOutDate } }
+                  { checkIn: { gte: operationalCheckInStart } },
+                  { checkOut: { lte: operationalCheckOutEnd } }
                 ]
               }
             ]

@@ -232,7 +232,9 @@ export function getStatusPriority(status: ReservationStatus): number {
     IN_HOUSE: 3,
     CHECKED_OUT: 4,
     NO_SHOW: 5,
-    CANCELLED: 6
+    CANCELLED: 6,
+    CHECKIN_DUE: 0,
+    CHECKOUT_DUE: 0
   };
 
   return priorities[status] || 999;

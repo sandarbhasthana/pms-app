@@ -65,8 +65,8 @@ export const cronSchedules: Record<string, CronSchedule> = {
   cleanup: {
     development: "*/10 * * * *", // Every 10 minutes
     testing: "0 */1 * * *", // Every hour
-    staging: "0 2 * * *", // Daily at 2 AM
-    production: "0 3 * * 0" // Weekly on Sunday at 3 AM
+    staging: "5 6,18 * * *", // Daily at 6:05 AM and 6:05 PM
+    production: "5 6,18 * * *" // Daily at 6:05 AM and 6:05 PM
   },
   "auto-checkin": {
     development: "*/5 * * * *", // Every 5 minutes

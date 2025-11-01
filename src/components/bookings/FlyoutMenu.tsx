@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { ReservationStatus } from "@prisma/client";
 import { StatusUpdateModal } from "@/components/reservation-status";
+import { getOperationalDate } from "@/lib/timezone/day-boundaries";
 
 //import { useSession } from "next-auth/react";
 
@@ -28,6 +29,7 @@ interface Reservation {
   notes?: string;
   roomNumber?: string;
   paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID";
+  propertyTimezone?: string; // Property timezone for operational day calculations
 }
 
 interface FlyoutState {
@@ -54,27 +56,44 @@ interface FlyoutMenuProps {
   ) => Promise<void>;
 }
 
-// Helper function to check if reservation is for today
-const isReservationToday = (checkInDate: string): boolean => {
+// Helper function to check if reservation is for today (using operational day boundaries)
+const isReservationToday = (
+  checkInDate: string,
+  checkOutDate: string,
+  timezone: string = "UTC"
+): boolean => {
   const today = new Date();
   const checkIn = new Date(checkInDate);
+  const checkOut = new Date(checkOutDate);
 
+  // Use operational date (6 AM boundary) instead of midnight
+  const todayOperationalDate = getOperationalDate(today, timezone);
+  const checkInOperationalDate = getOperationalDate(checkIn, timezone);
+  const checkOutOperationalDate = getOperationalDate(checkOut, timezone);
+
+  // Check if today falls within the reservation dates (inclusive)
   return (
-    today.getFullYear() === checkIn.getFullYear() &&
-    today.getMonth() === checkIn.getMonth() &&
-    today.getDate() === checkIn.getDate()
+    todayOperationalDate >= checkInOperationalDate &&
+    todayOperationalDate <= checkOutOperationalDate
   );
 };
 
-// Helper function to calculate days until check-in
-const getDaysUntilCheckIn = (checkInDate: string): number => {
+// Helper function to calculate days until check-in (using operational day boundaries)
+const getDaysUntilCheckIn = (
+  checkInDate: string,
+  timezone: string = "UTC"
+): number => {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const checkIn = new Date(checkInDate);
-  checkIn.setHours(0, 0, 0, 0);
 
-  const diffTime = checkIn.getTime() - today.getTime();
+  // Use operational dates (6 AM boundary) instead of midnight
+  const todayOperationalDate = getOperationalDate(today, timezone);
+  const checkInOperationalDate = getOperationalDate(checkIn, timezone);
+
+  const todayDate = new Date(todayOperationalDate);
+  const checkInDateOnly = new Date(checkInOperationalDate);
+
+  const diffTime = checkInDateOnly.getTime() - todayDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays;
@@ -112,14 +131,26 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
 }) => {
   //const { data: session } = useSession();
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (!flyout) return null;
 
-  // Determine if reservation is for today
-  const isToday = isReservationToday(flyout.reservation.checkIn);
+  // Get property timezone for operational day calculations
+  const timezone = flyout.reservation.propertyTimezone || "UTC";
 
-  // Calculate days until check-in
-  const daysUntilCheckIn = getDaysUntilCheckIn(flyout.reservation.checkIn);
+  // Determine if reservation is for today (using operational day boundaries)
+  const isToday = isReservationToday(
+    flyout.reservation.checkIn,
+    flyout.reservation.checkOut,
+    timezone
+  );
+
+  // Calculate days until check-in (using operational day boundaries)
+  const daysUntilCheckIn = getDaysUntilCheckIn(
+    flyout.reservation.checkIn,
+    timezone
+  );
 
   const handleViewDetails = async () => {
     try {
@@ -253,7 +284,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
           <li>
             <button
               type="button"
-              onClick={() => handleCheckOut(flyout.reservation.id)}
+              onClick={() => setShowCheckOutConfirm(true)}
               className="flex items-center w-full text-left px-4 py-2 font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
             >
               <CheckIcon className="h-4 w-4 mr-2" />
@@ -262,8 +293,8 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
           </li>
         )}
 
-        {/* Undo Booking (for IN_HOUSE) or Cancel Booking (for others) */}
-        {flyout.reservation.status === "IN_HOUSE" ? (
+        {/* Undo Booking (for TODAY's IN_HOUSE) or Cancel Booking (for others) */}
+        {isToday && flyout.reservation.status === "IN_HOUSE" ? (
           <li>
             <button
               type="button"
@@ -328,7 +359,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
           <li>
             <button
               type="button"
-              onClick={() => handleDelete(flyout.reservation.id)}
+              onClick={() => setShowCancelConfirm(true)}
               className="flyout-delete-btn group flex items-center w-full text-left px-4 py-2 font-semibold text-red-600 hover:bg-red-600 hover:text-white hover:rounded-b-xl transition-colors"
               style={{
                 border: "none !important",
@@ -361,6 +392,80 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
           currentUserRole="FRONT_DESK" // This should come from user session
           onStatusUpdate={handleStatusUpdate}
         />
+      )}
+
+      {/* Cancel Booking Confirmation Dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Confirm Cancellation
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to cancel the booking for{" "}
+              <span className="font-semibold">
+                {flyout.reservation.guestName}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDelete(flyout.reservation.id);
+                  setShowCancelConfirm(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors font-medium"
+              >
+                Cancel Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Check-Out Confirmation Dialog */}
+      {showCheckOutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Confirm Check-Out
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to check out{" "}
+              <span className="font-semibold">
+                {flyout.reservation.guestName}
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCheckOutConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleCheckOut(flyout.reservation.id);
+                  setShowCheckOutConfirm(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+              >
+                Check-Out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

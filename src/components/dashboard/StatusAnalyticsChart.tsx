@@ -33,7 +33,9 @@ interface StatusAnalyticsData {
     date: string;
     [ReservationStatus.CONFIRMATION_PENDING]: number;
     [ReservationStatus.CONFIRMED]: number;
+    [ReservationStatus.CHECKIN_DUE]: number;
     [ReservationStatus.IN_HOUSE]: number;
+    [ReservationStatus.CHECKOUT_DUE]: number;
     [ReservationStatus.CHECKED_OUT]: number;
     [ReservationStatus.NO_SHOW]: number;
     [ReservationStatus.CANCELLED]: number;
@@ -64,7 +66,9 @@ interface StatusAnalyticsChartProps {
 const STATUS_COLORS = {
   [ReservationStatus.CONFIRMATION_PENDING]: "#ec4899", // pink
   [ReservationStatus.CONFIRMED]: "#6c956e", // green
+  [ReservationStatus.CHECKIN_DUE]: "#0ea5e9", // sky blue
   [ReservationStatus.IN_HOUSE]: "#22c55e", // green
+  [ReservationStatus.CHECKOUT_DUE]: "#f59e0b", // amber
   [ReservationStatus.CHECKED_OUT]: "#8b5cf6", // purple
   [ReservationStatus.NO_SHOW]: "#f97316", // orange
   [ReservationStatus.CANCELLED]: "#6b7280" // gray

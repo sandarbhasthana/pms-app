@@ -6,7 +6,12 @@
 
 import { reservationAutomationQueue, getCronSchedule } from "./queues";
 import { prisma } from "@/lib/prisma";
-import { NoShowDetectionJobData } from "./types";
+import {
+  NoShowDetectionJobData,
+  LateCheckoutDetectionJobData,
+  CleanupJobData,
+  AutoCheckinJobData
+} from "./types";
 
 // Note: QueueScheduler is deprecated in BullMQ v5+
 // Recurring jobs are now handled directly by the Queue instance
@@ -67,9 +72,39 @@ export const schedulePropertyJobs = async (propertyId: string) => {
       }
     );
 
-    // TODO: Schedule other job types
-    // await scheduleLatecheckoutJobs(propertyId);
-    // await scheduleAutoCheckinJobs(propertyId);
+    // Schedule late checkout detection job
+    await reservationAutomationQueue.add(
+      `late-checkout-detection-${propertyId}`,
+      {
+        jobType: "late-checkout-detection",
+        propertyId,
+        timestamp: new Date()
+      } as LateCheckoutDetectionJobData,
+      {
+        repeat: {
+          pattern: getCronSchedule("late-checkout-detection")
+        },
+        jobId: `late-checkout-${propertyId}` // Unique ID to prevent duplicates
+      }
+    );
+
+    // Schedule cleanup job (handles CHECKOUT_DUE transitions and stale reservations)
+    await reservationAutomationQueue.add(
+      `cleanup-${propertyId}`,
+      {
+        jobType: "cleanup",
+        propertyId,
+        cleanupType: "stale-reservations", // Focus on stale reservation cleanup
+        dryRun: false,
+        timestamp: new Date()
+      } as CleanupJobData,
+      {
+        repeat: {
+          pattern: getCronSchedule("cleanup")
+        },
+        jobId: `cleanup-${propertyId}` // Unique ID to prevent duplicates
+      }
+    );
 
     console.log(`✅ Jobs scheduled for property: ${propertyId}`);
   } catch (error) {
@@ -140,20 +175,35 @@ export const getScheduledJobsStatus = async () => {
  * Manually trigger a job for testing
  */
 export const triggerManualJob = async (
-  jobType: "no-show-detection" | "late-checkout-detection" | "auto-checkin",
+  jobType:
+    | "no-show-detection"
+    | "late-checkout-detection"
+    | "auto-checkin"
+    | "cleanup",
   propertyId: string,
-  options: { dryRun?: boolean } = {}
+  options: { dryRun?: boolean; cleanupType?: string } = {}
 ) => {
   console.log(`🔧 Manually triggering ${jobType} for property: ${propertyId}`);
 
   try {
-    const jobData = {
+    const jobData:
+      | NoShowDetectionJobData
+      | LateCheckoutDetectionJobData
+      | AutoCheckinJobData
+      | CleanupJobData = {
       jobType,
       propertyId,
       timestamp: new Date(),
       dryRun: options.dryRun || false,
-      triggeredBy: "manual-trigger"
-    };
+      triggeredBy: "manual-trigger",
+      ...(jobType === "cleanup" && {
+        cleanupType: options.cleanupType || "stale-reservations"
+      })
+    } as
+      | NoShowDetectionJobData
+      | LateCheckoutDetectionJobData
+      | AutoCheckinJobData
+      | CleanupJobData;
 
     const job = await reservationAutomationQueue.add(
       `manual-${jobType}-${propertyId}`,

@@ -9,6 +9,10 @@ import { prisma } from "@/lib/prisma";
 import { BaseJobProcessor } from "./base-processor";
 import { NoShowDetectionJobData, JobResult } from "../types";
 import { ReservationStatus } from "@prisma/client";
+import {
+  getOperationalDayStart,
+  getOperationalDate
+} from "@/lib/timezone/day-boundaries";
 
 // Types for no-show detection
 interface PropertyAutomationSettings {
@@ -16,6 +20,7 @@ interface PropertyAutomationSettings {
   noShowGraceHours: number;
   enableNoShowDetection: boolean;
   notifyOnNoShow: boolean;
+  noShowLookbackDays: number;
 }
 
 interface NoShowCandidate {
@@ -85,8 +90,11 @@ export class NoShowProcessor extends BaseJobProcessor {
 
       const effectiveGraceHours = graceHours || settings.noShowGraceHours;
 
-      // Enhanced no-show detection logic
+      // Step 1: Handle CHECKIN_DUE transitions (CONFIRMED → CHECKIN_DUE at 6 AM on check-in day)
       const now = new Date();
+      await this.handleCheckInDueTransitions(propertyId, settings, now, dryRun);
+
+      // Step 2: Enhanced no-show detection logic (CHECKIN_DUE → NO_SHOW after grace period)
       const results = await this.detectNoShowReservations(
         propertyId,
         settings,
@@ -136,6 +144,95 @@ export class NoShowProcessor extends BaseJobProcessor {
   }
 
   /**
+   * Handle CHECKIN_DUE transitions for today's check-ins
+   * CONFIRMED → CHECKIN_DUE at 6 AM on check-in day
+   */
+  private async handleCheckInDueTransitions(
+    propertyId: string,
+    settings: PropertyAutomationSettings,
+    currentTime: Date,
+    dryRun: boolean
+  ): Promise<void> {
+    // Get property timezone
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { timezone: true }
+    });
+    const timezone = property?.timezone || "UTC";
+
+    // Get today's operational date (6 AM boundary)
+    const todayOperationalDate = getOperationalDate(currentTime, timezone);
+    const todayAt6AM = getOperationalDayStart(
+      new Date(todayOperationalDate),
+      timezone
+    );
+
+    // Only proceed if we've passed 6 AM today
+    if (currentTime < todayAt6AM) {
+      return;
+    }
+
+    // Find CONFIRMED reservations with check-in date = today (operational date)
+    const confirmedReservations = await prisma.reservation.findMany({
+      where: {
+        propertyId,
+        status: ReservationStatus.CONFIRMED,
+        deletedAt: null,
+        checkIn: {
+          gte: todayAt6AM,
+          lt: new Date(todayAt6AM.getTime() + 24 * 60 * 60 * 1000)
+        },
+        // Exclude reservations with automation disabled
+        NOT: [
+          {
+            statusChangeReason: {
+              contains: "automation-disabled"
+            }
+          },
+          {
+            statusChangeReason: {
+              contains: "manual-override"
+            }
+          }
+        ]
+      },
+      select: {
+        id: true,
+        propertyId: true,
+        guestName: true,
+        checkIn: true
+      }
+    });
+
+    // Transition each reservation to CHECKIN_DUE
+    for (const reservation of confirmedReservations) {
+      try {
+        if (dryRun) {
+          console.log(
+            `[DRY RUN] Would mark reservation ${reservation.id} (${reservation.guestName}) as CHECKIN_DUE`
+          );
+        } else {
+          await this.updateReservationStatus(
+            reservation.id,
+            reservation.propertyId,
+            ReservationStatus.CHECKIN_DUE,
+            `Auto-marked as check-in due: Operational day started at ${todayAt6AM.toISOString()}`,
+            {}
+          );
+          console.log(
+            `Marked reservation ${reservation.id} (${reservation.guestName}) as CHECKIN_DUE`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `Failed to mark reservation ${reservation.id} as CHECKIN_DUE:`,
+          error
+        );
+      }
+    }
+  }
+
+  /**
    * Enhanced no-show detection with comprehensive business rules
    */
   private async detectNoShowReservations(
@@ -166,7 +263,8 @@ export class NoShowProcessor extends BaseJobProcessor {
 
     // Production no-show detection logic
     // Look for reservations that should have checked in but haven't
-    const maxLookbackDays = 3; // Industry standard: check last 3 days for no-shows
+    // Use configurable lookback days from property settings
+    const maxLookbackDays = settings.noShowLookbackDays;
     const lookbackDate = new Date(
       today.getTime() - maxLookbackDays * 24 * 60 * 60 * 1000
     );
@@ -174,7 +272,9 @@ export class NoShowProcessor extends BaseJobProcessor {
     const candidateReservations = await prisma.reservation.findMany({
       where: {
         propertyId,
-        status: ReservationStatus.CONFIRMED,
+        status: {
+          in: [ReservationStatus.CONFIRMED, ReservationStatus.CHECKIN_DUE]
+        },
         // Exclude soft-deleted reservations
         deletedAt: null,
         checkIn: {
@@ -216,16 +316,25 @@ export class NoShowProcessor extends BaseJobProcessor {
     });
 
     // Filter reservations that are actually overdue with production business rules
+    // Get property timezone for operational day calculations
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { timezone: true }
+    });
+    const timezone = property?.timezone || "UTC";
+
     const overdueReservations = candidateReservations.filter((reservation) => {
       const reservationCheckIn = new Date(reservation.checkIn);
-      const reservationDate = new Date(
-        reservationCheckIn.getFullYear(),
-        reservationCheckIn.getMonth(),
-        reservationCheckIn.getDate()
+
+      // Use operational date (6 AM boundary) instead of midnight
+      const operationalDate = getOperationalDate(reservationCheckIn, timezone);
+      const operationalDayStart = getOperationalDayStart(
+        new Date(operationalDate),
+        timezone
       );
 
       // Calculate cutoff time for this specific reservation
-      const reservationCheckInTime = new Date(reservationDate);
+      const reservationCheckInTime = new Date(operationalDayStart);
       reservationCheckInTime.setHours(checkInHour, checkInMinute, 0, 0);
 
       const reservationCutoffTime = new Date(
@@ -234,7 +343,13 @@ export class NoShowProcessor extends BaseJobProcessor {
 
       // Production business rules for no-show detection
       const isOverdue = currentTime >= reservationCutoffTime;
-      const isNotSameDay = reservationDate.getTime() < today.getTime(); // Not today's reservation
+
+      // Get operational date for today
+      const todayOperationalDate = getOperationalDate(today, timezone);
+
+      // Check if check-in is not on today's operational day
+      const isNotSameDay =
+        new Date(operationalDate) < new Date(todayOperationalDate);
       const hasMinimumPayment = (reservation.amountCaptured || 0) > 0; // Has some payment
 
       // Only mark as no-show if:

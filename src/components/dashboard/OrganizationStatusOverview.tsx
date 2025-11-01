@@ -189,7 +189,9 @@ export default function OrganizationStatusOverview({
     const totalCounts = {
       [ReservationStatus.CONFIRMATION_PENDING]: 0,
       [ReservationStatus.CONFIRMED]: 0,
+      [ReservationStatus.CHECKIN_DUE]: 0,
       [ReservationStatus.IN_HOUSE]: 0,
+      [ReservationStatus.CHECKOUT_DUE]: 0,
       [ReservationStatus.CHECKED_OUT]: 0,
       [ReservationStatus.NO_SHOW]: 0,
       [ReservationStatus.CANCELLED]: 0

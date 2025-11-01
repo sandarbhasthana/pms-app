@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { BaseJobProcessor } from "./base-processor";
 import { LateCheckoutDetectionJobData, JobResult } from "../types";
 import { ReservationStatus } from "@prisma/client";
+import {
+  getOperationalDayStart,
+  getOperationalDate
+} from "@/lib/timezone/day-boundaries";
 
 // Types for late checkout detection
 interface PropertyAutomationSettings {
@@ -10,6 +14,9 @@ interface PropertyAutomationSettings {
   lateCheckoutGraceHours: number;
   enableLateCheckoutDetection: boolean;
   notifyOnLateCheckout: boolean;
+  lateCheckoutLookbackDays: number;
+  lateCheckoutFee: number;
+  lateCheckoutFeeType: string;
 }
 
 interface LateCheckoutCandidate {
@@ -99,7 +106,8 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
       const result = await this.processLateCheckoutReservations(
         results.reservations,
         effectiveGraceHours,
-        dryRun
+        dryRun,
+        settings
       );
 
       // Add summary notification
@@ -154,7 +162,8 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
 
     // Production late checkout detection logic
     // Look for reservations that should have checked out but haven't
-    const maxLookbackDays = 2; // Check last 2 days for late checkouts
+    // Use configurable lookback days from property settings
+    const maxLookbackDays = settings.lateCheckoutLookbackDays;
     const lookbackDate = new Date(
       today.getTime() - maxLookbackDays * 24 * 60 * 60 * 1000
     );
@@ -203,16 +212,25 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
     });
 
     // Filter reservations that are actually overdue with production business rules
+    // Get property timezone for operational day calculations
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { timezone: true }
+    });
+    const timezone = property?.timezone || "UTC";
+
     const overdueReservations = candidateReservations.filter((reservation) => {
       const reservationCheckOut = new Date(reservation.checkOut);
-      const reservationDate = new Date(
-        reservationCheckOut.getFullYear(),
-        reservationCheckOut.getMonth(),
-        reservationCheckOut.getDate()
+
+      // Use operational date (6 AM boundary) instead of midnight
+      const operationalDate = getOperationalDate(reservationCheckOut, timezone);
+      const operationalDayStart = getOperationalDayStart(
+        new Date(operationalDate),
+        timezone
       );
 
       // Calculate cutoff time for this specific reservation
-      const reservationCheckOutTime = new Date(reservationDate);
+      const reservationCheckOutTime = new Date(operationalDayStart);
       reservationCheckOutTime.setHours(checkOutHour, checkOutMinute, 0, 0);
 
       const reservationCutoffTime = new Date(
@@ -221,7 +239,13 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
 
       // Production business rules for late checkout detection
       const isOverdue = currentTime >= reservationCutoffTime;
-      const isCheckoutDay = reservationDate.getTime() <= today.getTime(); // Checkout day or earlier
+
+      // Get operational date for today
+      const todayOperationalDate = getOperationalDate(today, timezone);
+
+      // Check if checkout is on today's operational day or earlier
+      const isCheckoutDay =
+        new Date(operationalDate) <= new Date(todayOperationalDate);
 
       // Only mark as late checkout if:
       // 1. Past the cutoff time AND
@@ -243,7 +267,8 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
   private async processLateCheckoutReservations(
     reservations: LateCheckoutCandidate[],
     graceHours: number,
-    dryRun: boolean
+    dryRun: boolean,
+    settings: PropertyAutomationSettings
   ): Promise<JobResult> {
     const result: JobResult = {
       success: true,
@@ -280,7 +305,8 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
           await this.handleLateCheckoutBusinessLogic(
             reservation,
             graceHours,
-            reason
+            reason,
+            settings
           );
         }
 
@@ -303,23 +329,40 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
   private async handleLateCheckoutBusinessLogic(
     reservation: LateCheckoutCandidate,
     graceHours: number,
-    reason: string
+    reason: string,
+    settings: PropertyAutomationSettings
   ): Promise<void> {
     try {
       console.log(`🚨 Processing late checkout business logic: ${reason}`);
 
       // 1. Late checkout fee calculation and billing
-      const lateCheckoutFee = this.calculateLateCheckoutFee(
+      const lateCheckoutFee = await this.calculateLateCheckoutFee(
         reservation,
-        graceHours
+        graceHours,
+        settings
       );
       if (lateCheckoutFee > 0) {
         console.log(
-          `💰 Applying late checkout fee: $${lateCheckoutFee / 100} for ${
-            reservation.guestName
-          } - ${reason}`
+          `💰 Applying late checkout fee: $${lateCheckoutFee} for ${reservation.guestName} - ${reason}`
         );
-        // Implementation: Add late checkout fee to guest bill
+
+        // Add late checkout fee to reservation as a pending payment
+        await prisma.payment.create({
+          data: {
+            reservationId: reservation.id,
+            type: "LATE_CHECKOUT_FEE",
+            method: "PENDING",
+            status: "PENDING",
+            amount: lateCheckoutFee,
+            currency: "USD",
+            description: `Late Checkout Fee - ${reason}`,
+            notes: `Automatically added by system. Fee type: ${settings.lateCheckoutFeeType}`
+          }
+        });
+
+        console.log(
+          `✅ Late checkout fee of $${lateCheckoutFee} added to reservation ${reservation.id}`
+        );
       }
 
       // 2. Housekeeping notification - room needs priority cleaning
@@ -363,13 +406,15 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
   /**
    * Calculate late checkout fee based on property settings and duration
    */
-  private calculateLateCheckoutFee(
+  private async calculateLateCheckoutFee(
     reservation: LateCheckoutCandidate,
-    graceHours: number
-  ): number {
-    // This would typically be configured per property
-    const baseLateFee = 5000; // $50.00 base fee
-    const hourlyRate = 2000; // $20.00 per hour
+    graceHours: number,
+    settings: PropertyAutomationSettings
+  ): Promise<number> {
+    // If no fee configured, return 0
+    if (!settings.lateCheckoutFee || settings.lateCheckoutFee === 0) {
+      return 0;
+    }
 
     // Calculate hours over grace period
     const now = new Date();
@@ -385,8 +430,38 @@ export class LateCheckoutProcessor extends BaseJobProcessor {
     const overageHours = Math.ceil(
       (now.getTime() - graceEndTime.getTime()) / (60 * 60 * 1000)
     );
-    const totalFee = baseLateFee + hourlyRate * overageHours;
 
-    return totalFee;
+    let totalFee = 0;
+
+    // Calculate fee based on fee type
+    switch (settings.lateCheckoutFeeType) {
+      case "FLAT_RATE":
+        // One-time flat fee regardless of duration
+        totalFee = Number(settings.lateCheckoutFee);
+        break;
+
+      case "HOURLY":
+        // Fee per hour over grace period
+        totalFee = Number(settings.lateCheckoutFee) * overageHours;
+        break;
+
+      case "PERCENTAGE_OF_ROOM_RATE":
+      case "PERCENTAGE_OF_TOTAL_BILL":
+        // TODO: Implement percentage-based fees when room rate tracking is added
+        // For now, fall back to flat rate
+        console.warn(
+          `Percentage-based fee type ${settings.lateCheckoutFeeType} not yet implemented. Using flat rate instead.`
+        );
+        totalFee = Number(settings.lateCheckoutFee);
+        break;
+
+      default:
+        console.warn(
+          `Unknown late checkout fee type: ${settings.lateCheckoutFeeType}`
+        );
+        totalFee = 0;
+    }
+
+    return Math.round(totalFee * 100) / 100; // Round to 2 decimal places
   }
 }

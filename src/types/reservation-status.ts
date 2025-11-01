@@ -51,7 +51,9 @@ export interface StatusConfig {
  * Color scheme:
  * - Confirmation Pending: Pink (#ec4899) - Light: bg-pink-100 text-gray-900, Dark: bg-pink-900 text-alice-blue
  * - Confirmed: Green (#6c956e) - Light: bg-[#6c956e] text-white, Dark: bg-[#3b513b] text-alice-blue
+ * - Check-in Due: Sky Blue (#0ea5e9) - Light: bg-sky-100 text-gray-900, Dark: bg-sky-900 text-alice-blue
  * - In-House: Green (#22c55e) - Light: bg-green-100 text-gray-900, Dark: bg-green-900 text-alice-blue
+ * - Checkout Due: Amber (#f59e0b) - Light: bg-amber-100 text-gray-900, Dark: bg-amber-900 text-alice-blue
  * - Checked Out: Purple (#8b5cf6) - Light: bg-purple-100 text-gray-900, Dark: bg-purple-900 text-alice-blue
  * - No-Show: Orange (#f97316) - Light: bg-orange-100 text-gray-900, Dark: bg-orange-900 text-alice-blue
  * - Cancelled: Gray (#6b7280) - Light: bg-gray-100 text-gray-900, Dark: bg-gray-800 text-alice-blue
@@ -73,6 +75,14 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
     label: "Confirmed",
     description: "Payment received"
   },
+  CHECKIN_DUE: {
+    color: "#0ea5e9",
+    bgColor: "bg-sky-100 dark:bg-sky-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    icon: "calendar-check",
+    label: "Check-in Due",
+    description: "Check-in expected today"
+  },
   IN_HOUSE: {
     color: "#22c55e",
     bgColor: "bg-green-100 dark:bg-green-900",
@@ -80,6 +90,14 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
     icon: "home",
     label: "In-House",
     description: "Guest checked in"
+  },
+  CHECKOUT_DUE: {
+    color: "#f59e0b",
+    bgColor: "bg-amber-100 dark:bg-amber-900",
+    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    icon: "clock",
+    label: "Checkout Due",
+    description: "Checkout time approaching"
   },
   CHECKED_OUT: {
     color: "#8b5cf6",
@@ -115,8 +133,10 @@ export const ALLOWED_TRANSITIONS: Record<
   ReservationStatus[]
 > = {
   CONFIRMATION_PENDING: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["IN_HOUSE", "NO_SHOW", "CANCELLED"],
-  IN_HOUSE: ["CHECKED_OUT"],
+  CONFIRMED: ["CHECKIN_DUE", "IN_HOUSE", "NO_SHOW", "CANCELLED"],
+  CHECKIN_DUE: ["IN_HOUSE", "NO_SHOW", "CANCELLED"],
+  IN_HOUSE: ["CHECKOUT_DUE", "CHECKED_OUT"],
+  CHECKOUT_DUE: ["CHECKED_OUT", "IN_HOUSE"], // Can go back to IN_HOUSE if guest needs more time
   CHECKED_OUT: [], // Final state
   NO_SHOW: ["CONFIRMED"], // Recovery option
   CANCELLED: ["CONFIRMED"] // Reactivation option

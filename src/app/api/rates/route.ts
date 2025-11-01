@@ -10,6 +10,10 @@ import { addDays, format, isWeekend } from "date-fns";
 import { PropertyRole } from "@prisma/client";
 import { PricingIntegrationService } from "@/lib/business-rules/pricing-integration";
 import { prisma } from "@/lib/prisma";
+import {
+  getOperationalDayStart,
+  getOperationalDayEnd
+} from "@/lib/timezone/day-boundaries";
 
 // Type definitions for API responses
 interface RateData {
@@ -103,13 +107,21 @@ export async function GET(req: NextRequest) {
 
     // Fetch data within property context
     const ratesData = await withPropertyContext(propertyId!, async (tx) => {
-      // 1. Get property to check if business rules are enabled
+      // 1. Get property to check if business rules are enabled and get timezone
       const property = await tx.property.findUnique({
-        where: { id: propertyId! }
+        where: { id: propertyId! },
+        select: {
+          businessRulesEnabled: true,
+          timezone: true
+        }
       });
 
       const businessRulesEnabled = property?.businessRulesEnabled && applyRules;
+      const timezone = property?.timezone || "UTC";
 
+      // Convert date range to operational day boundaries (6 AM local time)
+      const operationalStartDate = getOperationalDayStart(startDate, timezone);
+      const operationalEndDate = getOperationalDayEnd(endDate, timezone);
       // 3. Get all room types with their rooms and base pricing
       const roomTypes = await tx.roomType.findMany({
         where: { propertyId: propertyId },
@@ -122,16 +134,16 @@ export async function GET(req: NextRequest) {
           dailyRates: {
             where: {
               date: {
-                gte: startDate,
-                lte: endDate
+                gte: operationalStartDate,
+                lte: operationalEndDate
               }
             }
           },
           seasonalRates: {
             where: {
               isActive: true,
-              startDate: { lte: endDate },
-              endDate: { gte: startDate }
+              startDate: { lte: operationalEndDate },
+              endDate: { gte: operationalStartDate }
             }
           }
         },

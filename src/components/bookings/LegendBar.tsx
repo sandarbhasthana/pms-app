@@ -38,10 +38,22 @@ export default function LegendBar() {
       darkColor: "#3b513b"
     },
     {
+      label: "Check-in Due",
+      description: "Check-in expected today",
+      lightColor: "#0ea5e9",
+      darkColor: "#0284c7"
+    },
+    {
       label: "In-House",
       description: "Guest checked in",
       lightColor: "#22c55e",
       darkColor: "#10b981"
+    },
+    {
+      label: "Checkout Due",
+      description: "Checkout time approaching",
+      lightColor: "#f59e0b",
+      darkColor: "#d97706"
     },
     {
       label: "Checked Out",

@@ -98,7 +98,18 @@ export abstract class BaseJobProcessor {
         // Notification settings
         notifyOnNoShow: settings?.notifyOnNoShow ?? true,
         notifyOnLateCheckout: settings?.notifyOnLateCheckout ?? true,
-        notifyOnAutomationFailure: settings?.notifyOnAutomationFailure ?? true
+        notifyOnAutomationFailure: settings?.notifyOnAutomationFailure ?? true,
+
+        // New automation settings
+        noShowLookbackDays: settings?.noShowLookbackDays || 3,
+        lateCheckoutLookbackDays: settings?.lateCheckoutLookbackDays || 2,
+        lateCheckoutFee: settings?.lateCheckoutFee
+          ? Number(settings.lateCheckoutFee)
+          : 0,
+        lateCheckoutFeeType: settings?.lateCheckoutFeeType || "FLAT_RATE",
+        confirmationPendingTimeoutHours:
+          settings?.confirmationPendingTimeoutHours || 6,
+        auditLogRetentionDays: settings?.auditLogRetentionDays || 90
       };
     } catch (error) {
       console.error(
@@ -118,7 +129,7 @@ export abstract class BaseJobProcessor {
     previousStatus: ReservationStatus | null,
     newStatus: ReservationStatus,
     reason: string,
-    changedBy: string = "system-automation"
+    changedBy: string | null = null // Default to null for system automation
   ) {
     try {
       await prisma.reservationStatusHistory.create({
@@ -127,7 +138,7 @@ export abstract class BaseJobProcessor {
           propertyId,
           previousStatus,
           newStatus,
-          changedBy,
+          changedBy, // Will be null for system automation
           changeReason: reason,
           changedAt: new Date(),
           isAutomatic: true
@@ -166,7 +177,7 @@ export abstract class BaseJobProcessor {
         data: {
           status: newStatus,
           statusUpdatedAt: new Date(),
-          statusUpdatedBy: "system-automation",
+          statusUpdatedBy: null, // System automation - no specific user
           statusChangeReason: reason,
           ...additionalData
         }
@@ -179,7 +190,7 @@ export abstract class BaseJobProcessor {
           propertyId,
           previousStatus: currentReservation.status,
           newStatus: newStatus,
-          changedBy: "system-automation",
+          changedBy: null, // System automation - no specific user
           changeReason: reason,
           changedAt: new Date(),
           isAutomatic: true

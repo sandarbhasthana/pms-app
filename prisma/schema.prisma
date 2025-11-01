@@ -463,20 +463,27 @@ model PropertySettings {
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
   propertyId                  String?   @unique
-  autoConfirmThreshold        Int       @default(50)
-  checkInTime                 String    @default("15:00")
-  checkOutTime                String    @default("11:00")
-  enableAutoCheckin           Boolean   @default(true)
-  enableAutoConfirmation      Boolean   @default(true)
-  enableLateCheckoutDetection Boolean   @default(true)
-  enableNoShowDetection       Boolean   @default(true)
-  lateCheckoutGraceHours      Int       @default(1)
-  noShowGraceHours            Int       @default(6)
-  notifyOnAutomationFailure   Boolean   @default(true)
-  notifyOnLateCheckout        Boolean   @default(true)
-  notifyOnNoShow              Boolean   @default(true)
-  sameDayPaymentRequired      Int       @default(100)
-  property                    Property? @relation(fields: [propertyId], references: [id])
+  autoConfirmThreshold        Int                   @default(50)
+  checkInTime                 String                @default("15:00")
+  checkOutTime                String                @default("11:00")
+  enableAutoCheckin           Boolean               @default(true)
+  enableAutoConfirmation      Boolean               @default(true)
+  enableLateCheckoutDetection Boolean               @default(true)
+  enableNoShowDetection       Boolean               @default(true)
+  lateCheckoutGraceHours      Int                   @default(1)
+  noShowGraceHours            Int                   @default(6)
+  notifyOnAutomationFailure   Boolean               @default(true)
+  notifyOnLateCheckout        Boolean               @default(true)
+  notifyOnNoShow              Boolean               @default(true)
+  sameDayPaymentRequired      Int                   @default(100)
+  // New automation settings
+  noShowLookbackDays          Int                   @default(3)
+  lateCheckoutLookbackDays    Int                   @default(2)
+  lateCheckoutFee             Decimal               @default(0) @db.Decimal(10, 2)
+  lateCheckoutFeeType         LateCheckoutFeeType   @default(FLAT_RATE)
+  confirmationPendingTimeoutHours Int               @default(6)
+  auditLogRetentionDays       Int                   @default(90)
+  property                    Property?             @relation(fields: [propertyId], references: [id])
 
   @@index([orgId])
   @@index([propertyId])
@@ -1231,10 +1238,19 @@ enum ReservationSource {
 enum ReservationStatus {
   CONFIRMATION_PENDING
   CONFIRMED
+  CHECKIN_DUE
   IN_HOUSE
+  CHECKOUT_DUE
   CHECKED_OUT
   NO_SHOW
   CANCELLED
+}
+
+enum LateCheckoutFeeType {
+  FLAT_RATE
+  HOURLY
+  PERCENTAGE_OF_ROOM_RATE
+  PERCENTAGE_OF_TOTAL_BILL
 }
 
 enum ChannelType {

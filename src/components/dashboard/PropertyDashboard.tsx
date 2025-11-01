@@ -457,15 +457,17 @@ export function PropertyDashboard() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {(() => {
                         // Try to use new separate fields first
-                        const newFormatAddress = [
+                        const addressFields = [
                           propertyInfo.suite,
                           propertyInfo.street,
                           propertyInfo.city,
                           propertyInfo.state,
                           propertyInfo.zipCode,
                           propertyInfo.country
-                        ]
-                          .filter(Boolean)
+                        ];
+
+                        const newFormatAddress = addressFields
+                          .filter((field) => field && field.trim() !== "") // Filter out null, undefined, and empty strings
                           .join(", ");
 
                         // Fall back to legacy address field if new fields are empty

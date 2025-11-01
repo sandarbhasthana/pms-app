@@ -104,7 +104,9 @@ export async function GET(req: NextRequest) {
       // Parse reservation counts from groupBy result
       const statusCounts = {
         CONFIRMED: 0,
+        CHECKIN_DUE: 0,
         IN_HOUSE: 0,
+        CHECKOUT_DUE: 0,
         CHECKED_OUT: 0,
         CONFIRMATION_PENDING: 0,
         CANCELLED: 0,
@@ -133,7 +135,7 @@ export async function GET(req: NextRequest) {
             lt: endOfToday
           },
           status: {
-            in: ["CONFIRMED", "IN_HOUSE"]
+            in: ["CONFIRMED", "CHECKIN_DUE", "IN_HOUSE"]
           }
         }
       });

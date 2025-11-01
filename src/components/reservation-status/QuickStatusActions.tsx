@@ -58,6 +58,13 @@ const QUICK_ACTIONS = {
     variant: "default" as const,
     className: "text-green-600 hover:text-green-700"
   },
+  CHECKOUT_DUE: {
+    icon: ClockIcon,
+    label: "Checkout Due",
+    reason: "Checkout time approaching",
+    variant: "default" as const,
+    className: "text-amber-600 hover:text-amber-700"
+  },
   CHECKED_OUT: {
     icon: ArrowRightEndOnRectangleIcon,
     label: "Check Out",

@@ -23,6 +23,9 @@ export interface EditReservationData {
   adults: number;
   children: number;
 
+  // Timezone for operational day calculations
+  propertyTimezone?: string; // IANA timezone (e.g., "America/New_York")
+
   // Status & metadata
   status?: string;
   paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID";

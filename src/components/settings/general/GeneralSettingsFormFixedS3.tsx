@@ -556,8 +556,6 @@ export default function GeneralSettingsFormFixed({
 
       // 4. Update Property table if in property mode (sync core property data)
       if (finalPropertyId) {
-        console.log("🔄 Syncing property data to Property table...");
-
         const propertyUpdateData = {
           name: data.propertyName,
           phone: data.propertyPhone,
@@ -586,8 +584,6 @@ export default function GeneralSettingsFormFixed({
             `Failed to update property: ${error.error || "Unknown error"}`
           );
         }
-
-        console.log("✅ Property table updated successfully");
       }
 
       // 5. Create/update settings
@@ -663,11 +659,20 @@ export default function GeneralSettingsFormFixed({
       localStorage.removeItem(STORAGE_KEY);
       mutate(); // SWR revalidation
 
+      // Force a full page reload to refresh all property data including dashboard header
+      // This ensures the updated address and other property details are reflected everywhere
+      if (typeof window !== "undefined" && !isPropertyMode) {
+        // Only reload if not in property mode (property mode redirects anyway)
+        setTimeout(() => {
+          window.location.href = window.location.href; // Force full reload
+        }, 1500); // Longer delay to show success message
+      }
+
       // If in property mode, redirect back to property list
       if (isPropertyMode && onCancel) {
         setTimeout(() => {
           onCancel();
-        }, 1000); // Small delay to show success message
+        }, 1500); // Longer delay to show success message
       }
     } catch (error) {
       console.error("Submit error:", error);

@@ -9,6 +9,7 @@ import React, {
   useCallback,
   useMemo
 } from "react";
+import { useSession } from "next-auth/react";
 import {
   handleCreateBooking,
   handleUpdateBooking,
@@ -34,6 +35,8 @@ import LegendModal from "@/components/bookings/LegendModal";
 import { LoadingSpinner } from "@/components/ui/spinner";
 import { apiDeduplicator } from "@/lib/api-deduplication";
 import { EditBookingFormData } from "@/components/bookings/edit-tabs/types";
+import { DayTransitionBlockerModal } from "@/components/bookings/DayTransitionBlockerModal";
+import { DayTransitionIssue } from "@/types/day-transition";
 
 interface Reservation {
   id: string;
@@ -67,7 +70,9 @@ const getEventColor = (
   const lightColorMap: Record<string, { bg: string; text: string }> = {
     CONFIRMED: { bg: "#6c956e", text: "#1f2937" }, // Green with gray-900 text
     CONFIRMATION_PENDING: { bg: "#ec4899", text: "#f0f8f9" }, // Pink with alice blue text
+    CHECKIN_DUE: { bg: "#0ea5e9", text: "#1f2937" }, // Sky blue with gray-900 text
     IN_HOUSE: { bg: "#22c55e", text: "#f0f8f9" }, // Green with alice blue text
+    CHECKOUT_DUE: { bg: "#f59e0b", text: "#1f2937" }, // Amber with gray-900 text
     CANCELLED: { bg: "#6b7280", text: "#f0f8f9" }, // Gray with alice blue text
     CHECKED_OUT: { bg: "#8b5cf6", text: "#f0f8f9" }, // Purple with alice blue text
     NO_SHOW: { bg: "#f97316", text: "#f0f8f9" } // Orange with alice blue text
@@ -76,7 +81,9 @@ const getEventColor = (
   const darkColorMap: Record<string, { bg: string; text: string }> = {
     CONFIRMED: { bg: "#3b513b", text: "#f0f8f9" }, // Sage Green (dark) with alice blue text
     CONFIRMATION_PENDING: { bg: "#db2777", text: "#f0f8f9" }, // Pink-600 with alice blue text
+    CHECKIN_DUE: { bg: "#0284c7", text: "#f0f8f9" }, // Sky-600 with alice blue text
     IN_HOUSE: { bg: "#10b981", text: "#f0f8f9" }, // Emerald-500 with alice blue text
+    CHECKOUT_DUE: { bg: "#b45309", text: "#f0f8f9" }, // Amber-800 with alice blue text
     CANCELLED: { bg: "#4b5563", text: "#f0f8f9" }, // Gray-700 with alice blue text
     CHECKED_OUT: { bg: "#7c3aed", text: "#f0f8f9" }, // Violet-600 with alice blue text
     NO_SHOW: { bg: "#d97706", text: "#f0f8f9" } // Amber-600 with alice blue text
@@ -96,6 +103,7 @@ const getEventColor = (
 };
 
 export default function BookingsRowStylePage() {
+  const { data: session } = useSession();
   const calendarRef = useRef<FullCalendar | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
@@ -167,6 +175,42 @@ export default function BookingsRowStylePage() {
   // Holiday & geolocation state
   const [country, setCountry] = useState<string>("");
   const [holidays, setHolidays] = useState<Record<string, string>>({});
+
+  // Day Transition Blocker Modal state
+  const [dayTransitionBlockerOpen, setDayTransitionBlockerOpen] =
+    useState(false);
+  const [dayTransitionIssues, setDayTransitionIssues] = useState<
+    DayTransitionIssue[]
+  >([]);
+  const [dayTransitionLoading, setDayTransitionLoading] = useState(false);
+  const [pendingDateNavigation, setPendingDateNavigation] =
+    useState<Date | null>(null);
+
+  // Day Transition Blocker Modal handlers - MUST be defined before any conditional returns
+  const handleDayTransitionProceed = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (!api || !pendingDateNavigation) return;
+
+    // Proceed to the pending date
+    api.gotoDate(pendingDateNavigation);
+    setSelectedDate(pendingDateNavigation.toISOString().slice(0, 10));
+
+    // Close modal and reset state
+    setDayTransitionBlockerOpen(false);
+    setDayTransitionIssues([]);
+    setPendingDateNavigation(null);
+
+    toast.success("Proceeded to next day");
+  }, [pendingDateNavigation]);
+
+  const handleDayTransitionStay = useCallback(() => {
+    // Close modal and reset state without navigating
+    setDayTransitionBlockerOpen(false);
+    setDayTransitionIssues([]);
+    setPendingDateNavigation(null);
+
+    toast.info("Staying on current day");
+  }, []);
 
   const isToday = (date: Date) => {
     const now = new Date();
@@ -590,13 +634,81 @@ export default function BookingsRowStylePage() {
     setSelectedDate(d.toISOString().slice(0, 10));
   }, []);
 
-  const handleToday = useCallback(() => {
+  const handleToday = useCallback(async () => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
+
     const now = new Date();
-    api.gotoDate(now);
-    setSelectedDate(now.toISOString().slice(0, 10));
-  }, []);
+
+    // Check if we're already on today's date
+    const currentDate = api.getDate();
+    const isAlreadyToday =
+      currentDate.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+
+    if (isAlreadyToday) {
+      return; // Already on today, no need to check
+    }
+
+    // Get propertyId from cookies
+    const propertyId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("propertyId="))
+      ?.split("=")[1];
+
+    if (!propertyId) {
+      // Fallback: just navigate to today
+      api.gotoDate(now);
+      setSelectedDate(now.toISOString().slice(0, 10));
+      return;
+    }
+
+    // Get property timezone from session
+    const currentProperty = session?.user?.availableProperties?.find(
+      (p) => p.id === propertyId
+    );
+    const propertyTimezone = currentProperty?.timezone || "UTC";
+
+    // Validate day transition
+    try {
+      setDayTransitionLoading(true);
+      const params = new URLSearchParams({
+        propertyId,
+        timezone: propertyTimezone
+      });
+
+      const response = await fetch(
+        `/api/reservations/day-transition/validate?${params}`,
+        {
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to validate day transition");
+      }
+
+      const validationResult = await response.json();
+
+      if (validationResult.canTransition) {
+        // No issues, proceed to today
+        api.gotoDate(now);
+        setSelectedDate(now.toISOString().slice(0, 10));
+      } else {
+        // Issues found, show modal
+        setDayTransitionIssues(validationResult.issues);
+        setPendingDateNavigation(now);
+        setDayTransitionBlockerOpen(true);
+      }
+    } catch (error) {
+      console.error("Error validating day transition:", error);
+      // On error, allow navigation anyway
+      api.gotoDate(now);
+      setSelectedDate(now.toISOString().slice(0, 10));
+      toast.error("Failed to validate day transition, proceeding anyway");
+    } finally {
+      setDayTransitionLoading(false);
+    }
+  }, [session?.user?.availableProperties]);
 
   // ------------------------
   // Date‐click handler opens New Booking dialog
@@ -1363,6 +1475,15 @@ export default function BookingsRowStylePage() {
       </div>
 
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
+
+      {/* Day Transition Blocker Modal */}
+      <DayTransitionBlockerModal
+        isOpen={dayTransitionBlockerOpen}
+        issues={dayTransitionIssues}
+        onProceed={handleDayTransitionProceed}
+        onStay={handleDayTransitionStay}
+        isLoading={dayTransitionLoading}
+      />
     </div>
   );
 }

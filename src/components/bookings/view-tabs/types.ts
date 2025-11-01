@@ -23,6 +23,9 @@ export interface ViewReservationData {
   adults: number;
   children: number;
 
+  // Timezone for operational day calculations
+  propertyTimezone?: string; // IANA timezone (e.g., "America/New_York")
+
   // Status & metadata
   status?: string; // Made optional for compatibility
   paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID"; // Made compatible with existing type

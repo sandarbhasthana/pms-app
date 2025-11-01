@@ -8,6 +8,10 @@ import {
   validatePropertyAccess,
   withPropertyContext
 } from "@/lib/property-context";
+import {
+  getOperationalDayStart,
+  getOperationalDayEnd
+} from "@/lib/timezone/day-boundaries";
 
 // Simple in-memory cache for dashboard reservations
 const dashboardReservationsCache = new Map<
@@ -59,6 +63,14 @@ export async function GET(req: NextRequest) {
     const reservationsData = await withPropertyContext(
       propertyId!,
       async (tx) => {
+        // Get property timezone for operational day calculations
+        const property = await tx.property.findUnique({
+          where: { id: propertyId },
+          select: { timezone: true }
+        });
+
+        const timezone = property?.timezone || "UTC";
+
         const today = new Date();
         let targetDate: Date;
 
@@ -68,12 +80,9 @@ export async function GET(req: NextRequest) {
           targetDate = today;
         }
 
-        const startOfDay = new Date(
-          targetDate.getFullYear(),
-          targetDate.getMonth(),
-          targetDate.getDate()
-        );
-        const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+        // Use operational day boundaries (6 AM start) instead of midnight
+        const startOfDay = getOperationalDayStart(targetDate, timezone);
+        const endOfDay = getOperationalDayEnd(targetDate, timezone);
 
         // Get reservations for the target day
         const reservations = await tx.reservation.findMany({

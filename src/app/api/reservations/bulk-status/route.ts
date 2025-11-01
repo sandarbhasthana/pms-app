@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
           where: { id: reservation.id },
           data: {
             status: newStatus,
-            statusUpdatedBy: updatedBy || userId || "system",
+            statusUpdatedBy: updatedBy || userId || null, // Use null instead of "system"
             statusUpdatedAt: new Date(),
             statusChangeReason: reason,
             // Set check-in/check-out timestamps based on status
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
             propertyId: propertyId!,
             previousStatus: reservation.status,
             newStatus: newStatus,
-            changedBy: updatedBy || userId || "system",
+            changedBy: updatedBy || userId || null, // Use null instead of "system"
             changeReason: reason || "Bulk status update",
             isAutomatic: false
           }

@@ -63,7 +63,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           </button>
         </div>
       </div>
-      <div className="w-[100px]">
+      <div className="w-[120px]">
         <DatePicker
           selected={datePickerDate}
           onChange={(date: Date | null) => {
@@ -76,12 +76,12 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             }
           }}
           dateFormat="yyyy-MM-dd"
-          className="border-purple-600 border-2 p-2 rounded-sm h-[50px] z-[100] w-[150px]"
+          className="border-purple-600 border-2 p-2 rounded-sm h-[50px] z-[100] w-[120px]"
           popperPlacement="bottom-end"
           customInput={
-            <div className="flex items-center cursor-pointer border-purple-600 border-2 p-2 rounded-sm h-[50px] w-[150px]">
+            <div className="flex items-center cursor-pointer border-purple-600 border-2 p-2 rounded-sm h-[50px] w-[120px]">
               <input
-                className="outline-none w-full bg-transparent"
+                className="outline-none w-full bg-transparent text-sm"
                 readOnly
                 value={
                   datePickerDate
@@ -91,7 +91,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               />
               <CalendarIcon
                 vectorEffect="non-scaling-stroke"
-                className="text-purple-600 h-5 w-5 mr-2 font-bold"
+                className="text-purple-600 h-4 w-4 mr-1 font-bold flex-shrink-0"
                 strokeWidth={2}
               />
             </div>

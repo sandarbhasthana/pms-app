@@ -10,6 +10,7 @@ interface PropertyInfo {
   isDefault: boolean;
   isActive: boolean;
   role?: string; // User's role for this specific property
+  timezone?: string; // Property timezone (e.g., 'America/New_York')
 }
 
 /**

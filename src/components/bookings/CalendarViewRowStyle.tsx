@@ -139,6 +139,7 @@ export default function CalendarViewRowStyle({
       const totalRooms = resourceGroup?.children?.length || 0;
 
       // Count occupied rooms for this room type on this date
+      // TODO: Update to use operational day boundaries (6 AM start) when timezone is available
       const occupiedRooms = events.filter((event) => {
         // Check if this reservation overlaps with the given date
         // Parse dates consistently using UTC to avoid timezone mismatches
@@ -146,6 +147,7 @@ export default function CalendarViewRowStyle({
         const checkOut = new Date(event.checkOut);
 
         // Create target date at UTC midnight to match the API date format
+        // NOTE: This should use operational day boundaries (6 AM) instead of midnight
         const [year, month, day] = dateStr.split("-").map(Number);
         const targetDate = new Date(Date.UTC(year, month - 1, day));
 
@@ -155,6 +157,7 @@ export default function CalendarViewRowStyle({
         );
 
         // Check if the date falls within the reservation period
+        // Using UTC midnight for now - should use operational day boundaries
         const dateInRange = targetDate >= checkIn && targetDate < checkOut;
 
         return (

@@ -9,17 +9,16 @@ import {
   HomeIcon
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import { calculateNightsWithSixAMBoundary } from "@/lib/timezone/day-boundaries";
 
 export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
   const calculateNights = () => {
     const checkIn = new Date(reservationData.checkIn);
     const checkOut = new Date(reservationData.checkOut);
-    return Math.max(
-      1,
-      Math.ceil(
-        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
-      )
-    );
+    const timezone = reservationData.propertyTimezone || "UTC";
+
+    // Use operational day boundaries (6 AM start) for accurate night counting
+    return calculateNightsWithSixAMBoundary(checkIn, checkOut, timezone);
   };
 
   const formatDate = (dateString: string) => {

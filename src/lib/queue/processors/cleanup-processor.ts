@@ -10,6 +10,8 @@ interface PropertyAutomationSettings {
   enableAutoConfirmation: boolean;
   enableNoShowDetection: boolean;
   enableLateCheckoutDetection: boolean;
+  confirmationPendingTimeoutHours: number;
+  auditLogRetentionDays: number;
 }
 
 interface CleanupStats {
@@ -52,6 +54,9 @@ export class CleanupProcessor extends BaseJobProcessor {
       // Get property settings
       const settings = await this.getPropertySettings(propertyId);
 
+      // Use auditLogRetentionDays from settings, fallback to job data or default
+      const effectiveDaysToKeep = settings.auditLogRetentionDays || daysToKeep;
+
       const stats: CleanupStats = {
         staleReservationsFixed: 0,
         orphanedRecordsRemoved: 0,
@@ -71,7 +76,7 @@ export class CleanupProcessor extends BaseJobProcessor {
             stats,
             notifications,
             dryRun,
-            daysToKeep
+            effectiveDaysToKeep
           );
           break;
         case "stale-reservations":
@@ -97,7 +102,7 @@ export class CleanupProcessor extends BaseJobProcessor {
             stats,
             notifications,
             dryRun,
-            daysToKeep
+            effectiveDaysToKeep
           );
           break;
         case "performance":
@@ -199,7 +204,20 @@ export class CleanupProcessor extends BaseJobProcessor {
     notifications.push("🔍 Checking for stale reservations...");
 
     const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Get property timezone to calculate today's date at 6 AM
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { timezone: true }
+    });
+
+    // Calculate today's date at 6 AM in property timezone
+    const todayAt6AM = this.getTodayAt6AM(property?.timezone || "UTC");
+
+    // Calculate timeout cutoff for CONFIRMATION_PENDING
+    const confirmationTimeoutCutoff = new Date(
+      now.getTime() - settings.confirmationPendingTimeoutHours * 60 * 60 * 1000
+    );
 
     // Find reservations that should have been processed by automation
     const staleReservations = await prisma.reservation.findMany({
@@ -208,25 +226,19 @@ export class CleanupProcessor extends BaseJobProcessor {
         // Exclude soft-deleted reservations
         deletedAt: null,
         OR: [
-          // CONFIRMATION_PENDING reservations older than 24 hours
+          // CONFIRMATION_PENDING reservations older than configured timeout
           {
             status: ReservationStatus.CONFIRMATION_PENDING,
-            createdAt: { lt: yesterday }
+            createdAt: { lt: confirmationTimeoutCutoff }
           },
-          // CONFIRMED reservations past check-in date without being marked as no-show
-          {
-            status: ReservationStatus.CONFIRMED,
-            checkIn: { lt: yesterday },
-            NOT: {
-              statusChangeReason: {
-                contains: "automation-disabled"
-              }
-            }
-          },
-          // IN_HOUSE reservations past check-out date
+          // IN_HOUSE reservations with checkout today (at 6 AM) that are fully paid
           {
             status: ReservationStatus.IN_HOUSE,
-            checkOut: { lt: yesterday }
+            checkOut: {
+              gte: todayAt6AM,
+              lt: new Date(todayAt6AM.getTime() + 24 * 60 * 60 * 1000)
+            },
+            paymentStatus: "PAID"
           }
         ]
       },
@@ -237,7 +249,8 @@ export class CleanupProcessor extends BaseJobProcessor {
         guestName: true,
         checkIn: true,
         checkOut: true,
-        createdAt: true
+        createdAt: true,
+        paymentStatus: true
       }
     });
 
@@ -248,24 +261,20 @@ export class CleanupProcessor extends BaseJobProcessor {
 
         // Determine appropriate action based on current state
         if (reservation.status === ReservationStatus.CONFIRMATION_PENDING) {
-          // Auto-cancel old pending confirmations
+          // Auto-cancel old pending confirmations using configured timeout
           newStatus = ReservationStatus.CANCELLED;
-          reason = "Auto-cancelled: Confirmation pending timeout (24+ hours)";
-        } else if (
-          reservation.status === ReservationStatus.CONFIRMED &&
-          reservation.checkIn < yesterday
-        ) {
-          // Mark as no-show if past check-in date
-          newStatus = ReservationStatus.NO_SHOW;
-          reason =
-            "Auto-marked as no-show: Past check-in date without check-in";
+          reason = `Auto-cancelled: Confirmation pending timeout (${settings.confirmationPendingTimeoutHours}+ hours)`;
         } else if (
           reservation.status === ReservationStatus.IN_HOUSE &&
-          reservation.checkOut < yesterday
+          reservation.checkOut >= todayAt6AM &&
+          reservation.checkOut <
+            new Date(todayAt6AM.getTime() + 24 * 60 * 60 * 1000) &&
+          reservation.paymentStatus === "PAID"
         ) {
-          // Auto-checkout if past check-out date
-          newStatus = ReservationStatus.CHECKED_OUT;
-          reason = "Auto-checked out: Past check-out date";
+          // Auto-mark as CHECKOUT_DUE if checkout is today and fully paid
+          newStatus = ReservationStatus.CHECKOUT_DUE;
+          reason =
+            "Auto-marked as checkout due: Next day started for fully paid reservation";
         }
 
         if (newStatus) {
@@ -432,5 +441,43 @@ export class CleanupProcessor extends BaseJobProcessor {
     }
 
     notifications.push(`✅ Performance optimizations completed`);
+  }
+
+  /**
+   * Get today's date at 6 AM in the specified timezone
+   * This aligns with the booking calendar day start time
+   */
+  private getTodayAt6AM(timezone: string): Date {
+    // Create a date object for today at 6 AM in the property's timezone
+    const now = new Date();
+
+    // Format the date as YYYY-MM-DD in the property's timezone
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+
+    const parts = formatter.formatToParts(now);
+    const year = parseInt(
+      parts.find((p) => p.type === "year")?.value || "2024"
+    );
+    const month =
+      parseInt(parts.find((p) => p.type === "month")?.value || "1") - 1;
+    const day = parseInt(parts.find((p) => p.type === "day")?.value || "1");
+
+    // Create a date at 6 AM UTC, then adjust for timezone
+    const todayAt6AM = new Date(year, month, day, 6, 0, 0, 0);
+
+    // Get the offset between the property timezone and UTC
+    const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+    const tzDate = new Date(
+      now.toLocaleString("en-US", { timeZone: timezone })
+    );
+    const offset = utcDate.getTime() - tzDate.getTime();
+
+    // Adjust the date to UTC
+    return new Date(todayAt6AM.getTime() + offset);
   }
 }

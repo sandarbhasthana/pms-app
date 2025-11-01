@@ -40,6 +40,7 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
   const paymentIntentCreatedRef = useRef(false);
 
   // Calculate number of nights
+  // TODO: Update to use calculateNightsWithSixAMBoundary with timezone when available
   const calculateNights = useCallback(() => {
     if (!formData.checkIn || !formData.checkOut) return 0;
     const checkIn = new Date(formData.checkIn);

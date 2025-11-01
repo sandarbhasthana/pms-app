@@ -343,6 +343,9 @@ export function useStatusValidation() {
         CHECKED_OUT: [], // Final state
         NO_SHOW: ["CONFIRMED"], // Recovery option
         CANCELLED: ["CONFIRMED"] // Reactivation option
+        ,
+        CHECKIN_DUE: [],
+        CHECKOUT_DUE: []
       };
 
       const allowedTransitions = ALLOWED_TRANSITIONS[currentStatus] || [];

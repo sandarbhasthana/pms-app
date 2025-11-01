@@ -170,14 +170,10 @@ export async function PUT(
       isActive: isActive !== undefined ? isActive : true
     };
 
-    console.log(`🔍 Database update data:`, updateData);
-
     const updatedProperty = await prisma.property.update({
       where: { id: propertyId },
       data: updateData
     });
-
-    console.log(`✅ Property updated in database:`, updatedProperty);
 
     const response = NextResponse.json(updatedProperty);
     // Add cache-busting headers to ensure fresh data

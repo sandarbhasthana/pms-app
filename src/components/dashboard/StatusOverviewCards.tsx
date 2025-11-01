@@ -23,7 +23,9 @@ import {
 interface StatusSummary {
   [ReservationStatus.CONFIRMATION_PENDING]: number;
   [ReservationStatus.CONFIRMED]: number;
+  [ReservationStatus.CHECKIN_DUE]: number;
   [ReservationStatus.IN_HOUSE]: number;
+  [ReservationStatus.CHECKOUT_DUE]: number;
   [ReservationStatus.CHECKED_OUT]: number;
   [ReservationStatus.NO_SHOW]: number;
   [ReservationStatus.CANCELLED]: number;

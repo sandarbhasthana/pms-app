@@ -13,7 +13,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -34,6 +35,11 @@ import {
   StatusBadge,
   StatusUpdateModal
 } from "@/components/reservation-status";
+import {
+  calculateNightsWithSixAMBoundary,
+  getOperationalDayStart,
+  getOperationalDate
+} from "@/lib/timezone/day-boundaries";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
@@ -52,6 +58,28 @@ import {
   EditBookingFormData
 } from "./edit-tabs/types";
 import { shortenId } from "@/lib/utils/cuid-formatter";
+
+// Helper function to check if reservation is for today (using operational day boundaries)
+const isReservationToday = (
+  checkInDate: string,
+  checkOutDate: string,
+  timezone: string = "UTC"
+): boolean => {
+  const today = new Date();
+  const checkIn = new Date(checkInDate);
+  const checkOut = new Date(checkOutDate);
+
+  // Use operational date (6 AM boundary) instead of midnight
+  const todayOperationalDate = getOperationalDate(today, timezone);
+  const checkInOperationalDate = getOperationalDate(checkIn, timezone);
+  const checkOutOperationalDate = getOperationalDate(checkOut, timezone);
+
+  // Check if today falls within the reservation dates (inclusive)
+  return (
+    todayOperationalDate >= checkInOperationalDate &&
+    todayOperationalDate <= checkOutOperationalDate
+  );
+};
 
 const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
   editingReservation,
@@ -105,6 +133,8 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
     currentCheckInTime: string;
     scheduledCheckInTime: string;
   } | null>(null);
+  const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Track the last reservation ID to prevent unnecessary form resets
   const lastReservationIdRef = useRef<string | null>(null);
@@ -415,20 +445,24 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       return;
     }
 
-    // Check if this is an early check-in
+    // Check if this is an early check-in (using operational day boundaries)
     if (
       newStatus === ReservationStatus.IN_HOUSE &&
       editingReservation.checkIn
     ) {
       const now = new Date();
-      const checkInTime = new Date(editingReservation.checkIn);
-      const hoursUntilCheckIn =
-        (checkInTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const checkInDate = new Date(editingReservation.checkIn);
+      const timezone = editingReservation.propertyTimezone || "UTC";
 
-      // If check-in is more than 4 hours in the future, it's an early check-in
-      if (hoursUntilCheckIn > 4) {
+      // Get the operational day start (6 AM local time) for the check-in date
+      const operationalDayStart = getOperationalDayStart(checkInDate, timezone);
+
+      // If current time is before the operational day start, it's an early check-in
+      if (now < operationalDayStart) {
+        const hoursEarly =
+          (operationalDayStart.getTime() - now.getTime()) / (1000 * 60 * 60);
         setEarlyCheckInData({
-          hoursEarly: hoursUntilCheckIn,
+          hoursEarly,
           currentCheckInTime: now.toISOString(),
           scheduledCheckInTime: editingReservation.checkIn
         });
@@ -578,15 +612,16 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
   const handleDelete = async () => {
     if (!editingReservation) return;
+    setShowCancelConfirm(true);
+  };
 
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this booking? This action cannot be undone."
-    );
-    if (!confirmDelete) return;
+  const handleConfirmDelete = async () => {
+    if (!editingReservation) return;
 
     try {
       await onDelete(editingReservation.id);
       setEditingReservation(null);
+      setShowCancelConfirm(false);
     } catch (error) {
       console.error("Failed to delete reservation:", error);
       toast.error("Failed to delete reservation. Please try again.");
@@ -629,12 +664,10 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
     if (!formData.checkIn || !formData.checkOut) return 0;
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
-    return Math.max(
-      1,
-      Math.ceil(
-        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
-      )
-    );
+    const timezone = editingReservation?.propertyTimezone || "UTC";
+
+    // Use operational day boundaries (6 AM start) for accurate night counting
+    return calculateNightsWithSixAMBoundary(checkIn, checkOut, timezone);
   };
 
   const formatDateRange = () => {
@@ -674,7 +707,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
           <div className="absolute top-0 right-0 flex items-center gap-3">
             {/* Status Dropdown */}
             <div className="flex items-center gap-2">
-              <DropdownMenu modal={false}>
+              <DropdownMenu modal={true}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
@@ -691,6 +724,10 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                           ? "#ec4899" // Pink
                           : editingReservation.status === "IN_HOUSE"
                           ? "#22c55e" // Green
+                          : editingReservation.status === "CHECKOUT_DUE"
+                          ? document.documentElement.classList.contains("dark")
+                            ? "#b45309" // Dark mode: Amber-800
+                            : "#f59e0b" // Light mode: Amber
                           : editingReservation.status === "CANCELLED"
                           ? "#6b7280" // Gray
                           : editingReservation.status === "CHECKED_OUT"
@@ -719,7 +756,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="z-[10000]"
+                  className="z-[99999]"
                   sideOffset={5}
                 >
                   <DropdownMenuItem
@@ -729,6 +766,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                         "Status changed"
                       )
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Confirmation Pending
                   </DropdownMenuItem>
@@ -736,6 +774,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                     onClick={() =>
                       handleStatusUpdate("CONFIRMED", "Status changed")
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Confirmed
                   </DropdownMenuItem>
@@ -743,13 +782,23 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                     onClick={() =>
                       handleStatusUpdate("IN_HOUSE", "Status changed")
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     In-House
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
+                      handleStatusUpdate("CHECKOUT_DUE", "Status changed")
+                    }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Checkout Due
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
                       handleStatusUpdate("CHECKED_OUT", "Status changed")
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Checked Out
                   </DropdownMenuItem>
@@ -757,6 +806,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                     onClick={() =>
                       handleStatusUpdate("NO_SHOW", "Status changed")
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     No-Show
                   </DropdownMenuItem>
@@ -764,6 +814,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                     onClick={() =>
                       handleStatusUpdate("CANCELLED", "Status changed")
                     }
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Cancelled
                   </DropdownMenuItem>
@@ -773,7 +824,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
             {/* Actions Dropdown */}
             <div className="flex items-center gap-2">
-              <DropdownMenu modal={false}>
+              <DropdownMenu modal={true}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
@@ -786,44 +837,67 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="z-[10000]"
+                  className="z-[99999]"
                   sideOffset={5}
                 >
                   <DropdownMenuItem
                     onClick={() => console.log("Change Dates clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Change Dates
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Move Room clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Move Room
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Add Charge clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Add Charge
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Record Payment clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Record Payment
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Refund clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Refund
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Print/Download Folio clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Print/Download Folio
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => console.log("Send Confirmation clicked")}
+                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Send Confirmation
                   </DropdownMenuItem>
+                  {editingReservation.status === "IN_HOUSE" &&
+                    isReservationToday(
+                      editingReservation.checkIn,
+                      editingReservation.checkOut,
+                      editingReservation.propertyTimezone || "UTC"
+                    ) && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setShowCheckOutConfirm(true)}
+                          className="cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors text-blue-600 dark:text-blue-400 font-medium"
+                        >
+                          Check-Out
+                        </DropdownMenuItem>
+                      </>
+                    )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1052,6 +1126,94 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
           onChangeCheckInDate={handleEarlyCheckInDateChange}
           isLoading={isUpdatingStatus}
         />
+      )}
+
+      {/* Cancel Booking Confirmation Dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Confirm Cancellation
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to cancel the booking for{" "}
+              <span className="font-semibold">
+                {editingReservation.guestName}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors font-medium"
+              >
+                Cancel Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Check-Out Confirmation Dialog */}
+      {showCheckOutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Confirm Check-Out
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to check out{" "}
+              <span className="font-semibold">
+                {editingReservation.guestName}
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCheckOutConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      `/api/reservations/${editingReservation.id}`,
+                      {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "CHECKED_OUT" })
+                      }
+                    );
+                    if (!res.ok)
+                      throw new Error((await res.json()).error || "Error");
+                    toast.success("Checked out!");
+                    setShowCheckOutConfirm(false);
+                    handleClose();
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Unknown error"
+                    );
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+              >
+                Check-Out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Sheet>
   );
