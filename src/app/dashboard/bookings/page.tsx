@@ -20,7 +20,7 @@ import FullCalendar from "@fullcalendar/react";
 import { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import { DateClickArg } from "@fullcalendar/interaction";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
@@ -1333,14 +1333,14 @@ export default function BookingsRowStylePage() {
     <div ref={containerRef} className="relative p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Booking Calendar</h1>
-        <div className="flex items-center gap-4 h-[50px]">
+        <div className="flex items-center gap-4">
           {/* Refresh Button */}
           <button
             type="button"
             title="Refresh Calendar"
             onClick={handleRefreshClick}
             disabled={isRefetching}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`h-[50px] w-[50px] rounded-lg transition-colors flex items-center justify-center ${
               isRefetching
                 ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
                 : "text-slate-600 dark:text-slate-300 hover:text-white hover:bg-[#7210a2] dark:hover:bg-[#8b4aff]"
@@ -1350,6 +1350,16 @@ export default function BookingsRowStylePage() {
               className={`h-5 w-5 ${isRefetching ? "refresh-spinning" : ""}`}
             />
           </button>
+
+          {/* New Reservation Button */}
+          <button
+            type="button"
+            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white px-4 h-[50px] rounded-lg flex items-center space-x-2 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Reservation</span>
+          </button>
+
           {/* Toolbar - moved to right side */}
           <CalendarToolbar
             datePickerDate={datePickerDate}
