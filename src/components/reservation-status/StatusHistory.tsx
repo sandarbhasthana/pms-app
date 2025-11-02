@@ -9,6 +9,7 @@ import {
   ArrowRightIcon,
   ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
+import { formatDateTime } from "@/lib/utils/dateFormatter";
 
 interface StatusHistoryProps {
   reservationId: string;
@@ -113,8 +114,7 @@ const StatusHistory: React.FC<StatusHistoryProps> = ({
   }, [fetchHistory]);
 
   const formatDate = (date: Date | string) => {
-    const d = new Date(date);
-    return d.toLocaleString("en-US", {
+    return formatDateTime(date, {
       month: "short",
       day: "numeric",
       hour: "2-digit",

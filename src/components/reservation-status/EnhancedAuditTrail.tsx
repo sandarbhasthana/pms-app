@@ -24,6 +24,7 @@ import {
   ComputerDesktopIcon,
   HandRaisedIcon
 } from "@heroicons/react/24/outline";
+import { formatRelativeTime } from "@/lib/utils/dateFormatter";
 
 interface AuditTrailEntry {
   id: string;
@@ -178,26 +179,7 @@ export default function EnhancedAuditTrail({
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor(diffInHours * 60);
-      return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
-    } else if (diffInHours < 24) {
-      const hours = Math.floor(diffInHours);
-      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
-    } else {
-      return (
-        date.toLocaleDateString() +
-        " " +
-        date.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit"
-        })
-      );
-    }
+    return formatRelativeTime(dateString);
   };
 
   return (

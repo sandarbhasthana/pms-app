@@ -9,6 +9,7 @@ import {
   ExclamationTriangleIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
+import { formatDateTime } from "@/lib/utils/dateFormatter";
 
 export const ViewPaymentTab: React.FC<ViewTabProps> = ({ reservationData }) => {
   const calculateNights = () => {
@@ -204,13 +205,7 @@ export const ViewPaymentTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {new Date(payment.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
+                    {formatDateTime(payment.createdAt)}
                   </p>
 
                   {/* Stripe Payment Details */}

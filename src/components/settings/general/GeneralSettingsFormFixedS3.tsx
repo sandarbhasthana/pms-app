@@ -587,12 +587,36 @@ export default function GeneralSettingsFormFixed({
       }
 
       // 5. Create/update settings
+      // Parse description from JSON string to object
+      let descriptionObject = {};
+      if (data.description) {
+        try {
+          descriptionObject =
+            typeof data.description === "string"
+              ? JSON.parse(data.description)
+              : data.description;
+        } catch (error) {
+          console.error("Failed to parse description:", error);
+          // Use default empty TipTap document
+          descriptionObject = {
+            type: "doc",
+            content: [{ type: "paragraph", content: [] }]
+          };
+        }
+      } else {
+        // Default empty TipTap document
+        descriptionObject = {
+          type: "doc",
+          content: [{ type: "paragraph", content: [] }]
+        };
+      }
+
       const baseData = {
         ...data,
         latitude,
         longitude,
         isManuallyPositioned,
-        description: data.description || {},
+        description: descriptionObject,
         photos: uploadedPhotoUrls,
         printHeaderImage: printHeaderImageUrl
       };

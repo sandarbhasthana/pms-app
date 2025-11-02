@@ -76,7 +76,8 @@ export function InviteUserModal({
       { value: "MAINTENANCE", label: "Maintenance", level: 1 },
       { value: "ACCOUNTANT", label: "Accountant", level: 2 },
       { value: "OWNER", label: "Owner", level: 4 },
-      { value: "IT_SUPPORT", label: "IT Support", level: 2 }
+      { value: "IT_SUPPORT", label: "IT Support", level: 2 },
+      { value: "SECURITY", label: "Security", level: 1 }
     ];
 
     const roleHierarchy = {
@@ -88,7 +89,8 @@ export function InviteUserModal({
       MAINTENANCE: 1,
       ACCOUNTANT: 2,
       OWNER: 4,
-      IT_SUPPORT: 2
+      IT_SUPPORT: 2,
+      SECURITY: 1
     };
 
     const currentUserLevel =
@@ -103,7 +105,9 @@ export function InviteUserModal({
     { value: "HOUSEKEEPING", label: "Housekeeping" },
     { value: "MAINTENANCE", label: "Maintenance" },
     { value: "SECURITY", label: "Security" },
-    { value: "GUEST_SERVICES", label: "Guest Services" }
+    { value: "GUEST_SERVICES", label: "Guest Services" },
+    { value: "ACCOUNTANT", label: "Accountant" },
+    { value: "IT_SUPPORT", label: "IT Support" }
   ];
 
   const shiftOptions = [
@@ -120,7 +124,12 @@ export function InviteUserModal({
         const response = await fetch("/api/properties");
         if (response.ok) {
           const data = await response.json();
-          setProperties(data.properties || []);
+          // API returns array directly, not wrapped in { properties: [] }
+          if (Array.isArray(data)) {
+            setProperties(data);
+          } else {
+            setProperties(data.properties || []);
+          }
         }
       } catch (error) {
         console.error("Error fetching properties:", error);

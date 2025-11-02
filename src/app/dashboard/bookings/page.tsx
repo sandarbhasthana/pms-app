@@ -24,7 +24,7 @@ import { RefreshCw } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
-import CalendarViewRowStyle from "@/components/bookings/CalendarViewRowStyle";
+import CalendarViewGoogleStyle from "@/components/bookings/CalendarViewGoogleStyle";
 import NewBookingModalFixed from "@/components/bookings/NewBookingSheet";
 import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
 import EditBookingSheet from "@/components/bookings/EditBookingSheet";
@@ -37,6 +37,7 @@ import { apiDeduplicator } from "@/lib/api-deduplication";
 import { EditBookingFormData } from "@/components/bookings/edit-tabs/types";
 import { DayTransitionBlockerModal } from "@/components/bookings/DayTransitionBlockerModal";
 import { DayTransitionIssue } from "@/types/day-transition";
+import LocaleSwitcher from "@/components/dev/LocaleSwitcher";
 
 interface Reservation {
   id: string;
@@ -478,6 +479,24 @@ export default function BookingsRowStylePage() {
   }, [loadRooms, loadReservations]);
 
   // ------------------------
+  // TEMPORARY: Load Eruda for mobile debugging
+  // ------------------------
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth <= 1024) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/eruda";
+      document.body.appendChild(script);
+      script.onload = () => {
+        // @ts-expect-error - Eruda is loaded dynamically
+        window.eruda?.init();
+        console.log(
+          "🔍 Eruda mobile console loaded! Look for the floating button."
+        );
+      };
+    }
+  }, []);
+
+  // ------------------------
   // Listen for room updates from settings page
   // ------------------------
   useEffect(() => {
@@ -529,10 +548,31 @@ export default function BookingsRowStylePage() {
 
   // ------------------------
   // Determine country via geolocation, fallback to browser locale
+  // OPTIMIZATION: Cache location in localStorage to avoid repeated permission requests
   // ------------------------
   useEffect(() => {
     const fallback = () =>
       (navigator.language.split("-")[1] || "US").toUpperCase();
+
+    // Check if we have cached location data
+    const cachedLocation = localStorage.getItem("user_location");
+    if (cachedLocation) {
+      try {
+        const locationData = JSON.parse(cachedLocation);
+        // Check if cache is still valid (e.g., 30 days)
+        const cacheAge = Date.now() - locationData.timestamp;
+        const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+
+        if (cacheAge < thirtyDaysInMs) {
+          setCountry(locationData.countryCode);
+          return; // Use cached data, skip geolocation request
+        }
+      } catch {
+        // Invalid cache, proceed with geolocation
+      }
+    }
+
+    // No valid cache, request geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -543,7 +583,20 @@ export default function BookingsRowStylePage() {
             );
             if (!resp.ok) throw new Error("Reverse-geocode failed");
             const geo = await resp.json();
-            setCountry((geo.countryCode || fallback()).toUpperCase());
+            const countryCode = (geo.countryCode || fallback()).toUpperCase();
+
+            // Cache the location data
+            localStorage.setItem(
+              "user_location",
+              JSON.stringify({
+                countryCode,
+                latitude,
+                longitude,
+                timestamp: Date.now()
+              })
+            );
+
+            setCountry(countryCode);
           } catch {
             setCountry(fallback());
           }
@@ -616,11 +669,12 @@ export default function BookingsRowStylePage() {
   // ------------------------
   // Memoized toolbar handlers
   // ------------------------
+  // Button handlers: Move 7 days at a time
   const handlePrev = useCallback(() => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() - 7); // Changed from -1 to -7 (1 week)
+    d.setDate(d.getDate() - 7); // Move 1 week backward
     api.gotoDate(d);
     setSelectedDate(d.toISOString().slice(0, 10));
   }, []);
@@ -629,7 +683,7 @@ export default function BookingsRowStylePage() {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() + 7); // Changed from +1 to +7 (1 week)
+    d.setDate(d.getDate() + 7); // Move 1 week forward
     api.gotoDate(d);
     setSelectedDate(d.toISOString().slice(0, 10));
   }, []);
@@ -1309,9 +1363,8 @@ export default function BookingsRowStylePage() {
         </div>
       </div>
 
-      {/* FullCalendar with Row Style */}
-      <CalendarViewRowStyle
-        calendarRef={calendarRef}
+      {/* FullCalendar with Google Calendar-Style Swipe */}
+      <CalendarViewGoogleStyle
         resources={resources}
         eventSources={eventSources}
         handleEventClick={handleEventClick}
@@ -1323,6 +1376,14 @@ export default function BookingsRowStylePage() {
         isToday={isToday}
         setSelectedResource={setSelectedResource}
         events={events}
+        onDateChange={(newDate) => {
+          setSelectedDate(newDate);
+          const api = calendarRef.current?.getApi();
+          if (api) {
+            api.gotoDate(new Date(newDate));
+          }
+        }}
+        disableSwipe={dayTransitionLoading}
       />
 
       {/* New Booking Dialog */}
@@ -1484,6 +1545,9 @@ export default function BookingsRowStylePage() {
         onStay={handleDayTransitionStay}
         isLoading={dayTransitionLoading}
       />
+
+      {/* Developer Tool: Locale Switcher (only visible in development) */}
+      <LocaleSwitcher />
     </div>
   );
 }

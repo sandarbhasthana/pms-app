@@ -66,8 +66,97 @@ interface Props {
   errors: FieldErrors<FormValues>;
 }
 
+interface EditorLoaderProps {
+  field: { value: string };
+  editor: ReturnType<typeof useEditor>;
+  isEditorReady: boolean;
+  onUpdateRef: React.MutableRefObject<((html: string) => void) | null>;
+  isInitialLoadRef: React.MutableRefObject<boolean>;
+  lastLoadedContentRef: React.MutableRefObject<string>;
+}
+
+// Separate component to handle loading content into editor
+const EditorLoader = ({
+  field,
+  editor,
+  isEditorReady,
+  onUpdateRef,
+  isInitialLoadRef,
+  lastLoadedContentRef
+}: EditorLoaderProps) => {
+  // Load saved description content into editor when form is populated
+  useEffect(() => {
+    // Only load if:
+    // 1. Editor is ready
+    // 2. This is the initial load OR the field value changed externally (not from user typing)
+    // 3. Field has a value
+    if (!editor || !isEditorReady || !field.value) {
+      return;
+    }
+
+    try {
+      // Check if the value is a JSON string (TipTap format)
+      const parsedContent =
+        typeof field.value === "string" ? JSON.parse(field.value) : field.value;
+
+      const newContentString = JSON.stringify(parsedContent);
+
+      // Only update if:
+      // 1. This is the initial load, OR
+      // 2. The content is different from what we last loaded (external change)
+      if (
+        isInitialLoadRef.current ||
+        (lastLoadedContentRef.current !== newContentString &&
+          lastLoadedContentRef.current !== "")
+      ) {
+        const currentContent = JSON.stringify(editor.getJSON());
+
+        // Only update if content is actually different
+        if (currentContent !== newContentString) {
+          // Disable onChange temporarily to prevent triggering form updates
+          const tempOnChange = onUpdateRef.current;
+          onUpdateRef.current = null;
+
+          editor.commands.setContent(parsedContent);
+
+          // Re-enable onChange after a brief delay
+          setTimeout(() => {
+            onUpdateRef.current = tempOnChange;
+          }, 0);
+
+          // Track what we loaded
+          lastLoadedContentRef.current = newContentString;
+          isInitialLoadRef.current = false;
+        }
+      }
+    } catch (error) {
+      // If parsing fails, treat it as plain text or empty
+      console.warn("Failed to parse description content:", error);
+    }
+  }, [
+    field.value,
+    editor,
+    isEditorReady,
+    onUpdateRef,
+    isInitialLoadRef,
+    lastLoadedContentRef
+  ]);
+
+  return (
+    <div className="border border-gray-500 dark:border-gray-400 rounded-md min-h-[200px] bg-transparent text-foreground px-4 py-2 shadow-xs transition-colors focus-within:ring-3 focus-within:ring-purple-400/20 focus-within:border-purple-400">
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1 [&_a]:text-blue-600 [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-blue-800 dark:[&_a]:text-blue-400 dark:hover:[&_a]:text-blue-300"
+      />
+    </div>
+  );
+};
+
 const DescriptionTiptap = ({ control, errors }: Props) => {
   const onUpdateRef = useRef<((html: string) => void) | null>(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
+  const isInitialLoadRef = useRef(true); // Track if this is the first load
+  const lastLoadedContentRef = useRef<string>(""); // Track last loaded content to prevent loops
 
   const editor = useEditor({
     extensions: [
@@ -96,8 +185,13 @@ const DescriptionTiptap = ({ control, errors }: Props) => {
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       if (onUpdateRef.current) {
+        // Mark that user has started editing (no longer initial load)
+        isInitialLoadRef.current = false;
         onUpdateRef.current(JSON.stringify(json));
       }
+    },
+    onCreate: () => {
+      setIsEditorReady(true);
     }
   });
 
@@ -531,14 +625,19 @@ const DescriptionTiptap = ({ control, errors }: Props) => {
         control={control}
         rules={{ required: "Description is required" }}
         render={({ field }) => {
+          // Set the onChange handler
           onUpdateRef.current = field.onChange;
+
+          // Use a separate component to handle the effect properly
           return (
-            <div className="border border-gray-500 dark:border-gray-400 rounded-md min-h-[200px] bg-transparent text-foreground px-4 py-2 shadow-xs transition-colors focus-within:ring-3 focus-within:ring-purple-400/20 focus-within:border-purple-400">
-              <EditorContent
-                editor={editor}
-                className="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1 [&_a]:text-blue-600 [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-blue-800 dark:[&_a]:text-blue-400 dark:hover:[&_a]:text-blue-300"
-              />
-            </div>
+            <EditorLoader
+              field={field}
+              editor={editor}
+              isEditorReady={isEditorReady}
+              onUpdateRef={onUpdateRef}
+              isInitialLoadRef={isInitialLoadRef}
+              lastLoadedContentRef={lastLoadedContentRef}
+            />
           );
         }}
       />

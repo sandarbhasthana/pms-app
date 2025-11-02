@@ -10,7 +10,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -18,10 +18,21 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, RefreshCw, Trash2, Mail, Phone, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import {
+  MoreHorizontal,
+  RefreshCw,
+  Trash2,
+  Mail,
+  Phone,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate as formatDateUtil } from "@/lib/utils/dateFormatter";
 
 interface Invitation {
   id: string;
@@ -44,36 +55,41 @@ interface InvitationsListProps {
   onInvitationAction: () => void;
 }
 
-export function InvitationsList({ invitations, onInvitationAction }: InvitationsListProps) {
+export function InvitationsList({
+  invitations,
+  onInvitationAction
+}: InvitationsListProps) {
   const { toast } = useToast();
-  const [loadingActions, setLoadingActions] = useState<Record<string, boolean>>({});
+  const [loadingActions, setLoadingActions] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const roleLabels = {
-    "SUPER_ADMIN": "Super Admin",
-    "ORG_ADMIN": "Organization Admin",
-    "PROPERTY_MGR": "Property Manager",
-    "FRONT_DESK": "Front Desk",
-    "HOUSEKEEPING": "Housekeeping",
-    "MAINTENANCE": "Maintenance",
-    "ACCOUNTANT": "Accountant",
-    "OWNER": "Owner",
-    "IT_SUPPORT": "IT Support"
+    SUPER_ADMIN: "Super Admin",
+    ORG_ADMIN: "Organization Admin",
+    PROPERTY_MGR: "Property Manager",
+    FRONT_DESK: "Front Desk",
+    HOUSEKEEPING: "Housekeeping",
+    MAINTENANCE: "Maintenance",
+    ACCOUNTANT: "Accountant",
+    OWNER: "Owner",
+    IT_SUPPORT: "IT Support"
   };
 
   const propertyRoleLabels = {
-    "PROPERTY_MGR": "Property Manager",
-    "FRONT_DESK": "Front Desk",
-    "HOUSEKEEPING": "Housekeeping",
-    "MAINTENANCE": "Maintenance",
-    "SECURITY": "Security",
-    "GUEST_SERVICES": "Guest Services"
+    PROPERTY_MGR: "Property Manager",
+    FRONT_DESK: "Front Desk",
+    HOUSEKEEPING: "Housekeeping",
+    MAINTENANCE: "Maintenance",
+    SECURITY: "Security",
+    GUEST_SERVICES: "Guest Services"
   };
 
   const shiftLabels = {
-    "MORNING": "Morning",
-    "EVENING": "Evening",
-    "NIGHT": "Night",
-    "FLEXIBLE": "Flexible"
+    MORNING: "Morning",
+    EVENING: "Evening",
+    NIGHT: "Night",
+    FLEXIBLE: "Flexible"
   };
 
   const getStatusBadge = (status: string) => {
@@ -110,7 +126,7 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    return formatDateUtil(dateString);
   };
 
   const formatDateTime = (dateString: string) => {
@@ -118,15 +134,15 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
   };
 
   const handleResendInvitation = async (invitationId: string) => {
-    setLoadingActions(prev => ({ ...prev, [invitationId]: true }));
+    setLoadingActions((prev) => ({ ...prev, [invitationId]: true }));
 
     try {
       const response = await fetch(`/api/admin/invitations/${invitationId}`, {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ action: "resend" }),
+        body: JSON.stringify({ action: "resend" })
       });
 
       const data = await response.json();
@@ -134,14 +150,14 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
       if (response.ok) {
         toast({
           title: "Invitation Resent",
-          description: `Invitation has been resent to ${data.invitation.email}`,
+          description: `Invitation has been resent to ${data.invitation.email}`
         });
         onInvitationAction();
       } else {
         toast({
           title: "Error",
           description: data.error || "Failed to resend invitation",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } catch (error) {
@@ -149,19 +165,19 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
       toast({
         title: "Error",
         description: "An unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
-      setLoadingActions(prev => ({ ...prev, [invitationId]: false }));
+      setLoadingActions((prev) => ({ ...prev, [invitationId]: false }));
     }
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
-    setLoadingActions(prev => ({ ...prev, [invitationId]: true }));
+    setLoadingActions((prev) => ({ ...prev, [invitationId]: true }));
 
     try {
       const response = await fetch(`/api/admin/invitations/${invitationId}`, {
-        method: "DELETE",
+        method: "DELETE"
       });
 
       const data = await response.json();
@@ -169,14 +185,14 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
       if (response.ok) {
         toast({
           title: "Invitation Cancelled",
-          description: "Invitation has been cancelled successfully",
+          description: "Invitation has been cancelled successfully"
         });
         onInvitationAction();
       } else {
         toast({
           title: "Error",
           description: data.error || "Failed to cancel invitation",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } catch (error) {
@@ -184,10 +200,10 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
       toast({
         title: "Error",
         description: "An unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
-      setLoadingActions(prev => ({ ...prev, [invitationId]: false }));
+      setLoadingActions((prev) => ({ ...prev, [invitationId]: false }));
     }
   };
 
@@ -197,10 +213,10 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
         <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
           <Mail className="h-8 w-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No invitations sent</h3>
-        <p className="text-gray-500">
-          Invitations you send will appear here.
-        </p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No invitations sent
+        </h3>
+        <p className="text-gray-500">Invitations you send will appear here.</p>
       </div>
     );
   }
@@ -235,20 +251,29 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
                   )}
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-2">
                   <Badge variant="outline">
-                    {roleLabels[invitation.organizationRole as keyof typeof roleLabels] || invitation.organizationRole}
+                    {roleLabels[
+                      invitation.organizationRole as keyof typeof roleLabels
+                    ] || invitation.organizationRole}
                   </Badge>
                   {invitation.propertyName && (
                     <div className="text-sm">
-                      <div className="font-medium">{invitation.propertyName}</div>
+                      <div className="font-medium">
+                        {invitation.propertyName}
+                      </div>
                       <div className="text-gray-500">
-                        {propertyRoleLabels[invitation.propertyRole as keyof typeof propertyRoleLabels] || invitation.propertyRole}
+                        {propertyRoleLabels[
+                          invitation.propertyRole as keyof typeof propertyRoleLabels
+                        ] || invitation.propertyRole}
                         {invitation.shift && (
                           <span className="ml-2">
-                            • {shiftLabels[invitation.shift as keyof typeof shiftLabels] || invitation.shift}
+                            •{" "}
+                            {shiftLabels[
+                              invitation.shift as keyof typeof shiftLabels
+                            ] || invitation.shift}
                           </span>
                         )}
                       </div>
@@ -256,37 +281,40 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
                   )}
                 </div>
               </TableCell>
-              
+
+              <TableCell>{getStatusBadge(invitation.status)}</TableCell>
+
               <TableCell>
-                {getStatusBadge(invitation.status)}
+                <span className="text-sm text-gray-500">
+                  {invitation.createdBy}
+                </span>
               </TableCell>
-              
-              <TableCell>
-                <span className="text-sm text-gray-500">{invitation.createdBy}</span>
-              </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-1 text-sm">
                   <div>
-                    <span className="text-gray-500">Sent:</span> {formatDate(invitation.createdAt)}
+                    <span className="text-gray-500">Sent:</span>{" "}
+                    {formatDate(invitation.createdAt)}
                   </div>
                   <div>
-                    <span className="text-gray-500">Expires:</span> {formatDate(invitation.expiresAt)}
+                    <span className="text-gray-500">Expires:</span>{" "}
+                    {formatDate(invitation.expiresAt)}
                   </div>
                   {invitation.usedAt && (
                     <div>
-                      <span className="text-gray-500">Accepted:</span> {formatDateTime(invitation.usedAt)}
+                      <span className="text-gray-500">Accepted:</span>{" "}
+                      {formatDateTime(invitation.usedAt)}
                     </div>
                   )}
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 {invitation.status === "pending" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         className="h-8 w-8 p-0"
                         disabled={loadingActions[invitation.id]}
                       >
@@ -297,14 +325,14 @@ export function InvitationsList({ invitations, onInvitationAction }: Invitations
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleResendInvitation(invitation.id)}
                         disabled={loadingActions[invitation.id]}
                       >
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Resend Invitation
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleCancelInvitation(invitation.id)}
                         className="text-red-600"
                         disabled={loadingActions[invitation.id]}

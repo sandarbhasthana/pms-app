@@ -74,7 +74,11 @@ export function CreateUserModal({
       fetch("/api/properties")
         .then((res) => res.json())
         .then((data) => {
-          if (data.properties) {
+          // API returns array directly, not wrapped in { properties: [] }
+          if (Array.isArray(data)) {
+            setProperties(data);
+          } else if (data.properties) {
+            // Fallback for wrapped response
             setProperties(data.properties);
           }
         })
@@ -99,27 +103,45 @@ export function CreateUserModal({
 
   // Role hierarchy validation
   const getAvailableOrganizationRoles = () => {
-    const roles = [
-      { value: "STAFF", label: "Staff" },
+    const allRoles = [
+      { value: "SUPER_ADMIN", label: "Super Admin" },
+      { value: "ORG_ADMIN", label: "Organization Admin" },
       { value: "PROPERTY_MGR", label: "Property Manager" },
-      { value: "ORG_ADMIN", label: "Organization Admin" }
+      { value: "FRONT_DESK", label: "Front Desk" },
+      { value: "HOUSEKEEPING", label: "Housekeeping" },
+      { value: "MAINTENANCE", label: "Maintenance" },
+      { value: "ACCOUNTANT", label: "Accountant" },
+      { value: "OWNER", label: "Owner" },
+      { value: "IT_SUPPORT", label: "IT Support" },
+      { value: "SECURITY", label: "Security" }
     ];
 
     // Filter based on current user's role
     if (userRole === "PROPERTY_MGR") {
-      return roles.filter((role) => role.value === "STAFF");
+      // Property managers can only create staff-level roles
+      return allRoles.filter((role) =>
+        ["FRONT_DESK", "HOUSEKEEPING", "MAINTENANCE", "SECURITY"].includes(
+          role.value
+        )
+      );
     }
     if (userRole === "ORG_ADMIN") {
-      return roles.filter((role) => role.value !== "SUPER_ADMIN");
+      // Org admins cannot create super admins
+      return allRoles.filter((role) => role.value !== "SUPER_ADMIN");
     }
-    return roles; // SUPER_ADMIN can assign any role
+    return allRoles; // SUPER_ADMIN can assign any role
   };
 
   const getAvailablePropertyRoles = () => {
     return [
-      { value: "STAFF", label: "Staff" },
-      { value: "SUPERVISOR", label: "Supervisor" },
-      { value: "MANAGER", label: "Manager" }
+      { value: "PROPERTY_MGR", label: "Property Manager" },
+      { value: "FRONT_DESK", label: "Front Desk" },
+      { value: "HOUSEKEEPING", label: "Housekeeping" },
+      { value: "MAINTENANCE", label: "Maintenance" },
+      { value: "SECURITY", label: "Security" },
+      { value: "GUEST_SERVICES", label: "Guest Services" },
+      { value: "ACCOUNTANT", label: "Accountant" },
+      { value: "IT_SUPPORT", label: "IT Support" }
     ];
   };
 
@@ -127,7 +149,8 @@ export function CreateUserModal({
     return [
       { value: "MORNING", label: "Morning (6AM - 2PM)" },
       { value: "EVENING", label: "Evening (2PM - 10PM)" },
-      { value: "NIGHT", label: "Night (10PM - 6AM)" }
+      { value: "NIGHT", label: "Night (10PM - 6AM)" },
+      { value: "FLEXIBLE", label: "Flexible" }
     ];
   };
 
@@ -191,7 +214,15 @@ export function CreateUserModal({
         body: JSON.stringify(userData)
       });
 
-      const data = await response.json();
+      // Try to parse JSON response, fallback to text if it fails
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        // If JSON parsing fails, try to get text
+        const text = await response.text();
+        data = { error: text || `Failed to parse server response: ${parseError}` };
+      }
 
       if (response.ok) {
         toast({
@@ -220,7 +251,10 @@ export function CreateUserModal({
       console.error("Error creating user:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         variant: "destructive"
       });
     } finally {
@@ -412,11 +446,17 @@ export function CreateUserModal({
                         <SelectValue placeholder="Select property" />
                       </SelectTrigger>
                       <SelectContent>
-                        {properties.map((property) => (
-                          <SelectItem key={property.id} value={property.id}>
-                            {property.name}
-                          </SelectItem>
-                        ))}
+                        {properties.length === 0 ? (
+                          <div className="p-2 text-sm text-gray-500">
+                            No properties available
+                          </div>
+                        ) : (
+                          properties.map((property) => (
+                            <SelectItem key={property.id} value={property.id}>
+                              {property.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -447,16 +487,20 @@ export function CreateUserModal({
                   <div className="space-y-1">
                     <Label className="text-xs">Shift (Optional)</Label>
                     <Select
-                      value={assignment.shift || ""}
+                      value={assignment.shift || "NONE"}
                       onValueChange={(value) =>
-                        updatePropertyAssignment(index, "shift", value)
+                        updatePropertyAssignment(
+                          index,
+                          "shift",
+                          value === "NONE" ? "" : value
+                        )
                       }
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select shift" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No specific shift</SelectItem>
+                        <SelectItem value="NONE">No specific shift</SelectItem>
                         {getAvailableShifts().map((shift) => (
                           <SelectItem key={shift.value} value={shift.value}>
                             {shift.label}

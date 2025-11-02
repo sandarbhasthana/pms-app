@@ -296,9 +296,23 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                           className="flex items-center space-x-2 text-sm"
                         >
                           <MapPin className="h-3 w-3 text-gray-400" />
-                          <span className="font-medium">
-                            {assignment.propertyName}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {assignment.propertyName}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className={`text-xs w-fit mt-1 ${
+                                propertyRoleColors[
+                                  assignment.role as keyof typeof propertyRoleColors
+                                ] || "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {propertyRoleLabels[
+                                assignment.role as keyof typeof propertyRoleLabels
+                              ] || assignment.role}
+                            </Badge>
+                          </div>
                         </div>
                       ))
                     )}

@@ -40,6 +40,7 @@ import {
   getOperationalDayStart,
   getOperationalDate
 } from "@/lib/timezone/day-boundaries";
+import { formatDateRange as formatDateRangeUtil } from "@/lib/utils/dateFormatter";
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
@@ -672,16 +673,8 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
   const formatDateRange = () => {
     if (!formData.checkIn || !formData.checkOut) return "";
-    const checkIn = new Date(formData.checkIn).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric"
-    });
-    const checkOut = new Date(formData.checkOut).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
-    return `${checkIn} - ${checkOut}`;
+    // Use locale-aware date formatting
+    return formatDateRangeUtil(formData.checkIn, formData.checkOut);
   };
 
   if (!editingReservation) {

@@ -22,6 +22,7 @@ import {
 } from "./booking-tabs/types";
 import { useRatesData } from "@/lib/hooks/useRatesData";
 import { format } from "date-fns";
+import { formatDate } from "@/lib/utils/dateFormatter";
 
 const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   selectedSlot,
@@ -388,7 +389,8 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
 
           <SheetTitle className="text-3xl">New Reservation</SheetTitle>
           <SheetDescription className="text-md">
-            Create a new booking for {selectedSlot.roomName} on {checkInDate}
+            Create a new booking for {selectedSlot.roomName} on{" "}
+            {formatDate(checkInDate)}
           </SheetDescription>
         </SheetHeader>
 

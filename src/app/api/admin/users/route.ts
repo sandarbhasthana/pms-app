@@ -156,7 +156,13 @@ export async function GET(req: NextRequest) {
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined
     });
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -186,13 +192,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get organization ID from header or cookie
-    const orgIdHeader = req.headers.get("x-organization-id");
-    const orgIdCookie = req.cookies.get("orgId")?.value;
-    const orgId = orgIdHeader || orgIdCookie;
+    // Get organization ID from session user
+    const userId = session.user.id;
 
-    if (!orgId) {
-      return new NextResponse("Organization context missing", { status: 400 });
+    // Get user's organization membership
+    const userOrg = await prisma.userOrg.findFirst({
+      where: { userId },
+      include: { organization: true }
+    });
+
+    if (!userOrg) {
+      return NextResponse.json(
+        { error: "User is not associated with any organization" },
+        { status: 400 }
+      );
+    }
+
+    const orgId = userOrg.organizationId;
+
+    // Verify organization exists
+    const organization = await prisma.organization.findUnique({
+      where: { id: orgId }
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 }
+      );
     }
 
     const {
@@ -263,13 +290,21 @@ export async function POST(req: NextRequest) {
     });
 
     // Create organization membership
-    const userOrg = await prisma.userOrg.create({
+    console.log("Creating UserOrg with:", {
+      userId: user.id,
+      organizationId: orgId,
+      role: organizationRole
+    });
+
+    const newUserOrg = await prisma.userOrg.create({
       data: {
         userId: user.id,
         organizationId: orgId,
         role: organizationRole
       }
     });
+
+    console.log("UserOrg created successfully:", newUserOrg);
 
     // Create property assignments if provided
     if (propertyAssignments.length > 0) {
@@ -302,13 +337,23 @@ export async function POST(req: NextRequest) {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          organizationRole: userOrg.role
+          organizationRole: newUserOrg.role
         }
       },
       { status: 201 }
     );
   } catch (error) {
     console.error("Error creating user:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    );
   }
 }

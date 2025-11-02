@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { calculateNightsWithSixAMBoundary } from "@/lib/timezone/day-boundaries";
+import { formatDate as formatDateUtil } from "@/lib/utils/dateFormatter";
 
 export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
   const calculateNights = () => {
@@ -22,12 +23,7 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    });
+    return formatDateUtil(dateString);
   };
 
   return (
@@ -153,16 +149,17 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
                 Room
               </label>
               <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
-                {reservationData.roomName ||
-                  reservationData.roomNumber ||
-                  `Room ${reservationData.roomId}`}
+                Room{" "}
+                {reservationData.roomNumber ||
+                  reservationData.roomName ||
+                  reservationData.roomId}
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                <CalendarIcon className="h-4 w-4" />
-                Check-in Date
+            <div className="min-w-0">
+              <label className="inline-flex items-center gap-1 text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 w-full">
+                <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">Check-in Date</span>
               </label>
               <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {formatDate(reservationData.checkIn)}
@@ -190,10 +187,10 @@ export const ViewDetailsTab: React.FC<ViewTabProps> = ({ reservationData }) => {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                <CalendarIcon className="h-4 w-4" />
-                Check-out Date
+            <div className="min-w-0">
+              <label className="inline-flex items-center gap-1 text-sm font-medium mb-1 text-gray-700 dark:text-gray-300 w-full">
+                <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">Check-out Date</span>
               </label>
               <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
                 {formatDate(reservationData.checkOut)}

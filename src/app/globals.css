@@ -1173,6 +1173,43 @@ select:focus-visible {
 [data-sonner-toaster] [data-toast] {
   position: relative;
   overflow: hidden;
+  background-color: var(--background) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+/* Ensure toast title and description are visible */
+[data-sonner-toaster] [data-toast] [data-title] {
+  color: var(--foreground) !important;
+  font-weight: 600 !important;
+}
+
+[data-sonner-toaster] [data-toast] [data-description] {
+  color: var(--foreground) !important;
+  opacity: 0.9 !important;
+}
+
+/* Light mode specific */
+:root [data-sonner-toaster] [data-toast] {
+  background-color: #ffffff !important;
+  color: #1e1e1e !important;
+}
+
+:root [data-sonner-toaster] [data-toast] [data-title],
+:root [data-sonner-toaster] [data-toast] [data-description] {
+  color: #1e1e1e !important;
+}
+
+/* Dark mode specific */
+.dark [data-sonner-toaster] [data-toast] {
+  background-color: #1e1e1e !important;
+  color: #f0f8ff !important;
+  border-color: #3a3a3a !important;
+}
+
+.dark [data-sonner-toaster] [data-toast] [data-title],
+.dark [data-sonner-toaster] [data-toast] [data-description] {
+  color: #f0f8ff !important;
 }
 
 [data-sonner-toaster] [data-toast]::after {
@@ -1211,6 +1248,34 @@ select:focus-visible {
 /* Default toast - gray progress bar */
 [data-sonner-toaster] [data-toast][data-type="default"]::after {
   background: linear-gradient(90deg, #6b7280, #4b5563);
+}
+
+/* Ensure all text elements inside toast are visible */
+[data-sonner-toaster] [data-toast] * {
+  color: inherit !important;
+}
+
+[data-sonner-toaster] [data-toast] [data-content] {
+  color: var(--foreground) !important;
+}
+
+/* Light mode - force black text */
+:root [data-sonner-toaster] [data-toast] * {
+  color: #1e1e1e !important;
+}
+
+/* Dark mode - force light text */
+.dark [data-sonner-toaster] [data-toast] * {
+  color: #f0f8ff !important;
+}
+
+/* Ensure icons are visible */
+[data-sonner-toaster] [data-toast] [data-icon] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toaster] [data-toast] [data-icon] svg {
+  color: inherit !important;
 }
 
 @keyframes toast-progress {
@@ -1261,4 +1326,55 @@ select:focus-visible {
   background-color: #9333ea !important;
   color: white !important;
   border-color: #9333ea !important;
+}
+
+/* ========================================
+   SWIPE CALENDAR FLUID GESTURE ANIMATIONS
+   ======================================== */
+
+/* Container for gesture-based calendar swipe */
+.swipeable-calendar-container {
+  position: relative;
+  /* framer-motion handles all transforms and animations */
+}
+
+/* Ensure calendar content can be transformed smoothly */
+.swipeable-calendar-container > div {
+  /* framer-motion handles all transforms */
+  touch-action: pan-y; /* Allow vertical scroll, prevent horizontal scroll */
+}
+
+/* Ensure smooth scrolling for calendar (vertical only) */
+.fc-scroller {
+  scroll-behavior: smooth;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 1024px) {
+  /* Prevent text selection during swipe on mobile */
+  .swipeable-calendar-container {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ========================================
+   GOOGLE CALENDAR-STYLE SWIPE
+   ======================================== */
+
+/* Container for Google Calendar-style triple-buffer swipe */
+.google-style-calendar-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (max-width: 1024px) {
+  .google-style-calendar-container {
+    touch-action: pan-y;
+  }
 }

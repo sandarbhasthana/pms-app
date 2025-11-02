@@ -118,10 +118,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // Handle subdomain-based organization routing
+  // Allow localhost, IP addresses, and Vercel deployments
   if (
     ["localhost", "www", "pms-app"].includes(subdomain) ||
     host.includes("localhost:") ||
-    host.includes("vercel.app") // Allow all Vercel deployment URLs
+    host.includes("vercel.app") || // Allow all Vercel deployment URLs
+    host.includes("http://192.168.1.41:") ||
+    /^\d+\.\d+\.\d+\.\d+/.test(host) // Allow IP addresses (e.g., 192.168.1.41:4001)
   ) {
     return NextResponse.next();
   }

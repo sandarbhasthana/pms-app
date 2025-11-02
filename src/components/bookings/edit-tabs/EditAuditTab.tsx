@@ -10,6 +10,7 @@ import { EditReservationData, EditBookingFormData } from "./types";
 import { getStatusConfig } from "@/lib/reservation-status/utils";
 import { ReservationStatus } from "@prisma/client";
 import { LoadingSpinner } from "@/components/ui/spinner";
+import { formatDateTime } from "@/lib/utils/dateFormatter";
 
 interface EditAuditTabProps {
   reservationData: EditReservationData;
@@ -110,10 +111,10 @@ const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
   }, [reservationData?.id]);
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString("en-US", {
+    return formatDateTime(timestamp, {
+      year: "numeric",
       month: "short",
       day: "numeric",
-      year: "numeric",
       hour: "numeric",
       minute: "2-digit",
       hour12: true

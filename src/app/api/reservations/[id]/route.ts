@@ -74,7 +74,10 @@ export async function GET(
 
     return NextResponse.json({
       ...reservationDetails,
-      paymentStatus
+      paymentStatus,
+      // Map room.name to roomNumber for frontend compatibility
+      roomNumber: reservationDetails.room?.name,
+      roomName: reservationDetails.room?.name
     });
   } catch (error) {
     console.error(`GET /api/reservations/${id} error:`, error);

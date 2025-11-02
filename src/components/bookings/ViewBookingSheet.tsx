@@ -23,6 +23,7 @@ import { ViewPaymentTab } from "./view-tabs/ViewPaymentTab";
 import { ViewBookingSheetProps, ViewBookingTab } from "./view-tabs/types";
 import StatusBadge from "@/components/reservation-status/StatusBadge";
 import { ReservationStatus } from "@prisma/client";
+import { formatDateRange as formatDateRangeUtil } from "@/lib/utils/dateFormatter";
 
 const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
   viewReservation,
@@ -55,22 +56,10 @@ const ViewBookingSheet: React.FC<ViewBookingSheetProps> = ({
 
   const formatDateRange = () => {
     if (!viewReservation) return "";
-    const checkIn = new Date(viewReservation.checkIn).toLocaleDateString(
-      "en-US",
-      {
-        month: "short",
-        day: "numeric"
-      }
+    return formatDateRangeUtil(
+      viewReservation.checkIn,
+      viewReservation.checkOut
     );
-    const checkOut = new Date(viewReservation.checkOut).toLocaleDateString(
-      "en-US",
-      {
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-      }
-    );
-    return `${checkIn} - ${checkOut}`;
   };
 
   // Calculate payment status based on paymentStatus field
