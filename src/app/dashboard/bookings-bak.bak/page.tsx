@@ -1,5 +1,5 @@
-// File: src/app/dashboard/bookings-swipe/page.tsx
-// TEST PAGE - SwipeCalendar Integration Test
+// File: src/app/dashboard/bookings-row-style/page.tsx
+// FIXED VERSION - Based on bookings-fixed with ResourceHeaderLane functionality
 "use client";
 
 import React, {
@@ -24,7 +24,7 @@ import { RefreshCw, Plus } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
 import IDScannerWithOCR from "@/components/IDScannerWithOCR";
-import CalendarViewRowStyle from "@/components/bookings/CalendarViewRowStyle";
+import CalendarViewGoogleStyle from "@/components/bookings/CalendarViewGoogleStyle";
 import NewBookingModalFixed from "@/components/bookings/NewBookingSheet";
 import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
 import EditBookingSheet from "@/components/bookings/EditBookingSheet";
@@ -1373,9 +1373,8 @@ export default function BookingsRowStylePage() {
         </div>
       </div>
 
-      {/* FullCalendar with Custom Swipe Integration */}
-      <CalendarViewRowStyle
-        calendarRef={calendarRef}
+      {/* FullCalendar with Google Calendar-Style Swipe */}
+      <CalendarViewGoogleStyle
         resources={resources}
         eventSources={eventSources}
         handleEventClick={handleEventClick}
@@ -1387,7 +1386,14 @@ export default function BookingsRowStylePage() {
         isToday={isToday}
         setSelectedResource={setSelectedResource}
         events={events}
-        onDateChange={(newDate) => setSelectedDate(newDate)}
+        onDateChange={(newDate) => {
+          setSelectedDate(newDate);
+          const api = calendarRef.current?.getApi();
+          if (api) {
+            api.gotoDate(new Date(newDate));
+          }
+        }}
+        disableSwipe={dayTransitionLoading}
       />
 
       {/* New Booking Dialog */}

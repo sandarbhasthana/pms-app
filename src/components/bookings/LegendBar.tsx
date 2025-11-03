@@ -64,8 +64,8 @@ export default function LegendBar() {
     {
       label: "No-Show",
       description: "Guest did not arrive",
-      lightColor: "#f97316",
-      darkColor: "#d97706"
+      lightColor: "#b91c1c",
+      darkColor: "#991b1b"
     },
     {
       label: "Cancelled",

@@ -108,8 +108,8 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
     description: "Stay completed"
   },
   NO_SHOW: {
-    color: "#f97316",
-    bgColor: "bg-orange-100 dark:bg-orange-900",
+    color: "#b91c1c",
+    bgColor: "bg-red-100 dark:bg-red-900",
     textColor: "text-gray-900 dark:text-[#f0f8ff]",
     icon: "x-circle",
     label: "No-Show",

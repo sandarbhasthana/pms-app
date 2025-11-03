@@ -1,0 +1,57 @@
+/**
+ * Custom CSS for SwipeCalendar configuration
+ * This file configures SwipeCalendar to only swipe the timeline area,
+ * not the resource column, and hides unnecessary UI elements.
+ */
+
+/* Prevent swiping on the resource area - only allow swipe on timeline */
+.swipecalendar-container .fc-resource-timeline .fc-datagrid,
+.swipecalendar-container .fc-datagrid-body,
+.swipecalendar-container .fc-resource-area,
+.swipecalendar-container .fc-datagrid-header,
+.swipecalendar-container .fc-datagrid-cell,
+.swipecalendar-container .swiper-no-swiping {
+  touch-action: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Re-enable pointer events for interactive elements in resource area */
+.swipecalendar-container .fc-resource-timeline .fc-datagrid button,
+.swipecalendar-container .fc-resource-timeline .fc-datagrid a,
+.swipecalendar-container .fc-datagrid-expander {
+  pointer-events: auto !important;
+}
+
+/* Swiper.js no-swiping class - prevents swipe on marked elements */
+.swiper-no-swiping {
+  touch-action: pan-y !important;
+}
+
+/* Hide the month/week header in top left */
+.swipecalendar-container .fc-toolbar-title,
+.swipecalendar-container .swc-toolbar-title,
+.swipecalendar-container .fc-toolbar-chunk:first-child h2 {
+  display: none !important;
+}
+
+/* Ensure timeline area is swipeable */
+.swipecalendar-container .fc-timeline-body,
+.swipecalendar-container .fc-scroller-liquid-absolute,
+.swipecalendar-container .fc-timeline-lane,
+.swipecalendar-container .fc-timeline-events {
+  touch-action: pan-y !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Make sure the swiper wrapper only affects the timeline */
+.swipecalendar-container .swiper-wrapper {
+  touch-action: pan-y !important;
+}
+
+/* Prevent text selection during swipe */
+.swipecalendar-container .fc-timeline-body * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}

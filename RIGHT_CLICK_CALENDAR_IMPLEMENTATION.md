@@ -488,7 +488,7 @@ const handleRightClick = (
 ### 3. Calendar Event Rendering
 
 - Blocks should not be draggable
-- Blocks should not be clickable (no flyout menu on block events)
+- Blocks should be clickable (show flyout menu on block events with only 2 options cancel, unblock, information)
 - Use custom event rendering for blocks
 
 ### 4. Availability Logic

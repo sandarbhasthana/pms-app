@@ -726,7 +726,9 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                           : editingReservation.status === "CHECKED_OUT"
                           ? "#8b5cf6" // Purple
                           : editingReservation.status === "NO_SHOW"
-                          ? "#f97316" // Orange
+                          ? document.documentElement.classList.contains("dark")
+                            ? "#991b1b" // Dark mode: Brick red
+                            : "#b91c1c" // Light mode: Brick red
                           : "#6b7280",
                       color: "white",
                       border: "none"

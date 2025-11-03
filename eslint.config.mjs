@@ -10,8 +10,31 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  // Ignore generated files and build outputs
-  { ignores: ["**/.next/**", "**/out/**", "**/coverage/**"] },
+  // Ignore patterns (migrated from .eslintignore)
+  {
+    ignores: [
+      // Dependencies
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+
+      // Third-party libraries
+      "public/swipecalendar/**",
+      "public/lib/**",
+
+      // Test files
+      "coverage/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+
+      // Build outputs
+      "dist/**",
+      ".vercel/**"
+    ]
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript")
 ];
 

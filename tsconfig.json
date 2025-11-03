@@ -33,7 +33,7 @@
     "src/components/settings/general/GeneralSettingsFormMinimal.tsx.bak",
     "src/app/settings/general-minimal/page.tsx.bak",
     "src/lib/__tests__/property-access.test.ts.bak"
-  ],
+, "src/components/bookings/CalendarViewRowStyle_OG.tsx.bak"  ],
   "exclude": [
     "node_modules",
     "scripts/**/*",
@@ -41,6 +41,8 @@
     "**/*.tsx.bak",
     "**/*_NoUse/**",
     "**/bookings-og-nouse/**",
-    "**/bookings-fixed-second-nouse/**"
+    "**/bookings-fixed-second-nouse/**",
+    "public/swipecalendar/**",
+    "public/lib/**"
   ]
 }

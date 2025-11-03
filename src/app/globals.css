@@ -521,23 +521,73 @@
   transition: all 0.2s ease !important;
 }
 
-.fc-datagrid-cell-main span {
+.fc-datagrid-cell-main div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
   font-size: 0.9rem;
-  min-height: 5px !important;
-  height: 5px !important;
   overflow: hidden !important;
 }
 
-span.fc-datagrid-cell-cushion,
-span.fc-scrollgrid-sync-inner {
+div.fc-datagrid-cell-cushion,
+div.fc-scrollgrid-sync-inner {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
 }
 
-.fc-datagrid-expander .fc-datagrid-expander-placeholder {
+span.fc-datagrid-expander span.fc-datagrid-expander-placeholder {
   display: none !important;
-  visibility: hidden !important;
+  /* visibility: hidden !important; */
+}
+
+/* KEEP THESE - Highlight/Link fixes */
+/* Make the entire resource group cell clickable but prevent highlight */
+.fc-datagrid-cell.fc-resource {
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Prevent ALL types of highlighting on resource cells - DARK MODE */
+.dark .fc-datagrid-cell.fc-resource *,
+.dark .fc-datagrid-cell.fc-resource *:active,
+.dark .fc-datagrid-cell.fc-resource *:focus,
+.dark .fc-datagrid-cell.fc-resource:active,
+.dark .fc-datagrid-cell.fc-resource:focus,
+.dark .fc-datagrid-cell.fc-resource:hover {
+  background-color: transparent !important;
+  outline: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  color: inherit !important;
+}
+
+/* Prevent ALL types of highlighting on resource cells - LIGHT MODE */
+.fc-datagrid-cell.fc-resource *,
+.fc-datagrid-cell.fc-resource *:active,
+.fc-datagrid-cell.fc-resource *:focus,
+.fc-datagrid-cell.fc-resource:active,
+.fc-datagrid-cell.fc-resource:focus,
+.fc-datagrid-cell.fc-resource:hover {
+  background-color: transparent !important;
+  background: transparent !important;
+  outline: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  color: inherit !important;
+}
+
+/* Specifically target the cell cushion that gets highlighted - BOTH MODES */
+.fc-datagrid-cell-cushion:active,
+.fc-datagrid-cell-cushion:focus,
+div.fc-datagrid-cell-cushion:active,
+div.fc-datagrid-cell-cushion:focus {
+  background-color: transparent !important;
+  background: transparent !important;
+  outline: none !important;
+  color: inherit !important;
 }
 
 /* Hide horizontal scrollbar and prevent horizontal overflow */
