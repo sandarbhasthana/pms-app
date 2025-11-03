@@ -676,6 +676,50 @@ div.fc-datagrid-cell-cushion:focus {
   ) !important; /* #74d4ff with 30% opacity for dark mode */
 }
 
+/* Block event styling - red/pink striped pattern in light mode */
+.fc-event.block-event {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff1744,
+    #ff1744 6px,
+    #ff4081 6px,
+    #ff4081 20px
+  ) !important;
+  border-color: #ff1744 !important;
+  color: #ffffff !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.fc-event.block-event .fc-event-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Make block events non-draggable visually */
+.fc-event.block-event {
+  cursor: default !important;
+}
+
+.fc-event.block-event:hover {
+  opacity: 0.9 !important;
+  cursor: pointer !important;
+}
+
+/* Dark mode block events - darker red shades */
+.dark .fc-event.block-event {
+  background: repeating-linear-gradient(
+    45deg,
+    #c62828,
+    #c62828 6px,
+    #8e0000 6px,
+    #8e0000 20px
+  ) !important;
+  border-color: #c62828 !important;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
   cursor: pointer;

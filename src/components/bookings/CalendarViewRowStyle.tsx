@@ -406,6 +406,13 @@ export default function CalendarViewRowStyle({
         eventDragStart={() => setIsDragging(true)}
         eventDragStop={() => setIsDragging(false)}
         editable
+        eventAllow={(_dropInfo, draggedEvent) => {
+          // Prevent dragging block events
+          if (draggedEvent?.extendedProps?.isBlock) {
+            return false;
+          }
+          return true;
+        }}
         headerToolbar={false}
         navLinks={false}
         weekends

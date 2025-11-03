@@ -28,6 +28,7 @@ model Organization {
   properties               Property[]
   reservations             Reservation[]
   rooms                    Room[]
+  roomBlocks               RoomBlock[]
   roomTypes                RoomType[]
   users                    UserOrg[]
   errorAlerts              ErrorAlert[]
@@ -73,6 +74,7 @@ model Property {
   settings                PropertySettings?
   reservations            Reservation[]
   rooms                   Room[]
+  roomBlocks              RoomBlock[]
   roomTypes               RoomType[]
   userProperties          UserProperty[]
   errorAlerts             ErrorAlert[]
@@ -107,6 +109,7 @@ model User {
   sentInvitations          InvitationToken[]            @relation("InvitationCreator")
   rateChangeLogs           RateChangeLog[]
   reservations             Reservation[]
+  roomBlocks               RoomBlock[]
   memberships              UserOrg[]
   userProperties           UserProperty[]
   createdErrorAlerts       ErrorAlert[]                 @relation("ErrorAlertCreator")
@@ -246,6 +249,7 @@ model Room {
   propertyId     String
   favorites      Favorite[]
   reservations   Reservation[]
+  roomBlocks     RoomBlock[]
   organization   Organization  @relation(fields: [organizationId], references: [id])
   property       Property      @relation(fields: [propertyId], references: [id])
   roomType       RoomType?     @relation(fields: [roomTypeId], references: [id])
@@ -255,6 +259,33 @@ model Room {
 
   @@index([organizationId])
   @@index([propertyId])
+}
+
+/// Room Block entity - for blocking rooms from booking
+model RoomBlock {
+  id             String    @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomId         String
+  startDate      DateTime  @db.Date
+  endDate        DateTime  @db.Date
+  blockType      BlockType
+  reason         String
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  room         Room         @relation(fields: [roomId], references: [id])
+  user         User         @relation(fields: [createdBy], references: [id])
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([roomId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdBy])
 }
 
 /// Amenities available in a room
@@ -1292,4 +1323,12 @@ enum SystemActivityType {
   ONBOARDING_ABANDONED
   SYSTEM_ERROR
   SYSTEM_MAINTENANCE
+}
+
+enum BlockType {
+  MAINTENANCE
+  ISSUE
+  RENOVATION
+  CLEANING
+  OTHER
 }

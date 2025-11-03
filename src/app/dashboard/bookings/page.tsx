@@ -1,5 +1,4 @@
-// File: src/app/dashboard/bookings-swipe/page.tsx
-// TEST PAGE - SwipeCalendar Integration Test
+// File: src/app/dashboard/bookings/page.tsx
 "use client";
 
 import React, {
@@ -29,6 +28,9 @@ import NewBookingModalFixed from "@/components/bookings/NewBookingSheet";
 import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
 import EditBookingSheet from "@/components/bookings/EditBookingSheet";
 import FlyoutMenu from "@/components/bookings/FlyoutMenu";
+import CalendarCellFlyout from "@/components/bookings/CalendarCellFlyout";
+import BlockRoomSheet from "@/components/bookings/BlockRoomSheet";
+import BlockEventFlyout from "@/components/bookings/BlockEventFlyout";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
 import LegendModal from "@/components/bookings/LegendModal";
@@ -53,17 +55,22 @@ interface Reservation {
   roomNumber?: string;
   paymentStatus?: "PAID" | "PARTIALLY_PAID" | "UNPAID";
 }
+
+interface RoomBlock {
+  id: string;
+  roomId: string;
+  startDate: string;
+  endDate: string;
+  blockType: string;
+  reason: string;
+}
+
 interface Room {
   id: string;
   title: string;
   children?: Array<{ id: string; title: string; basePrice?: number }>;
 }
 
-/**
- * Get event color and text color based on reservation status and theme
- * Light theme: Original colors with gray-900 text for CONFIRMED, alice blue for others
- * Dark theme: Darker shades with alice blue text
- */
 const getEventColor = (
   status?: string,
   isDarkMode: boolean = false
@@ -122,6 +129,7 @@ export default function BookingsRowStylePage() {
     new Date().toISOString().slice(0, 10)
   );
   const [events, setEvents] = useState<Reservation[]>([]);
+  const [blocks, setBlocks] = useState<RoomBlock[]>([]);
   const [resources, setResources] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
@@ -160,13 +168,43 @@ export default function BookingsRowStylePage() {
   const [editingReservation, setEditingReservation] =
     useState<Reservation | null>(null);
 
-  // Flyout menu state
+  // Flyout menu state (for reservation events)
   const [flyout, setFlyout] = useState<{
     reservation: Reservation;
     x: number;
     y: number;
     showDetails: boolean;
   } | null>(null);
+
+  // Cell flyout menu state (for empty cells)
+  const [cellFlyout, setCellFlyout] = useState<{
+    roomId: string;
+    roomName: string;
+    date: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const cellFlyoutRef = useRef<HTMLDivElement>(null);
+
+  // Block room state
+  const [blockData, setBlockData] = useState<{
+    roomId: string;
+    roomName: string;
+    startDate: string;
+    blockId?: string;
+  } | null>(null);
+
+  // Block event flyout state
+  const [blockFlyout, setBlockFlyout] = useState<{
+    blockId: string;
+    roomId: string;
+    roomName: string;
+    blockType: string;
+    reason: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const blockFlyoutRef = useRef<HTMLDivElement>(null);
 
   // View‐Details modal state
   const [viewReservation, setViewReservation] = useState<Reservation | null>(
@@ -353,9 +391,61 @@ export default function BookingsRowStylePage() {
           }
         }
         success(wknd);
+      },
+
+      // Block events source
+      (
+        _info: { start: Date; end: Date },
+        success: (
+          events: {
+            id: string;
+            resourceId: string;
+            title: string;
+            start: string;
+            end: string;
+            allDay: boolean;
+            backgroundColor: string;
+            borderColor: string;
+            textColor: string;
+            classNames: string[];
+            extendedProps: {
+              isBlock: boolean;
+              blockId: string;
+              blockType: string;
+              reason: string;
+            };
+          }[]
+        ) => void
+      ) => {
+        console.log(`🔒 Rendering ${blocks.length} blocks in calendar`);
+        const blockEvents = blocks.map((block) => {
+          // Blocks should render like reservations: from start date to end date
+          // Use allDay: true with isPartialDay: true to match reservation rendering
+          return {
+            id: `block-${block.id}`,
+            resourceId: block.roomId,
+            title: `🔒 ${block.blockType.replace(/_/g, " ")}`,
+            start: block.startDate,
+            end: block.endDate,
+            allDay: true, // Use allDay like reservations
+            backgroundColor:
+              "repeating-linear-gradient(45deg, #ff1744, #ff1744 6px, #ff4081 6px, #ff4081 20px)",
+            borderColor: "#ff1744",
+            textColor: "#ffffff",
+            classNames: ["block-event"],
+            extendedProps: {
+              isBlock: true,
+              blockId: block.id,
+              blockType: block.blockType,
+              reason: block.reason || "",
+              isPartialDay: true
+            }
+          };
+        });
+        success(blockEvents);
       }
     ];
-  }, [isDarkMode]); // Only isDarkMode is used in the memoized value
+  }, [isDarkMode, blocks]); // Add blocks to dependencies
 
   // ------------------------
   // Load rooms function (separated for reuse)
@@ -464,19 +554,48 @@ export default function BookingsRowStylePage() {
     }
   }, []);
 
+  // Load blocks function
+  const loadBlocks = useCallback(async () => {
+    try {
+      const propertyId = session?.user?.availableProperties?.[0]?.id;
+      if (!propertyId) return;
+
+      const timestamp = Date.now();
+      const blocksRes = await fetch(
+        `/api/room-blocks?propertyId=${propertyId}&t=${timestamp}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache"
+          }
+        }
+      );
+
+      if (blocksRes.ok) {
+        const blocksData = await blocksRes.json();
+        console.log(`🔒 Loaded ${blocksData.length} blocks`);
+        setBlocks(blocksData);
+      }
+    } catch (e) {
+      console.error("Failed to load blocks:", e);
+    }
+  }, [session?.user?.availableProperties]);
+
   // ------------------------
-  // Initial load: rooms + reservations
+  // Initial load: rooms + reservations + blocks
   // ------------------------
   useEffect(() => {
     async function loadAll() {
       try {
-        await Promise.all([loadRooms(), loadReservations(false)]); // Don't show toast on initial load
+        await Promise.all([loadRooms(), loadReservations(false), loadBlocks()]); // Don't show toast on initial load
       } finally {
         setLoading(false);
       }
     }
     loadAll();
-  }, [loadRooms, loadReservations]);
+  }, [loadRooms, loadReservations, loadBlocks]);
 
   // ------------------------
   // TEMPORARY: Load Eruda for mobile debugging
@@ -765,7 +884,7 @@ export default function BookingsRowStylePage() {
   }, [session?.user?.availableProperties]);
 
   // ------------------------
-  // Date‐click handler opens New Booking dialog
+  // Date‐click handler shows context menu
   // ------------------------
   const handleDateClick = useCallback(
     (arg: DateClickArg) => {
@@ -782,7 +901,7 @@ export default function BookingsRowStylePage() {
         return;
       }
 
-      // Only allow booking on individual rooms (children), not room types (parents)
+      // Only allow on individual rooms (children), not room types (parents)
       if (roomId && roomName && arg.resource?.getParent()) {
         // Check if this date/room combination is already occupied
         const clickedDate = new Date(dateTab);
@@ -803,19 +922,81 @@ export default function BookingsRowStylePage() {
           return;
         }
 
-        setSelectedSlot({ roomId, roomName, date: dateTab });
-        setAdults(1);
-        setChildren(0);
-        // ← NEW: reset customer fields
-        setFullName("");
-        setPhone("");
-        setEmail("");
-        setIdType("passport");
-        setIdNumber("");
-        setIssuingCountry("");
+        // Check if this date/room combination is blocked
+        const isBlocked = blocks.some((block) => {
+          if (block.roomId !== roomId) return false;
+
+          const blockStart = new Date(block.startDate);
+          const blockEnd = new Date(block.endDate);
+
+          // Check if the clicked date falls within a block
+          return clickedDate >= blockStart && clickedDate < blockEnd;
+        });
+
+        if (isBlocked) {
+          toast.error(
+            "This room is blocked for the selected date. Please choose a different date or room."
+          );
+          return;
+        }
+
+        // Get the clicked cell's bounding rect for proper positioning
+        const target = arg.jsEvent.target as HTMLElement;
+        const cell = target.closest(".fc-timeline-slot") || target;
+        const rect = cell.getBoundingClientRect();
+
+        // Show context menu flyout instead of opening NewBookingSheet directly
+        // Position similar to reservation flyout: slightly to the right and below the cell
+        setCellFlyout({
+          roomId,
+          roomName,
+          date: dateTab,
+          x: rect.left + window.scrollX,
+          y: rect.top + window.scrollY
+        });
       }
     },
-    [events]
+    [events, blocks]
+  );
+
+  // ------------------------
+  // Context menu handlers
+  // ------------------------
+  const handleCreateBookingFromMenu = useCallback(
+    (roomId: string, roomName: string, date: string) => {
+      // Open NewBookingSheet with pre-filled data
+      setSelectedSlot({ roomId, roomName, date });
+      setAdults(1);
+      setChildren(0);
+      // Reset customer fields
+      setFullName("");
+      setPhone("");
+      setEmail("");
+      setIdType("passport");
+      setIdNumber("");
+      setIssuingCountry("");
+    },
+    []
+  );
+
+  const handleBlockRoomFromMenu = useCallback(
+    (roomId: string, roomName: string, date: string) => {
+      // Open BlockRoomSheet with pre-filled data
+      setBlockData({
+        roomId,
+        roomName,
+        startDate: date
+      });
+    },
+    []
+  );
+
+  const handleRoomInfoFromMenu = useCallback(
+    (roomId: string, roomName: string) => {
+      // TODO: Open RoomInfoModal (Phase 3)
+      toast.info(`Room Information feature coming soon: ${roomName}`);
+    },
+    []
   );
 
   // ------------------------
@@ -825,6 +1006,26 @@ export default function BookingsRowStylePage() {
     async (arg: EventClickArg) => {
       arg.jsEvent.preventDefault();
       arg.jsEvent.stopPropagation();
+
+      // Check if this is a block event
+      const isBlock = arg.event.extendedProps?.isBlock;
+      if (isBlock) {
+        const rect = arg.el.getBoundingClientRect();
+        const roomId = arg.event.getResources()[0]?.id || "";
+        const roomName = arg.event.getResources()[0]?.title || "";
+
+        setBlockFlyout({
+          blockId: arg.event.extendedProps.blockId,
+          roomId,
+          roomName,
+          blockType: arg.event.extendedProps.blockType,
+          reason: arg.event.extendedProps.reason || "",
+          x: rect.left + window.scrollX,
+          y: rect.top + window.scrollY
+        });
+        return;
+      }
+
       const resv = events.find((e) => e.id === arg.event.id);
       if (!resv) return;
 
@@ -1259,23 +1460,8 @@ export default function BookingsRowStylePage() {
     return () => document.removeEventListener("mousedown", outside);
   }, [flyout]);
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold mb-6">Bookings Calendar</h1>
-        <LoadingSpinner
-          text="Loading Calendar..."
-          size="lg"
-          variant={"secondary"}
-          fullScreen={true}
-          className="text-purple-600"
-        />
-      </div>
-    );
-  }
-
   // FIXED: Optimized reload function with forced calendar refresh
-  const reload = async () => {
+  const reload = useCallback(async () => {
     try {
       console.log(`🔄 Reloading reservations...`);
       // Get orgId from cookies for API calls
@@ -1305,6 +1491,9 @@ export default function BookingsRowStylePage() {
         // Update local state first
         setEvents(reservations);
 
+        // Fetch blocks
+        await loadBlocks();
+
         // FIXED: Force immediate calendar refresh by removing and re-fetching all events
         console.log(`🔄 Refreshing calendar events...`);
         const api = calendarRef.current?.getApi();
@@ -1327,7 +1516,75 @@ export default function BookingsRowStylePage() {
       console.error("Failed to reload reservations:", error);
       toast.error("Failed to refresh calendar data");
     }
-  };
+  }, [calendarRef, loadBlocks]);
+
+  // Block event handlers
+  const handleUnblockRoom = useCallback(
+    async (blockId: string) => {
+      try {
+        const response = await fetch(`/api/room-blocks/${blockId}`, {
+          method: "DELETE",
+          credentials: "include"
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(error.error || "Failed to unblock room");
+          return;
+        }
+
+        toast.success("Room unblocked successfully");
+        reload();
+      } catch (error) {
+        console.error("Error unblocking room:", error);
+        toast.error("Failed to unblock room");
+      }
+    },
+    [reload]
+  );
+
+  const handleEditBlock = useCallback(
+    async (blockId: string, roomId: string, roomName: string) => {
+      // Fetch block details and open BlockRoomSheet in edit mode
+      try {
+        const response = await fetch(`/api/room-blocks/${blockId}`, {
+          credentials: "include"
+        });
+
+        if (!response.ok) {
+          toast.error("Failed to load block details");
+          return;
+        }
+
+        const block = await response.json();
+        setBlockData({
+          roomId,
+          roomName,
+          startDate: new Date(block.startDate).toISOString().split("T")[0],
+          blockId
+        });
+      } catch (error) {
+        console.error("Error loading block:", error);
+        toast.error("Failed to load block details");
+      }
+    },
+    []
+  );
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold mb-6">Bookings Calendar</h1>
+        <LoadingSpinner
+          text="Loading Calendar..."
+          size="lg"
+          variant={"secondary"}
+          fullScreen={true}
+          className="text-purple-600"
+        />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative p-6">
@@ -1489,7 +1746,7 @@ export default function BookingsRowStylePage() {
         />
       )}
 
-      {/* Flyout Menu */}
+      {/* Flyout Menu for Reservations */}
       {flyout && (
         <FlyoutMenu
           flyout={flyout}
@@ -1508,6 +1765,45 @@ export default function BookingsRowStylePage() {
             })
           }
           handleStatusUpdate={handleStatusUpdate}
+        />
+      )}
+
+      {/* Cell Flyout Menu for Empty Cells */}
+      {cellFlyout && (
+        <CalendarCellFlyout
+          flyout={cellFlyout}
+          flyoutRef={cellFlyoutRef}
+          setFlyout={setCellFlyout}
+          onCreateBooking={handleCreateBookingFromMenu}
+          onBlockRoom={handleBlockRoomFromMenu}
+          onRoomInfo={handleRoomInfoFromMenu}
+        />
+      )}
+
+      {/* Block Event Flyout */}
+      {blockFlyout && (
+        <BlockEventFlyout
+          flyout={blockFlyout}
+          flyoutRef={blockFlyoutRef}
+          setFlyout={setBlockFlyout}
+          onUnblock={handleUnblockRoom}
+          onEdit={handleEditBlock}
+        />
+      )}
+
+      {/* Block Room Sheet */}
+      {blockData && (
+        <BlockRoomSheet
+          blockData={blockData}
+          setBlockData={setBlockData}
+          onBlockCreated={reload}
+          organizationId={
+            document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("orgId="))
+              ?.split("=")[1] || ""
+          }
+          propertyId={session?.user?.availableProperties?.[0]?.id || ""}
         />
       )}
 
