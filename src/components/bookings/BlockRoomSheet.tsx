@@ -1,7 +1,7 @@
 // components/bookings/BlockRoomSheet.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +23,17 @@ import { toast } from "sonner";
 
 type BlockType = "MAINTENANCE" | "ISSUE" | "RENOVATION" | "CLEANING" | "OTHER";
 
+interface Room {
+  id: string;
+  name: string;
+  type: string;
+  roomType?: {
+    id: string;
+    name: string;
+    basePrice: number;
+  };
+}
+
 interface BlockRoomSheetProps {
   blockData: {
     roomId: string;
@@ -34,6 +45,10 @@ interface BlockRoomSheetProps {
   onBlockCreated: () => void;
   organizationId: string;
   propertyId: string;
+  onFetchAvailableRooms?: (
+    startDate: string,
+    endDate: string
+  ) => Promise<Room[]>; // For empty mode
 }
 
 const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
@@ -41,13 +56,38 @@ const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
   setBlockData,
   onBlockCreated,
   organizationId,
-  propertyId
+  propertyId,
+  onFetchAvailableRooms
 }) => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [blockType, setBlockType] = useState<BlockType>("MAINTENANCE");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // State for empty mode (when no room is pre-selected)
+  const isEmptyMode = blockData?.roomId === "";
+  const [fetchedRooms, setFetchedRooms] = useState<Room[]>([]);
+  const [isFetchingRooms, setIsFetchingRooms] = useState(false);
+
+  // Callback to handle date changes in empty mode and fetch available rooms
+  const handleDateChangeInEmptyMode = useCallback(
+    async (newStartDate: string, newEndDate: string) => {
+      if (!onFetchAvailableRooms || !isEmptyMode) return;
+
+      setIsFetchingRooms(true);
+      try {
+        const rooms = await onFetchAvailableRooms(newStartDate, newEndDate);
+        setFetchedRooms(rooms);
+      } catch (error) {
+        console.error("Failed to fetch available rooms:", error);
+        setFetchedRooms([]);
+      } finally {
+        setIsFetchingRooms(false);
+      }
+    },
+    [onFetchAvailableRooms, isEmptyMode]
+  );
 
   // Load existing block data for edit mode
   useEffect(() => {
@@ -66,13 +106,34 @@ const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
           toast.error("Failed to load block data");
         });
     } else if (blockData) {
-      // New block - pre-fill start date
-      setStartDate(blockData.startDate);
-      setEndDate(blockData.startDate);
+      if (isEmptyMode) {
+        // Empty mode - initialize with today and tomorrow
+        const today = new Date().toISOString().split("T")[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+        setStartDate(today);
+        setEndDate(tomorrowStr);
+
+        // Fetch available rooms for the initial date range
+        if (onFetchAvailableRooms) {
+          handleDateChangeInEmptyMode(today, tomorrowStr);
+        }
+      } else {
+        // Pre-populated mode - pre-fill start date
+        setStartDate(blockData.startDate);
+        setEndDate(blockData.startDate);
+      }
       setBlockType("MAINTENANCE");
       setReason("");
     }
-  }, [blockData]);
+  }, [
+    blockData,
+    isEmptyMode,
+    onFetchAvailableRooms,
+    handleDateChangeInEmptyMode
+  ]);
 
   const handleClose = () => {
     setBlockData(null);
@@ -190,15 +251,75 @@ const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-          {/* Room Name (Read-only) */}
+          {/* Room Name (Read-only or Dropdown) */}
           <div>
-            <Label htmlFor="roomName">Room</Label>
-            <Input
-              id="roomName"
-              value={blockData?.roomName || ""}
-              disabled
-              className="bg-gray-100 dark:bg-gray-800"
-            />
+            <Label htmlFor="roomName">
+              Room <span className="text-red-500">*</span>
+            </Label>
+            {isEmptyMode ? (
+              <div>
+                <select
+                  value={blockData?.roomId || ""}
+                  onChange={(e) => {
+                    const room = fetchedRooms.find(
+                      (r) => r.id === e.target.value
+                    );
+                    if (room && blockData) {
+                      setBlockData({
+                        ...blockData,
+                        roomId: room.id,
+                        roomName: room.name
+                      });
+                    }
+                  }}
+                  disabled={!fetchedRooms || fetchedRooms.length === 0}
+                  className="w-full h-[40px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:!bg-[#1e1e1e] text-[#1e1e1e] dark:!text-[#f0f8ff] focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors text-sm leading-tight"
+                >
+                  <option value="">
+                    {isFetchingRooms
+                      ? "Loading rooms..."
+                      : fetchedRooms && fetchedRooms.length > 0
+                      ? "Select a room"
+                      : "No rooms available"}
+                  </option>
+                  {/* Group rooms by type */}
+                  {fetchedRooms &&
+                    fetchedRooms.length > 0 &&
+                    (() => {
+                      // Group rooms by type
+                      const grouped = fetchedRooms.reduce((acc, room) => {
+                        const type = room.type || "Other";
+                        if (!acc[type]) acc[type] = [];
+                        acc[type].push(room);
+                        return acc;
+                      }, {} as Record<string, typeof fetchedRooms>);
+
+                      return Object.entries(grouped).map(([type, rooms]) => (
+                        <optgroup key={type} label={type}>
+                          {rooms.map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ));
+                    })()}
+                </select>
+                {(!fetchedRooms || fetchedRooms.length === 0) &&
+                  !isFetchingRooms && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Please select dates first to see available rooms
+                    </p>
+                  )}
+              </div>
+            ) : (
+              <Input
+                id="roomName"
+                value={blockData?.roomName || ""}
+                disabled
+                className="bg-gray-100 dark:bg-gray-800"
+              />
+            )}
           </div>
 
           {/* Start Date */}
@@ -210,7 +331,13 @@ const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
               id="startDate"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                // In empty mode, fetch available rooms when dates change
+                if (isEmptyMode && endDate) {
+                  handleDateChangeInEmptyMode(e.target.value, endDate);
+                }
+              }}
               min={today}
               required
             />
@@ -225,7 +352,13 @@ const BlockRoomSheet: React.FC<BlockRoomSheetProps> = ({
               id="endDate"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                // In empty mode, fetch available rooms when dates change
+                if (isEmptyMode && startDate) {
+                  handleDateChangeInEmptyMode(startDate, e.target.value);
+                }
+              }}
               min={startDate || today}
               required
             />

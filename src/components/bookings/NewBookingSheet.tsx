@@ -28,6 +28,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   selectedSlot,
   setSelectedSlot,
   handleCreate,
+  onFetchAvailableRooms,
   fullName,
   setFullName,
   phone,
@@ -64,18 +65,99 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
     new Set()
   );
 
+  // State for empty mode (when no room is pre-selected)
+  const isEmptyMode = selectedSlot?.roomId === "";
+  const [localCheckInDate, setLocalCheckInDate] = useState<string>("");
+  const [localCheckOutDate, setLocalCheckOutDate] = useState<string>("");
+  const [fetchedRooms, setFetchedRooms] = useState<
+    Array<{
+      id: string;
+      name: string;
+      type: string;
+      roomType?: { id: string; name: string; basePrice: number };
+    }>
+  >([]);
+  const [isFetchingRooms, setIsFetchingRooms] = useState(false);
+
+  // Callback to handle date changes in empty mode and fetch available rooms
+  const handleDateChangeInEmptyMode = useCallback(
+    async (startDate: string, endDate: string) => {
+      if (!onFetchAvailableRooms) return;
+
+      setLocalCheckInDate(startDate);
+      setLocalCheckOutDate(endDate);
+      setIsFetchingRooms(true);
+
+      try {
+        const rooms = await onFetchAvailableRooms(startDate, endDate);
+        setFetchedRooms(rooms);
+      } catch (error) {
+        console.error("Failed to fetch available rooms:", error);
+        setFetchedRooms([]);
+      } finally {
+        setIsFetchingRooms(false);
+      }
+    },
+    [onFetchAvailableRooms]
+  );
+
   // Reset tab state when a new slot is selected
   React.useEffect(() => {
     if (selectedSlot) {
       setActiveTab("details");
       setCompletedTabs(new Set());
+
+      // Initialize dates for empty mode
+      if (isEmptyMode) {
+        const today = new Date().toISOString().split("T")[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+        setLocalCheckInDate(today);
+        setLocalCheckOutDate(tomorrowStr);
+
+        // Fetch available rooms for the initial date range
+        if (onFetchAvailableRooms) {
+          handleDateChangeInEmptyMode(today, tomorrowStr);
+        }
+      }
     }
-  }, [selectedSlot]);
+  }, [
+    selectedSlot,
+    isEmptyMode,
+    onFetchAvailableRooms,
+    handleDateChangeInEmptyMode
+  ]);
+
+  // Callback to handle room selection in empty mode
+  const handleRoomSelection = useCallback(
+    (roomId: string, roomName: string) => {
+      if (selectedSlot) {
+        setSelectedSlot({
+          ...selectedSlot,
+          roomId,
+          roomName,
+          date: localCheckInDate
+        });
+      }
+    },
+    [selectedSlot, setSelectedSlot, localCheckInDate]
+  );
 
   // Memoized date calculations
   const { checkInDate, checkOutDate } = useMemo(() => {
     if (!selectedSlot) return { checkInDate: "", checkOutDate: "" };
 
+    // In empty mode, use local dates
+    if (isEmptyMode) {
+      return {
+        checkInDate: localCheckInDate,
+        checkOutDate: localCheckOutDate
+      };
+    }
+
+    // In pre-populated mode, calculate from selectedSlot.date
     const checkIn = new Date(selectedSlot.date);
     const checkOut = new Date(checkIn);
     checkOut.setDate(checkOut.getDate() + 1);
@@ -84,7 +166,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       checkInDate: checkIn.toISOString().split("T")[0],
       checkOutDate: checkOut.toISOString().split("T")[0]
     };
-  }, [selectedSlot]);
+  }, [selectedSlot, isEmptyMode, localCheckInDate, localCheckOutDate]);
 
   // Fetch rates data for the selected date to get actual room pricing
   const { data: ratesData, isLoading: ratesLoading } = useRatesData(
@@ -420,6 +502,12 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
                 handleScanComplete={handleScanComplete}
                 handleScanError={handleScanError}
                 setLastScannedSlot={setLastScannedSlot}
+                // Props for empty mode
+                isEmptyMode={isEmptyMode}
+                fetchedRooms={fetchedRooms}
+                isFetchingRooms={isFetchingRooms}
+                onDateChange={handleDateChangeInEmptyMode}
+                onRoomSelect={handleRoomSelection}
               />
             </TabsContent>
 

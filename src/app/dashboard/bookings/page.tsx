@@ -31,6 +31,7 @@ import FlyoutMenu from "@/components/bookings/FlyoutMenu";
 import CalendarCellFlyout from "@/components/bookings/CalendarCellFlyout";
 import BlockRoomSheet from "@/components/bookings/BlockRoomSheet";
 import BlockEventFlyout from "@/components/bookings/BlockEventFlyout";
+import AddButtonDropdown from "@/components/bookings/AddButtonDropdown";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
 import LegendModal from "@/components/bookings/LegendModal";
@@ -205,6 +206,13 @@ export default function BookingsRowStylePage() {
     y: number;
   } | null>(null);
   const blockFlyoutRef = useRef<HTMLDivElement>(null);
+
+  // Add button dropdown state
+  const [addDropdown, setAddDropdown] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
 
   // View‐Details modal state
   const [viewReservation, setViewReservation] = useState<Reservation | null>(
@@ -1000,6 +1008,75 @@ export default function BookingsRowStylePage() {
   );
 
   // ------------------------
+  // Add button dropdown handlers
+  // ------------------------
+  const handleAddReservationFromDropdown = useCallback(() => {
+    // Open NewBookingSheet in empty mode (no pre-selected room/date)
+    setSelectedSlot({
+      roomId: "", // Empty - will be selected by user
+      roomName: "",
+      date: new Date().toISOString().split("T")[0] // Today's date
+    });
+  }, []);
+
+  const handleBlockDatesFromDropdown = useCallback(() => {
+    // Open BlockRoomSheet in empty mode (no pre-selected room/date)
+    setBlockData({
+      roomId: "", // Empty - will be selected by user
+      roomName: "",
+      startDate: new Date().toISOString().split("T")[0] // Today's date
+    });
+  }, []);
+
+  // Callback to fetch available rooms for a date range
+  const fetchAvailableRooms = useCallback(
+    async (startDate: string, endDate: string) => {
+      try {
+        // Get propertyId from cookie (same as calendar uses)
+        const propertyIdCookie = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("propertyId="));
+
+        const propertyId = propertyIdCookie
+          ? propertyIdCookie.split("=")[1]
+          : session?.user?.currentPropertyId ||
+            session?.user?.availableProperties?.[0]?.id;
+
+        if (!propertyId) return [];
+
+        const response = await fetch(
+          `/api/rooms/available?propertyId=${propertyId}&startDate=${startDate}&endDate=${endDate}`
+        );
+
+        if (!response.ok) {
+          console.error("Failed to fetch available rooms");
+          return [];
+        }
+
+        const data = await response.json();
+
+        return data.map(
+          (room: {
+            id: string;
+            name: string;
+            type: string;
+            roomType?: { id: string; name: string; basePrice: number };
+          }) => ({
+            id: room.id,
+            name: room.name,
+            type: room.type,
+            roomType: room.roomType
+          })
+        );
+      } catch (error) {
+        console.error("Error fetching available rooms:", error);
+        return [];
+      }
+    },
+    [session?.user?.currentPropertyId, session?.user?.availableProperties]
+  );
+
+  // ------------------------
   // Event‐click handler opens flyout menu
   // ------------------------
   const handleEventClick = useCallback(
@@ -1608,13 +1685,23 @@ export default function BookingsRowStylePage() {
             />
           </button>
 
-          {/* New Reservation Button */}
+          {/* Add Button (+ icon) */}
           <button
+            ref={addButtonRef}
             type="button"
-            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white px-4 h-[50px] rounded-lg flex items-center space-x-2 transition-colors"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              // Position dropdown to align with the right edge of the button
+              // Dropdown width is 220px, button width is 50px
+              setAddDropdown({
+                x: rect.right - 220, // Align right edge of dropdown with right edge of button
+                y: rect.bottom
+              });
+            }}
+            aria-label="Add new reservation or block dates"
+            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white w-[50px] h-[50px] rounded-lg flex items-center justify-center transition-colors"
           >
-            <Plus className="h-4 w-4" />
-            <span>New Reservation</span>
+            <Plus className="h-6 w-6" />
           </button>
 
           {/* Toolbar - moved to right side */}
@@ -1723,6 +1810,7 @@ export default function BookingsRowStylePage() {
           toast.error("Scan failed: " + err.message);
         }}
         setLastScannedSlot={setLastScannedSlot}
+        onFetchAvailableRooms={fetchAvailableRooms}
       />
 
       {/* Scanner Overlay */}
@@ -1791,6 +1879,16 @@ export default function BookingsRowStylePage() {
         />
       )}
 
+      {/* Add Button Dropdown */}
+      {addDropdown && (
+        <AddButtonDropdown
+          position={addDropdown}
+          onClose={() => setAddDropdown(null)}
+          onAddReservation={handleAddReservationFromDropdown}
+          onBlockDates={handleBlockDatesFromDropdown}
+        />
+      )}
+
       {/* Block Room Sheet */}
       {blockData && (
         <BlockRoomSheet
@@ -1804,6 +1902,7 @@ export default function BookingsRowStylePage() {
               ?.split("=")[1] || ""
           }
           propertyId={session?.user?.availableProperties?.[0]?.id || ""}
+          onFetchAvailableRooms={fetchAvailableRooms}
         />
       )}
 

@@ -59,8 +59,8 @@ const CalendarCellFlyout: React.FC<CalendarCellFlyoutProps> = ({
   if (!flyout) return null;
 
   // flyout menu positioning
-  const left = flyout.x + 40;
-  const top = flyout.y + 20;
+  const left = flyout.x + 50;
+  const top = flyout.y + 65;
 
   const handleCreateBooking = () => {
     setFlyout(null);

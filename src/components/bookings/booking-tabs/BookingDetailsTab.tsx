@@ -68,7 +68,12 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
   setOcrEnabled,
   handleScanComplete,
   handleScanError,
-  setLastScannedSlot
+  setLastScannedSlot,
+  isEmptyMode,
+  fetchedRooms,
+  isFetchingRooms,
+  onDateChange,
+  onRoomSelect
 }) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [imageDimensions, setImageDimensions] = useState<{
@@ -436,15 +441,78 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
 
           {/* Right Side: Form Fields */}
           <div className="flex-1">
-            {/* Row 1: Room No. (Read only) | Guest Name */}
+            {/* Row 1: Room No. (Read only or Dropdown) | Guest Name */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Room No.
                 </label>
-                <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
-                  {selectedSlot.roomName}
-                </div>
+                {isEmptyMode ? (
+                  <div>
+                    <select
+                      value={selectedSlot.roomId}
+                      onChange={(e) => {
+                        const room = fetchedRooms?.find(
+                          (r) => r.id === e.target.value
+                        );
+                        if (room && onRoomSelect) {
+                          onRoomSelect(room.id, room.name);
+                        }
+                      }}
+                      disabled={!fetchedRooms || fetchedRooms.length === 0}
+                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1e1e1e] text-[#1e1e1e] dark:text-[#f0f8ff] h-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                    >
+                      <option value="">
+                        {isFetchingRooms
+                          ? "Loading rooms..."
+                          : fetchedRooms && fetchedRooms.length > 0
+                          ? "Select a room"
+                          : "No rooms available"}
+                      </option>
+                      {/* Group rooms by type */}
+                      {fetchedRooms &&
+                        fetchedRooms.length > 0 &&
+                        (() => {
+                          // Group rooms by type
+                          const grouped = fetchedRooms.reduce((acc, room) => {
+                            const type = room.type || "Other";
+                            if (!acc[type]) acc[type] = [];
+                            acc[type].push(room);
+                            return acc;
+                          }, {} as Record<string, typeof fetchedRooms>);
+
+                          return Object.entries(grouped).map(
+                            ([type, rooms]) => (
+                              <optgroup
+                                key={type}
+                                label={type.toUpperCase()}
+                                className="bg-purple-300 dark:bg-purple-900 uppercase font-bold"
+                              >
+                                {rooms.map((room) => (
+                                  <option key={room.id} value={room.id}>
+                                    ROOM {room.name} - ₹
+                                    {room.roomType?.basePrice.toLocaleString() ||
+                                      "N/A"}
+                                    /NIGHT
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )
+                          );
+                        })()}
+                    </select>
+                    {(!fetchedRooms || fetchedRooms.length === 0) &&
+                      !isFetchingRooms && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Please select dates first to see available rooms
+                        </p>
+                      )}
+                  </div>
+                ) : (
+                  <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
+                    {selectedSlot.roomName}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -493,7 +561,14 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 <input
                   type="date"
                   value={formData.checkIn}
-                  onChange={(e) => updateFormData({ checkIn: e.target.value })}
+                  onChange={(e) => {
+                    updateFormData({ checkIn: e.target.value });
+                    // In empty mode, fetch available rooms when dates change
+                    if (isEmptyMode && onDateChange && formData.checkOut) {
+                      onDateChange(e.target.value, formData.checkOut);
+                    }
+                  }}
+                  min={new Date().toISOString().split("T")[0]}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
                   required
                 />
@@ -505,7 +580,16 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                 <input
                   type="date"
                   value={formData.checkOut}
-                  onChange={(e) => updateFormData({ checkOut: e.target.value })}
+                  onChange={(e) => {
+                    updateFormData({ checkOut: e.target.value });
+                    // In empty mode, fetch available rooms when dates change
+                    if (isEmptyMode && onDateChange && formData.checkIn) {
+                      onDateChange(formData.checkIn, e.target.value);
+                    }
+                  }}
+                  min={
+                    formData.checkIn || new Date().toISOString().split("T")[0]
+                  }
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 h-10"
                   required
                 />

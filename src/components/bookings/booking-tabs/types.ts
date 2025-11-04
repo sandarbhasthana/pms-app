@@ -64,10 +64,25 @@ export interface BookingFormData {
   };
 }
 
+export interface Room {
+  id: string;
+  name: string;
+  type: string;
+  roomType?: {
+    id: string;
+    name: string;
+    basePrice: number;
+  };
+}
+
 export interface NewBookingSheetProps {
   selectedSlot: SelectedSlot | null;
   setSelectedSlot: (slot: SelectedSlot | null) => void;
   handleCreate: (bookingData: BookingFormData) => void;
+  onFetchAvailableRooms?: (
+    startDate: string,
+    endDate: string
+  ) => Promise<Room[]>; // Callback to fetch rooms
   fullName: string;
   setFullName: (v: string) => void;
   phone: string;
@@ -132,4 +147,10 @@ export interface BookingTabProps {
   selectedSlot: SelectedSlot;
   onNext?: () => void;
   onPrevious?: () => void;
+  // Props for empty mode (when no room is pre-selected)
+  isEmptyMode?: boolean;
+  fetchedRooms?: Room[];
+  isFetchingRooms?: boolean;
+  onDateChange?: (startDate: string, endDate: string) => void;
+  onRoomSelect?: (roomId: string, roomName: string) => void;
 }
