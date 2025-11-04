@@ -13,6 +13,10 @@ import { cn } from "@/lib/utils";
 import { useRatesData } from "@/lib/hooks/useRatesData";
 import { addDays, format } from "date-fns";
 import { useDrag } from "@use-gesture/react";
+import {
+  getOperationalDayStart,
+  getOperationalDayEnd
+} from "@/lib/timezone/day-boundaries";
 
 interface CalendarResource {
   id: string;
@@ -46,6 +50,7 @@ interface CalendarViewRowStyleProps {
   setSelectedResource: (id: string) => void;
   events: Reservation[];
   onDateChange?: (newDate: string) => void;
+  propertyTimezone?: string; // IANA timezone string (e.g., "America/New_York")
 }
 
 export default function CalendarViewRowStyle({
@@ -61,7 +66,8 @@ export default function CalendarViewRowStyle({
   isToday,
   setSelectedResource,
   events,
-  onDateChange
+  onDateChange,
+  propertyTimezone = "UTC" // Default to UTC if not provided
 }: CalendarViewRowStyleProps) {
   // State to track calendar view changes
   const [calendarStartDate, setCalendarStartDate] = React.useState(
@@ -171,27 +177,36 @@ export default function CalendarViewRowStyle({
       const resourceGroup = resources.find((r) => r.title === roomType);
       const totalRooms = resourceGroup?.children?.length || 0;
 
-      // Count occupied rooms for this room type on this date
-      // TODO: Update to use operational day boundaries (6 AM start) when timezone is available
+      // Using operational day boundaries (6 AM start) based on property timezone
       const occupiedRooms = events.filter((event) => {
         // Check if this reservation overlaps with the given date
         // Parse dates consistently using UTC to avoid timezone mismatches
         const checkIn = new Date(event.checkIn);
         const checkOut = new Date(event.checkOut);
 
-        // Create target date at UTC midnight to match the API date format
-        // NOTE: This should use operational day boundaries (6 AM) instead of midnight
+        // Get operational day boundaries (6 AM to 5:59:59 AM next day) in property timezone
         const [year, month, day] = dateStr.split("-").map(Number);
         const targetDate = new Date(Date.UTC(year, month - 1, day));
+
+        // Calculate operational day start (6 AM) and end (5:59:59 AM next day) in UTC
+        const operationalDayStart = getOperationalDayStart(
+          targetDate,
+          propertyTimezone
+        );
+        const operationalDayEnd = getOperationalDayEnd(
+          targetDate,
+          propertyTimezone
+        );
 
         // Check if the room belongs to this room type
         const roomBelongsToType = resourceGroup?.children?.some(
           (child) => child.id === event.roomId
         );
 
-        // Check if the date falls within the reservation period
-        // Using UTC midnight for now - should use operational day boundaries
-        const dateInRange = targetDate >= checkIn && targetDate < checkOut;
+        // Check if the reservation overlaps with this operational day
+        // A reservation overlaps if: checkIn < operationalDayEnd AND checkOut > operationalDayStart
+        const dateInRange =
+          checkIn < operationalDayEnd && checkOut > operationalDayStart;
 
         return (
           roomBelongsToType &&
@@ -205,7 +220,7 @@ export default function CalendarViewRowStyle({
 
       return { occupied: availableRooms, total: totalRooms };
     };
-  }, [resources, events]);
+  }, [resources, events, propertyTimezone]);
 
   // Configure gesture handlers for swipe navigation
   const bind = useDrag(

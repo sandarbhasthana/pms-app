@@ -233,6 +233,22 @@ export default function BookingsRowStylePage() {
   const [pendingDateNavigation, setPendingDateNavigation] =
     useState<Date | null>(null);
 
+  // Get property timezone from session for operational day boundaries (6 AM start)
+  const propertyTimezone = useMemo(() => {
+    const propertyIdCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("propertyId="));
+    const propertyId = propertyIdCookie
+      ? propertyIdCookie.split("=")[1]
+      : session?.user?.currentPropertyId ||
+        session?.user?.availableProperties?.[0]?.id;
+
+    const currentProperty = session?.user?.availableProperties?.find(
+      (p) => p.id === propertyId
+    );
+    return currentProperty?.timezone || "UTC";
+  }, [session?.user?.availableProperties, session?.user?.currentPropertyId]);
+
   // Day Transition Blocker Modal handlers - MUST be defined before any conditional returns
   const handleDayTransitionProceed = useCallback(() => {
     const api = calendarRef.current?.getApi();
@@ -1732,6 +1748,7 @@ export default function BookingsRowStylePage() {
         setSelectedResource={setSelectedResource}
         events={events}
         onDateChange={(newDate) => setSelectedDate(newDate)}
+        propertyTimezone={propertyTimezone}
       />
 
       {/* New Booking Dialog */}

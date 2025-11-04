@@ -105,7 +105,7 @@ const EditDocumentsTab: React.FC<EditDocumentsTabProps> = ({
         </div>
 
         {/* Drag & Drop Area */}
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-transparent">
           <CloudArrowUpIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
             Upload Documents
@@ -115,7 +115,7 @@ const EditDocumentsTab: React.FC<EditDocumentsTabProps> = ({
           </p>
           <Button
             variant="outline"
-            className="border-purple-200 text-purple-600 hover:bg-purple-50"
+            className="border-purple-200 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
           >
             Choose Files
           </Button>
@@ -123,10 +123,17 @@ const EditDocumentsTab: React.FC<EditDocumentsTabProps> = ({
             Supports: PDF, JPG, PNG, DOC, DOCX (Max 10MB)
           </p>
         </div>
+
+        {/* Document List Placeholder */}
+        <div className="mt-6 min-h-[100px] bg-gray-50 dark:!bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 p-6 flex items-center justify-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+            No documents uploaded yet. Upload documents using the area above.
+          </p>
+        </div>
       </div>
 
       {/* Document Categories */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-gray-50 dark:!bg-[#253141] rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
           Document Categories
         </h4>
@@ -146,12 +153,13 @@ const EditDocumentsTab: React.FC<EditDocumentsTabProps> = ({
         </div>
       </div>
 
-      {/* Placeholder Notice */}
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-        <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-          <strong>Coming Soon:</strong> S3 pre-signed URL upload, document
-          preview, download, and tagging functionality will be implemented in
-          Phase 3 of the Folio Creation Plan.
+      {/* Implementation Notice */}
+      <div className="bg-blue-50 dark:!bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+        <p className="text-blue-800 dark:text-blue-200 text-sm">
+          <strong>📋 Implementation Status:</strong> S3 integration is complete
+          and functional. Document upload UI, preview, download, tagging, and
+          database persistence (ReservationDocument model) will be implemented
+          in Phase 3 of the Folio Creation Plan.
         </p>
       </div>
     </div>

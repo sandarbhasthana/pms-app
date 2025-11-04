@@ -246,24 +246,26 @@ const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div>
             {auditLogs.map((log, index) => (
-              <div key={log.id} className="relative">
-                {/* Timeline Line */}
+              <div key={log.id} className="relative pb-4">
+                {/* Timeline Line - positioned absolutely to connect entries */}
                 {index < auditLogs.length - 1 && (
-                  <div className="absolute left-6 top-12 w-0.5 h-8 bg-gray-200 dark:bg-gray-600"></div>
+                  <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600"></div>
                 )}
 
                 <div className="flex items-start gap-4">
                   {/* Timeline Dot */}
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-100 dark:!bg-gray-700 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <div className="flex-shrink-0 relative z-10">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 dark:!bg-gray-700 flex items-center justify-center">
+                      <UserIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                    </div>
                   </div>
 
                   {/* Log Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:!bg-purple-900/40 text-purple-700 dark:!text-purple-300">
                         {log.action.replace(/_/g, " ")}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -271,8 +273,42 @@ const EditAuditTab: React.FC<EditAuditTabProps> = ({ reservationData }) => {
                       </span>
                     </div>
 
-                    <div className="text-sm text-gray-900 dark:text-gray-100 mb-1">
-                      {log.description || (
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {log.action === "NOTE_ADDED" &&
+                      log.fieldName === "notes" ? (
+                        <>
+                          {log.newValue && (
+                            <div className="p-3 bg-gray-50 dark:!bg-gray-700/50 rounded border-l-4 border-purple-500">
+                              <p className="text-sm text-gray-700 dark:!text-gray-200">
+                                {log.newValue}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      ) : log.action === "NOTE_EDITED" ? (
+                        <>
+                          <div className="space-y-2">
+                            <div className="p-2 bg-red-50 dark:!bg-red-900/20 rounded border-l-4 border-red-500 dark:border-red-400">
+                              <p className="text-xs text-gray-500 dark:!text-gray-400 mb-1">
+                                Previous:
+                              </p>
+                              <p className="text-sm text-gray-700 dark:!text-gray-200">
+                                {log.oldValue}
+                              </p>
+                            </div>
+                            <div className="p-2 bg-green-50 dark:!bg-green-900/20 rounded border-l-4 border-green-500 dark:border-green-400">
+                              <p className="text-xs text-gray-500 dark:!text-gray-400 mb-1">
+                                Updated:
+                              </p>
+                              <p className="text-sm text-gray-700 dark:!text-gray-200">
+                                {log.newValue}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      ) : log.description ? (
+                        log.description
+                      ) : (
                         <>
                           {log.fieldName && (
                             <>

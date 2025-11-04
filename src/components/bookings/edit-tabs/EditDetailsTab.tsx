@@ -5,7 +5,6 @@ import { EditTabProps, GroupedRooms, AvailableRoom } from "./types";
 import {
   CalendarIcon,
   UserIcon,
-  IdentificationIcon,
   HomeIcon,
   ExclamationTriangleIcon,
   CameraIcon,
@@ -594,27 +593,6 @@ export const EditDetailsTab: React.FC<EditTabProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Additional Information Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 mb-4">
-          <IdentificationIcon className="h-5 w-5 text-purple-600" />
-          <h3 className="text-lg font-semibold">Additional Information</h3>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-            Notes
-          </label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleInputChange("notes", e.target.value)}
-            rows={4}
-            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:!bg-[#1e1e1e] text-[#1e1e1e] dark:!text-[#f0f8ff]"
-            placeholder="Add any special requests or notes..."
-          />
         </div>
       </div>
 
