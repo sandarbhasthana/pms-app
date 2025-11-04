@@ -9,6 +9,60 @@ export const toYMD = (d: Date) =>
     d.getDate()
   ).padStart(2, "0")}`;
 
+/**
+ * Upload document with retry logic
+ * Retries 3 times with 10 minute intervals on failure
+ */
+async function uploadDocumentWithRetry(
+  reservationId: string,
+  imageBase64: string,
+  documentType: string,
+  guestName: string,
+  maxRetries: number
+): Promise<void> {
+  const retryDelay = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(
+        `/api/reservations/${reservationId}/documents`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            imageBase64,
+            documentType,
+            guestName
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to upload document");
+      }
+
+      // Success - document uploaded
+      return;
+    } catch (error) {
+      console.error(`Document upload attempt ${attempt} failed:`, error);
+
+      if (attempt < maxRetries) {
+        // Wait before retrying (except on last attempt)
+        console.log(
+          `Retrying in 10 minutes... (Attempt ${attempt + 1}/${maxRetries})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      } else {
+        // All retries exhausted
+        throw error;
+      }
+    }
+  }
+}
+
 export async function handleCreateBooking({
   selectedSlot,
   data,
@@ -83,7 +137,37 @@ export async function handleCreateBooking({
       throw new Error(errorData.error || "Error creating reservation");
     }
 
+    const responseData = await res.json();
+    const reservationId = responseData.id;
+
     toast.success("Reservation created successfully!");
+
+    // Check for pending document in localStorage
+    const pendingDocumentStr = localStorage.getItem("reservationDocument_temp");
+    if (pendingDocumentStr && reservationId) {
+      try {
+        const pendingDocument = JSON.parse(pendingDocumentStr);
+
+        // Upload document with retry logic
+        await uploadDocumentWithRetry(
+          reservationId,
+          pendingDocument.image,
+          pendingDocument.documentType,
+          data.guestName,
+          3 // 3 retries
+        );
+
+        // Clear localStorage on success
+        localStorage.removeItem("reservationDocument_temp");
+        toast.success("ID document uploaded successfully!");
+      } catch (docError) {
+        console.error("Failed to upload document:", docError);
+        toast.error(
+          "Failed to upload ID document. You can upload it manually from the Documents tab."
+        );
+      }
+    }
+
     onClose();
     await reload();
   } catch (err) {

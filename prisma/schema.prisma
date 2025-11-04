@@ -86,6 +86,7 @@ model Property {
   statusHistoryLogs       ReservationStatusHistory[]
   auditLogs               ReservationAuditLog[]
   approvalRequests        ApprovalRequest[]
+  documents               ReservationDocument[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -127,6 +128,7 @@ model User {
   auditLogs                ReservationAuditLog[]        @relation("AuditLogUser")
   approvalRequestsCreated  ApprovalRequest[]            @relation("ApprovalRequestedBy")
   approvalRequestsApproved ApprovalRequest[]            @relation("ApprovalApprovedBy")
+  uploadedDocuments        ReservationDocument[]
 }
 
 /// Join table: user membership in a tenant with a role
@@ -361,6 +363,7 @@ model Reservation {
   auditLogs             ReservationAuditLog[]
   approvalRequests      ApprovalRequest[]
   addons                ReservationAddon[]
+  documents             ReservationDocument[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -370,6 +373,31 @@ model Reservation {
   @@index([status])
   @@index([statusUpdatedAt])
   @@index([deletedAt])
+}
+
+/// Documents attached to a reservation (ID scans, invoices, contracts, etc.)
+model ReservationDocument {
+  id            String              @id @default(cuid())
+  reservationId String
+  propertyId    String
+  key           String              // S3 key/path
+  url           String              // Public URL to access the document
+  name          String              // Original filename
+  size          Int                 // File size in bytes
+  mimeType      String              // MIME type (image/jpeg, application/pdf, etc.)
+  tag           DocumentTag         @default(OTHER) // Document category
+  uploadedBy    String              // User ID who uploaded
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  reservation   Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  property      Property            @relation(fields: [propertyId], references: [id])
+  uploader      User                @relation(fields: [uploadedBy], references: [id])
+
+  @@index([reservationId])
+  @@index([propertyId])
+  @@index([uploadedBy])
+  @@index([tag])
+  @@index([createdAt])
 }
 
 /// Add-ons for a reservation (extra bed, breakfast, etc.)
@@ -1330,5 +1358,16 @@ enum BlockType {
   ISSUE
   RENOVATION
   CLEANING
+  OTHER
+}
+
+enum DocumentTag {
+  ID_DOCUMENT
+  ID_SCAN
+  INVOICE
+  CONTRACT
+  RECEIPT
+  AGREEMENT
+  PHOTO
   OTHER
 }

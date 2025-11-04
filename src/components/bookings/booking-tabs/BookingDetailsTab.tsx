@@ -109,16 +109,16 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
             img.onload = async () => {
               setImageDimensions({ width: img.width, height: img.height });
 
-              // Check if image exceeds 500x500
-              if (img.width > 500 || img.height > 500) {
+              // Check if image exceeds 1500x1500 (increased for ID documents)
+              if (img.width > 1500 || img.height > 1500) {
                 toast({
                   title: "Image Too Large",
-                  description: `Image is ${img.width}x${img.height}px. Resizing to fit within 500x500px...`
+                  description: `Image is ${img.width}x${img.height}px. Resizing to fit within 1500x1500px...`
                 });
 
                 try {
-                  // Resize the image
-                  const resizedImage = await resizeImage(result, 500, 500);
+                  // Resize the image (increased dimensions for ID documents)
+                  const resizedImage = await resizeImage(result, 1500, 1500);
                   setUploadedImage(resizedImage);
 
                   // Get resized dimensions
@@ -191,14 +191,42 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
         description: "Sending to AI for data extraction..."
       });
 
-      // Send cropped image to AI for processing
+      // Resize the cropped image to fit within 1080x1920px for ID documents (portrait)
+      let resizedDocumentImage = croppedImageBase64;
+      const img = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = croppedImageBase64;
+      });
+
+      // Check if image exceeds 1080x1920 (max dimensions for ID documents)
+      if (img.width > 1080 || img.height > 1920) {
+        toast({
+          title: "Resizing Image...",
+          description: `Image is ${img.width}x${img.height}px. Resizing to fit within 1080x1920px...`
+        });
+
+        try {
+          resizedDocumentImage = await resizeImage(
+            croppedImageBase64,
+            1080,
+            1920
+          );
+        } catch (resizeError) {
+          console.error("Failed to resize image:", resizeError);
+          // Continue with original image if resize fails
+        }
+      }
+
+      // Send resized image to AI for processing
       const response = await fetch("/api/ai/process-id", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          documentImageBase64: croppedImageBase64,
+          documentImageBase64: resizedDocumentImage,
           imageType: "image/jpeg"
         })
       });
@@ -217,7 +245,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
       const extractedData = result.data;
 
       // Extract face from document if coordinates available
-      let faceImageBase64 = croppedImageBase64;
+      let faceImageBase64 = resizedDocumentImage;
       if (extractedData.facePhotoLocation) {
         try {
           const faceCanvas = document.createElement("canvas");
@@ -231,7 +259,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
               img.onload = () => resolve(img);
               img.onerror = () =>
                 reject(new Error("Failed to load face image"));
-              img.src = croppedImageBase64;
+              img.src = resizedDocumentImage;
             }
           );
 
@@ -261,7 +289,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
       // Store data for confirmation dialog
       setExtractedDataForConfirm(extractedData);
       setCroppedImageForConfirm(faceImageBase64);
-      setDocumentImageForConfirm(croppedImageBase64);
+      setDocumentImageForConfirm(resizedDocumentImage);
       setShowConfirmDialog(true);
       setIsUploading(false);
     } catch (error) {
@@ -292,6 +320,18 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
 
     try {
       setIsUploading(true);
+
+      // Store cropped document in localStorage for later upload to Documents tab
+      const documentMetadata = {
+        image: documentImageForConfirm,
+        documentType: "ID_DOCUMENT",
+        timestamp: new Date().toISOString(),
+        mimeType: "image/jpeg"
+      };
+      localStorage.setItem(
+        "reservationDocument_temp",
+        JSON.stringify(documentMetadata)
+      );
 
       // Upload both images to S3
       toast({
