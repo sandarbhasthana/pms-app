@@ -49,17 +49,28 @@ export async function middleware(req: NextRequest) {
           "✅ Middleware: Single property org, auto-allowing dashboard access",
           {
             propertyId: token.currentPropertyId,
-            orgId: token.orgId
+            orgId: token.orgId,
+            hasCookies: !!propertyIdCookie && !!orgIdCookie
           }
         );
 
-        // Set cookies for consistency with property selector flow
-        const response = NextResponse.next();
-        response.cookies.set("orgId", token.orgId, { path: "/" });
-        response.cookies.set("propertyId", token.currentPropertyId, {
-          path: "/"
-        });
-        return response;
+        // Check if cookies are already set and match session
+        if (!propertyIdCookie || !orgIdCookie || orgIdCookie !== token.orgId) {
+          console.log(
+            "🔄 Middleware: Cookies missing or mismatched, redirecting to set-cookies page"
+          );
+          // Redirect to a page that will set cookies client-side
+          const url = new URL("/api/auth/set-cookies", req.url);
+          url.searchParams.set("orgId", token.orgId);
+          url.searchParams.set("propertyId", token.currentPropertyId);
+          url.searchParams.set("redirect", "/dashboard");
+          return NextResponse.redirect(url);
+        }
+
+        console.log(
+          "✅ Middleware: Cookies already set and valid, allowing access"
+        );
+        return NextResponse.next();
       }
 
       // For multi-property orgs, check if user has made an explicit selection
@@ -67,6 +78,24 @@ export async function middleware(req: NextRequest) {
       if (token.propertyCount && token.propertyCount > 1) {
         // Multi-property org: require explicit selection (both cookies must be set)
         if (propertyIdCookie && orgIdCookie) {
+          // Check if cookie orgId matches session orgId
+          if (orgIdCookie !== token.orgId) {
+            console.log(
+              "⚠️ Middleware: Cookie orgId mismatch! Redirecting to property selector",
+              {
+                cookieOrgId: orgIdCookie,
+                sessionOrgId: token.orgId
+              }
+            );
+            // Clear invalid cookies and redirect to property selector
+            const response = NextResponse.redirect(
+              new URL("/onboarding/select-organization", req.url)
+            );
+            response.cookies.delete("orgId");
+            response.cookies.delete("propertyId");
+            return response;
+          }
+
           console.log(
             "✅ Middleware: Multi-property org with explicit selection, allowing dashboard access",
             {

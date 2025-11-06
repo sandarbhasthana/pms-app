@@ -3,19 +3,15 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Avvvatars from "avvvatars-react";
 import { cn } from "@/lib/utils";
-import {
-  getGravatarUrl,
-  getUserInitials,
-  getInitialsBackgroundColor
-} from "@/lib/gravatar";
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** User's email for gravatar */
+  /** User's email for avatar generation */
   email?: string | null;
-  /** User's name for initials fallback */
+  /** User's name for avatar generation and display */
   name?: string | null;
-  /** Custom image URL (overrides gravatar) */
+  /** Custom image URL (overrides generated avatar) */
   src?: string | null;
   /** Size of the avatar */
   size?: "sm" | "md" | "lg" | "xl";
@@ -47,16 +43,23 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       ? `h-[${customSize}px] w-[${customSize}px]`
       : sizeClasses[size];
 
-    // Determine the image source
-    const imageSrc = React.useMemo(() => {
-      if (src) return src;
-      if (email && !imageError) return getGravatarUrl(email, avatarSize);
-      return null;
-    }, [src, email, avatarSize, imageError]);
+    // Use custom image if provided
+    const hasCustomImage = src && !imageError;
 
-    // Get initials and background color for fallback
-    const initials = getUserInitials(name);
-    const backgroundColor = getInitialsBackgroundColor(name);
+    // Get value for avvvatars (prefer email, fallback to name)
+    const avvvatarsValue = email || name || "default";
+
+    // Get display value (first 2 letters of name if available)
+    const getDisplayValue = () => {
+      if (!name) return undefined;
+      const names = name.trim().split(" ");
+      if (names.length === 1) {
+        return names[0].substring(0, 2).toUpperCase();
+      }
+      return (
+        names[0].charAt(0) + names[names.length - 1].charAt(0)
+      ).toUpperCase();
+    };
 
     const handleImageError = () => {
       setImageError(true);
@@ -72,16 +75,23 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       <div
         ref={ref}
         className={cn(
-          "relative inline-flex items-center justify-center rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800",
+          "relative inline-flex items-center justify-center rounded-full overflow-hidden flex-shrink-0",
           sizeClass,
           className
         )}
-        style={!imageSrc || imageError ? { backgroundColor } : undefined}
+        style={{
+          width: `${avatarSize}px`,
+          height: `${avatarSize}px`,
+          minWidth: `${avatarSize}px`,
+          minHeight: `${avatarSize}px`,
+          maxWidth: `${avatarSize}px`,
+          maxHeight: `${avatarSize}px`
+        }}
         {...props}
       >
-        {imageSrc && !imageError && (
+        {hasCustomImage ? (
           <Image
-            src={imageSrc}
+            src={src!}
             alt={name || "User avatar"}
             width={avatarSize}
             height={avatarSize}
@@ -91,19 +101,18 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             )}
             onError={handleImageError}
             onLoad={handleImageLoad}
-            unoptimized={imageSrc.startsWith("https://www.gravatar.com")}
+            unoptimized
           />
-        )}
-
-        {(!imageSrc || imageError || !imageLoaded) && (
-          <span
-            className={cn(
-              "font-medium text-white select-none",
-              customSize ? `text-[${Math.floor(customSize * 0.4)}px]` : ""
-            )}
-          >
-            {initials}
-          </span>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Avvvatars
+              value={avvvatarsValue}
+              displayValue={getDisplayValue()}
+              style="character"
+              size={avatarSize}
+              radius={avatarSize}
+            />
+          </div>
         )}
       </div>
     );

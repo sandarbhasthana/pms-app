@@ -787,78 +787,199 @@ export default function GeneralSettingsFormFixed({
             </div>
             <div>
               <Label>Property Phone</Label>
-              <PhoneInput
-                country={"us"}
-                value={watch("propertyPhone")}
-                onChange={(phone, country: PhoneInputCountry) => {
-                  setValue("propertyPhone", phone);
-                  setValue("phoneCode", `+${country.dialCode}`);
-                }}
-                inputStyle={{
-                  width: "100%",
-                  height: "36px",
-                  fontSize: "14px",
-                  border: "1px solid rgb(107 114 128)", // gray-500
-                  borderLeft: "none", // Remove left border to connect with dropdown
-                  borderTopRightRadius: "6px",
-                  borderBottomRightRadius: "6px",
-                  borderTopLeftRadius: "0",
-                  borderBottomLeftRadius: "0",
-                  backgroundColor: "transparent",
-                  color: "inherit",
-                  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-                  transition: "all 0.2s ease"
-                }}
-                buttonStyle={{
-                  border: "1px solid rgb(107 114 128)", // gray-500
-                  borderRight: "none", // Remove right border to connect with input
-                  borderTopLeftRadius: "6px",
-                  borderBottomLeftRadius: "6px",
-                  borderTopRightRadius: "0",
-                  borderBottomRightRadius: "0",
-                  backgroundColor: "transparent",
-                  height: "36px"
-                }}
-                inputProps={{
-                  onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-                    e.target.style.outline = "none";
-                    // Style the input (right side)
-                    e.target.style.borderColor = "rgb(168 85 247)"; // purple-400
-                    e.target.style.boxShadow =
-                      "0 0 0 3px rgb(168 85 247 / 0.2)";
+              <div className="phone-input-wrapper">
+                <PhoneInput
+                  enableSearch
+                  value={watch("propertyPhone")}
+                  onChange={(phone, country: PhoneInputCountry) => {
+                    setValue("propertyPhone", phone);
+                    setValue("phoneCode", `+${country.dialCode}`);
+                  }}
+                  inputStyle={{
+                    width: "100%",
+                    height: "36px",
+                    fontSize: "14px",
+                    border: "none",
+                    borderLeft: "1px solid #e5e7eb",
+                    borderTopRightRadius: "6px",
+                    borderBottomRightRadius: "6px",
+                    borderTopLeftRadius: "0",
+                    borderBottomLeftRadius: "0",
+                    backgroundColor: "transparent",
+                    color: "inherit",
+                    boxShadow: "none",
+                    transition: "all 0.2s ease",
+                    paddingTop: "4px",
+                    paddingBottom: "4px"
+                  }}
+                  buttonStyle={{
+                    border: "none",
+                    borderTopLeftRadius: "6px",
+                    borderBottomLeftRadius: "6px",
+                    borderTopRightRadius: "0",
+                    borderBottomRightRadius: "0",
+                    backgroundColor: "transparent",
+                    height: "36px"
+                  }}
+                  inputProps={{
+                    onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
+                      e.target.style.outline = "none";
 
-                    // Style the dropdown button (left side)
-                    const button = e.target.parentElement?.querySelector(
-                      ".flag-dropdown"
-                    ) as HTMLElement;
-                    if (button) {
-                      button.style.borderColor = "rgb(168 85 247)"; // purple-400
-                      button.style.boxShadow =
-                        "0 0 0 3px rgb(168 85 247 / 0.2)";
+                      // Style the wrapper
+                      const wrapper = e.target.closest(
+                        ".phone-input-wrapper"
+                      ) as HTMLElement;
+                      if (wrapper) {
+                        wrapper.style.borderColor = "#a855f7"; // purple-400
+                        wrapper.style.boxShadow =
+                          "0 0 0 3px rgba(168, 85, 247, 0.2)";
+                      }
+                    },
+                    onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                      // Reset wrapper
+                      const wrapper = e.target.closest(
+                        ".phone-input-wrapper"
+                      ) as HTMLElement;
+                      if (wrapper) {
+                        wrapper.style.borderColor = "#6b7280"; // gray-500
+                        wrapper.style.boxShadow = "none";
+                      }
                     }
-                  },
-                  onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-                    // Reset input (right side)
-                    e.target.style.borderColor = "rgb(107 114 128)"; // gray-500
-                    e.target.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.05)";
-
-                    // Reset dropdown button (left side)
-                    const button = e.target.parentElement?.querySelector(
-                      ".flag-dropdown"
-                    ) as HTMLElement;
-                    if (button) {
-                      button.style.borderColor = "rgb(107 114 128)"; // gray-500
-                      button.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.05)";
-                    }
-                  }
-                }}
-                containerStyle={{ width: "100%" }}
-              />
+                  }}
+                  containerStyle={{
+                    width: "100%",
+                    border: "none",
+                    borderRadius: "0"
+                  }}
+                />
+              </div>
               {errors.propertyPhone && (
                 <p className="text-sm text-red-500 mt-1">
                   {errors.propertyPhone.message}
                 </p>
               )}
+              <style jsx>{`
+                .phone-input-wrapper {
+                  width: 100%;
+                  border: 1px solid #6b7280;
+                  border-radius: 6px;
+                  transition: all 0.2s ease;
+                  position: relative;
+                }
+                .phone-input-wrapper :global(.react-tel-input) {
+                  border: none !important;
+                }
+                .phone-input-wrapper :global(.flag-dropdown) {
+                  border: none !important;
+                  background: transparent !important;
+                }
+                .phone-input-wrapper :global(.form-control) {
+                  border: none !important;
+                  border-left: 1px solid #e5e7eb !important;
+                }
+                .phone-input-wrapper :global(.country-list) {
+                  position: absolute !important;
+                  z-index: 9999 !important;
+                  background: white !important;
+                }
+                .phone-input-wrapper :global(.search-box) {
+                  width: 90% !important;
+                  background: white !important;
+                  color: #1e1e1e !important;
+                }
+                .phone-input-wrapper :global(.search-emoji) {
+                  float: right !important;
+                  margin-top: 4px !important;
+                }
+
+                /* Dark mode styles */
+                :global(.dark) .phone-input-wrapper :global(.country-list) {
+                  background: #0a0a0a !important;
+                  color: #f0f8ff !important;
+                }
+                :global(.dark)
+                  .phone-input-wrapper
+                  :global(.country-list:hover) {
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.country-list li) {
+                  background: #0a0a0a !important;
+                }
+                :global(.dark)
+                  .phone-input-wrapper
+                  :global(.country-list li:hover) {
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.search) {
+                  background: #0a0a0a !important;
+                  color: #f0f8ff !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.search:hover) {
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.search-box) {
+                  background: #0a0a0a !important;
+                  color: #f0f8ff !important;
+                  border: 1px solid #4a4a4a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.search-box:hover) {
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.country) {
+                  color: #f0f8ff !important;
+                  background-color: #0a0a0a !important;
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.country:hover),
+                :global(.dark) .phone-input-wrapper :global(li.country:hover) {
+                  background-color: #1a1a1a !important;
+                  background: #1a1a1a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.country.highlight),
+                :global(.dark)
+                  .phone-input-wrapper
+                  :global(li.country.highlight) {
+                  background-color: #1a1a1a !important;
+                  background: #1a1a1a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.country-name) {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.dial-code) {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                }
+                :global(.dark)
+                  .phone-input-wrapper
+                  :global(.country-name:hover) {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.dial-code:hover) {
+                  background-color: transparent !important;
+                  background: transparent !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.search-emoji) {
+                  background-color: #0a0a0a !important;
+                  background: #0a0a0a !important;
+                }
+                :global(.dark)
+                  .phone-input-wrapper
+                  :global(.search-emoji:hover) {
+                  background-color: #0a0a0a !important;
+                  background: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.flag-dropdown) {
+                  background-color: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.selected-flag) {
+                  background-color: #0a0a0a !important;
+                }
+                :global(.dark) .phone-input-wrapper :global(.arrow) {
+                  border-top-color: #f0f8ff !important;
+                }
+              `}</style>
             </div>
             <div>
               <Label>Property Email</Label>

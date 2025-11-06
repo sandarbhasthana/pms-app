@@ -34,6 +34,10 @@ export async function GET(req: NextRequest) {
     const orgIdCookie = req.cookies.get("orgId")?.value;
     const orgId = orgIdHeader || orgIdCookie;
 
+    console.log("🔍 GET /api/admin/users - orgIdHeader:", orgIdHeader);
+    console.log("🔍 GET /api/admin/users - orgIdCookie:", orgIdCookie);
+    console.log("🔍 GET /api/admin/users - final orgId:", orgId);
+
     if (!orgId) {
       return new NextResponse("Organization context missing", { status: 400 });
     }
@@ -51,6 +55,8 @@ export async function GET(req: NextRequest) {
       organizationId: orgId,
       ...(roleFilter && { role: roleFilter as UserRole })
     };
+
+    console.log("🔍 GET /api/admin/users - whereClause:", whereClause);
 
     // Get users with their organization membership and property assignments
     const users = await prisma.userOrg.findMany({
@@ -79,6 +85,8 @@ export async function GET(req: NextRequest) {
       skip: offset,
       take: limit
     });
+
+    console.log("📊 GET /api/admin/users - Found users:", users.length);
 
     // Get property assignments for each user
     const userIds = users.map((u) => u.user.id);
@@ -192,35 +200,60 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get organization ID from session user
-    const userId = session.user.id;
+    // Get organization ID from header or cookie (same as GET endpoint)
+    const orgIdHeader = req.headers.get("x-organization-id");
+    const orgIdCookie = req.cookies.get("orgId")?.value;
+    const orgId = orgIdHeader || orgIdCookie;
 
-    // Get user's organization membership
-    const userOrg = await prisma.userOrg.findFirst({
-      where: { userId },
-      include: { organization: true }
-    });
+    console.log("🆕 POST /api/admin/users - orgIdHeader:", orgIdHeader);
+    console.log("🆕 POST /api/admin/users - orgIdCookie:", orgIdCookie);
+    console.log("🆕 POST /api/admin/users - final orgId:", orgId);
 
-    if (!userOrg) {
+    if (!orgId) {
       return NextResponse.json(
-        { error: "User is not associated with any organization" },
+        { error: "Organization context missing" },
         { status: 400 }
       );
     }
 
-    const orgId = userOrg.organizationId;
-
-    // Verify organization exists
-    const organization = await prisma.organization.findUnique({
-      where: { id: orgId }
+    // Verify organization exists and user has access to it
+    const userId = session.user.id;
+    const userOrgMembership = await prisma.userOrg.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: userId,
+          organizationId: orgId
+        }
+      },
+      include: {
+        organization: true
+      }
     });
 
-    if (!organization) {
+    if (!userOrgMembership) {
+      console.error("🚫 User not member of organization:", { userId, orgId });
+
+      // Get user's actual organizations for helpful error message
+      const userOrgs = await prisma.userOrg.findMany({
+        where: { userId },
+        include: { organization: { select: { id: true, name: true } } }
+      });
+
+      const orgNames = userOrgs.map((uo) => uo.organization.name).join(", ");
+
       return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 }
+        {
+          error: "Organization access error",
+          message: `You don't have access to this organization. Your organizations: ${
+            orgNames || "None"
+          }. Please log out and log back in to refresh your session.`
+        },
+        { status: 403 }
       );
     }
+
+    const organization = userOrgMembership.organization;
+    console.log("✅ Organization verified:", organization.name);
 
     const {
       email,
@@ -290,7 +323,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create organization membership
-    console.log("Creating UserOrg with:", {
+    console.log("✨ Creating UserOrg with:", {
       userId: user.id,
       organizationId: orgId,
       role: organizationRole
@@ -304,7 +337,12 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    console.log("UserOrg created successfully:", newUserOrg);
+    console.log("✅ UserOrg created successfully:", {
+      id: newUserOrg.id,
+      userId: newUserOrg.userId,
+      organizationId: newUserOrg.organizationId,
+      role: newUserOrg.role
+    });
 
     // Create property assignments if provided
     if (propertyAssignments.length > 0) {

@@ -55,6 +55,7 @@ import {
   AlignRight,
   AlignJustify
 } from "lucide-react";
+import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 // Form Values
 export type FormValues = {
@@ -1084,11 +1085,11 @@ export const AccommodationDetailsForm: FC<Props> = ({
                 Accommodation Amenities (for Booking Engine)
               </FormLabel>
               <FormControl>
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   {PREDEFINED_AMENITIES.map((amenity) => (
                     <label
                       key={amenity}
-                      className="flex items-start space-x-2 cursor-pointer"
+                      className="flex items-center gap-2 cursor-pointer"
                     >
                       <Checkbox
                         checked={field.value.includes(amenity)}
@@ -1098,9 +1099,9 @@ export const AccommodationDetailsForm: FC<Props> = ({
                             : field.value.filter((a) => a !== amenity);
                           field.onChange(next);
                         }}
-                        className="mt-0.5"
+                        className="!h-3 !w-3 !min-h-3 !min-w-3 mr-2 mt-2"
                       />
-                      <span className="text-sm font-medium leading-4">
+                      <span className="text-md font-medium leading-none">
                         {amenity}
                       </span>
                     </label>
@@ -1175,9 +1176,20 @@ export const AccommodationDetailsForm: FC<Props> = ({
                     onChange={(e) =>
                       field.onChange(e.target.files?.[0] ?? null)
                     }
+                    className="block w-full text-sm text-gray-900 dark:text-gray-300
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-purple-50 file:text-purple-700
+                      hover:file:bg-purple-100
+                      dark:file:bg-purple-900 dark:file:text-purple-300
+                      dark:hover:file:bg-purple-800
+                      cursor-pointer"
                   />
                   {field.value && (
-                    <p className="mt-1 text-sm">{field.value.name}</p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      {field.value.name}
+                    </p>
                   )}
                 </div>
               </FormControl>
@@ -1202,9 +1214,18 @@ export const AccommodationDetailsForm: FC<Props> = ({
                     onChange={(e) =>
                       field.onChange(Array.from(e.target.files || []))
                     }
+                    className="block w-full text-sm text-gray-900 dark:text-gray-300
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-purple-50 file:text-purple-700
+                      hover:file:bg-purple-100
+                      dark:file:bg-purple-900 dark:file:text-purple-300
+                      dark:hover:file:bg-purple-800
+                      cursor-pointer"
                   />
                   {field.value.length > 0 && (
-                    <p className="mt-1 text-sm">
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                       {field.value.length} file
                       {field.value.length > 1 ? "s" : ""} selected
                     </p>
@@ -1218,7 +1239,25 @@ export const AccommodationDetailsForm: FC<Props> = ({
 
         {/* ──────────── Rooms Table ──────────── */}
         <div>
-          <h3 className="text-lg font-medium mb-2">Individual Rooms</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-medium">Individual Rooms</h3>
+            <Button
+              type="button"
+              onClick={() =>
+                append({
+                  id: uuidv4(),
+                  name: "",
+                  description: "",
+                  doorlockId: "",
+                  images: []
+                })
+              }
+              className="flex items-center gap-2"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add another room
+            </Button>
+          </div>
           <div className="space-y-4">
             {fields.map((field, idx) => (
               <div
@@ -1255,7 +1294,7 @@ export const AccommodationDetailsForm: FC<Props> = ({
                         {...field}
                         rows={2}
                         className="mt-1 block w-full border rounded px-2 py-1"
-                        placeholder="(Optional) Enter accommodation description…"
+                        placeholder="(Optional) Enter room description…"
                       />
                     </div>
                   )}
@@ -1294,9 +1333,17 @@ export const AccommodationDetailsForm: FC<Props> = ({
                         onChange={(e) =>
                           field.onChange(Array.from(e.target.files || []))
                         }
-                        className="mt-1 block w-full"
+                        className="mt-1 block w-full text-sm text-gray-900 dark:text-gray-300
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-purple-50 file:text-purple-700
+                          hover:file:bg-purple-100
+                          dark:file:bg-purple-900 dark:file:text-purple-300
+                          dark:hover:file:bg-purple-800
+                          cursor-pointer"
                       />
-                      <p className="text-xs mt-1">
+                      <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
                         {field.value.length} file
                         {field.value.length !== 1 ? "s" : ""} selected
                       </p>
@@ -1305,34 +1352,18 @@ export const AccommodationDetailsForm: FC<Props> = ({
                 />
 
                 {/* Remove Row */}
-                <div className="flex items-center">
+                <div className="flex items-center justify-center h-full pt-6">
                   <button
                     type="button"
                     onClick={() => remove(idx)}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    title="Remove room"
                   >
-                    Remove
+                    <TrashIcon className="h-5 w-5" />
                   </button>
                 </div>
               </div>
             ))}
-
-            {/* Add New Room */}
-            <button
-              type="button"
-              onClick={() =>
-                append({
-                  id: uuidv4(),
-                  name: "",
-                  description: "",
-                  doorlockId: "",
-                  images: []
-                })
-              }
-              className="text-purple-600 hover:underline text-sm"
-            >
-              Add another room
-            </button>
           </div>
         </div>
         {/* ────────────────────────────────────── */}

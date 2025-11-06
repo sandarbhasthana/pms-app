@@ -12,7 +12,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserPlus, Clock, Settings } from "lucide-react";
+import { Users, UserPlus, Clock } from "lucide-react";
 import { StaffList } from "./StaffList";
 import { InviteUserModal } from "./InviteUserModal";
 import { CreateUserModal } from "./CreateUserModal";
@@ -78,6 +78,8 @@ export function StaffManagement() {
   const fetchStaffMembers = async () => {
     try {
       const orgId = getOrgIdFromCookie();
+      console.log("🔍 Fetching staff members for orgId:", orgId);
+
       const headers: HeadersInit = {
         "Content-Type": "application/json"
       };
@@ -92,19 +94,23 @@ export function StaffManagement() {
         credentials: "include"
       });
 
+      console.log("📡 Staff fetch response status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Staff data received:", data);
+        console.log("👥 Number of staff members:", data.users?.length || 0);
         setStaffMembers(data.users || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Failed to fetch staff members:", {
+        console.error("❌ Failed to fetch staff members:", {
           status: response.status,
           statusText: response.statusText,
           error: errorData.error || "Unknown error"
         });
       }
     } catch (error) {
-      console.error("Error fetching staff members:", error);
+      console.error("💥 Error fetching staff members:", error);
     }
   };
 
@@ -161,6 +167,7 @@ export function StaffManagement() {
 
   // Handle successful user creation
   const handleUserCreated = () => {
+    console.log("🎉 User created successfully, refreshing staff list...");
     setShowCreateUserModal(false);
     fetchStaffMembers(); // Refresh staff list
   };
@@ -201,14 +208,14 @@ export function StaffManagement() {
         <div className="flex space-x-2">
           {canInviteUsers && (
             <>
-              <Button
+              {/* <Button
                 onClick={() => setShowEmailTestModal(true)}
                 variant="outline"
                 size="sm"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Test Email
-              </Button>
+              </Button> */}
               <Button
                 onClick={() => setShowCreateUserModal(true)}
                 variant="outline"
@@ -304,13 +311,13 @@ export function StaffManagement() {
         <TabsList className="bg-gray-100 dark:!bg-transparent">
           <TabsTrigger
             value="staff"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:!text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:!text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
           >
             Staff Members
           </TabsTrigger>
           <TabsTrigger
             value="invitations"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:!text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:!text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
           >
             Invitations (
             {invitations.filter((inv) => inv.status === "pending").length})
@@ -325,12 +332,10 @@ export function StaffManagement() {
                 Manage your team members, their roles, and property assignments.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <StaffList
-                staffMembers={staffMembers}
-                onStaffUpdate={handleStaffUpdate}
-              />
-            </CardContent>
+            <StaffList
+              staffMembers={staffMembers}
+              onStaffUpdate={handleStaffUpdate}
+            />
           </Card>
         </TabsContent>
 

@@ -323,12 +323,25 @@
   .dark h5,
   .dark h6,
   .dark p,
-  .dark span:not(.sidebar-active-label),
-  .dark div:not(.sidebar-active-icon),
-  .dark button,
+  .dark span:not(.sidebar-active-label):not([data-badge]),
+  .dark div:not(.sidebar-active-icon):not([data-badge]),
+  .dark button:not([data-badge]),
   .dark a,
   .dark label {
     color: #f0f8ff !important; /* Alice Blue text */
+  }
+
+  /* Badge text color override - gray-700 for both light and dark modes */
+  [data-badge="true"],
+  [data-badge="true"] span,
+  [data-badge="true"] div {
+    color: #121212 !important;
+  }
+
+  .dark [data-badge="true"],
+  .dark [data-badge="true"] span,
+  .dark [data-badge="true"] div {
+    color: #121212 !important;
   }
 
   /* Override for unsaved changes text - higher specificity */

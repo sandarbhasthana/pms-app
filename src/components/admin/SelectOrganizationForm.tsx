@@ -63,8 +63,17 @@ export default function SelectOrganizationForm() {
       return;
     }
 
-    document.cookie = `orgId=${selectedOrg}; path=/`;
-    window.location.href = "/dashboard";
+    // Clear both cookies to force property selection flow
+    document.cookie = `orgId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `propertyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+
+    // Set new orgId
+    document.cookie = `orgId=${selectedOrg}; path=/; max-age=${
+      60 * 60 * 24 * 30
+    }`;
+
+    // Redirect to property selector to choose property in new org
+    window.location.href = "/onboarding/select-organization";
   };
 
   if (status === "loading" || loading) {
