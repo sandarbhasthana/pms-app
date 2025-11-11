@@ -151,7 +151,7 @@ export default function SignInForm() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full cursor-pointer"
                   disabled={isDevLoading}
                 >
                   {isDevLoading ? (
@@ -237,7 +237,7 @@ export default function SignInForm() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full cursor-pointer"
                   disabled={isPasswordLoading}
                 >
                   {isPasswordLoading ? (

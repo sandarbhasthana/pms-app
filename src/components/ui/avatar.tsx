@@ -4,6 +4,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Avvvatars from "avvvatars-react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -37,6 +38,13 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ className, email, name, src, size = "md", customSize, ...props }, ref) => {
     const [imageError, setImageError] = React.useState(false);
     const [imageLoaded, setImageLoaded] = React.useState(false);
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = React.useState(false);
+
+    // Ensure component is mounted to avoid hydration mismatch
+    React.useEffect(() => {
+      setMounted(true);
+    }, []);
 
     const avatarSize = customSize || sizePx[size];
     const sizeClass = customSize
@@ -71,6 +79,10 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       setImageError(false);
     };
 
+    // Determine if we're in dark mode
+    const isDarkMode =
+      mounted && (resolvedTheme === "dark" || theme === "dark");
+
     return (
       <div
         ref={ref}
@@ -104,7 +116,12 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div
+            className={cn(
+              "w-full h-full flex items-center justify-center avatar-wrapper",
+              isDarkMode && "dark-mode-avatar"
+            )}
+          >
             <Avvvatars
               value={avvvatarsValue}
               displayValue={getDisplayValue()}
