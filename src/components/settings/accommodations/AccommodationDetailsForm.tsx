@@ -30,6 +30,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
+import NextImage from "next/image";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -396,6 +397,17 @@ export const AccommodationDetailsForm: FC<Props> = ({
   // local temp for custom-amenities input
   const [tagInput, setTagInput] = useState("");
 
+  // State for image previews
+  const [featuredImagePreview, setFeaturedImagePreview] = useState<
+    string | null
+  >(null);
+  const [additionalImagePreviews, setAdditionalImagePreviews] = useState<
+    string[]
+  >([]);
+
+  // State for upload progress
+  const [isUploading, setIsUploading] = useState(false);
+
   // Load existing room type data
   useEffect(() => {
     const loadRoomTypeData = async () => {
@@ -422,6 +434,17 @@ export const AccommodationDetailsForm: FC<Props> = ({
           const roomType: RoomType = await response.json();
           console.log("✅ Room type data loaded:", roomType);
           setRoomTypeData(roomType);
+
+          // Set image previews from existing URLs
+          if (roomType.featuredImageUrl) {
+            setFeaturedImagePreview(roomType.featuredImageUrl);
+          }
+          if (
+            roomType.additionalImageUrls &&
+            roomType.additionalImageUrls.length > 0
+          ) {
+            setAdditionalImagePreviews(roomType.additionalImageUrls);
+          }
 
           // Update form with existing data
           form.reset({
@@ -485,13 +508,82 @@ export const AccommodationDetailsForm: FC<Props> = ({
     }
   }, [group, form, loading, roomTypeData]);
 
+  // Helper function to upload file to S3
+  const uploadToS3 = async (file: File): Promise<string> => {
+    try {
+      // 1. Get presigned URL
+      const presignRes = await fetch("/api/uploads/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type })
+      });
+
+      if (!presignRes.ok) {
+        throw new Error("Failed to get presigned URL");
+      }
+
+      const { presignedUrl, publicUrl } = await presignRes.json();
+
+      // 2. Upload file to S3
+      const uploadRes = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("Failed to upload to S3");
+      }
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading to S3:", error);
+      throw error;
+    }
+  };
+
   const onSubmit = async (values: FormValues) => {
     try {
       console.log("💾 Saving room type data:", values);
+      setIsUploading(true);
 
       // First save the room type data
       const orgId = getCookie("orgId");
       if (orgId) {
+        // Upload featured image if present
+        let featuredImageUrl: string | null = null;
+        if (values.featuredImage) {
+          toast.info("Uploading featured image...");
+          featuredImageUrl = await uploadToS3(values.featuredImage);
+        }
+
+        // Upload additional images if present
+        let additionalImageUrls: string[] = [];
+        if (values.additionalImages && values.additionalImages.length > 0) {
+          toast.info("Uploading additional images...");
+          additionalImageUrls = await Promise.all(
+            Array.from(values.additionalImages).map(uploadToS3)
+          );
+        }
+
+        // Upload individual room images
+        const roomsWithImageUrls = await Promise.all(
+          values.rooms.map(async (room) => {
+            let imageUrls: string[] = [];
+            if (room.images && room.images.length > 0) {
+              imageUrls = await Promise.all(
+                Array.from(room.images).map(uploadToS3)
+              );
+            }
+            return {
+              name: room.name,
+              description: room.description,
+              doorlockId: room.doorlockId,
+              imageUrls // Store the uploaded URLs
+            };
+          })
+        );
+
         const roomTypePayload = {
           name: values.title,
           abbreviation: values.abbreviation,
@@ -505,8 +597,9 @@ export const AccommodationDetailsForm: FC<Props> = ({
           description: values.description,
           amenities: values.amenities || [],
           customAmenities: values.customAmenities || [],
-          featuredImageUrl: null, // TODO: Handle image uploads
-          additionalImageUrls: [], // TODO: Handle image uploads
+          featuredImageUrl,
+          additionalImageUrls,
+          rooms: roomsWithImageUrls, // Include rooms with image URLs
           // Pricing fields
           basePrice: values.basePrice,
           weekdayPrice: values.weekdayPrice || null,
@@ -533,6 +626,42 @@ export const AccommodationDetailsForm: FC<Props> = ({
         if (response.ok) {
           const savedRoomType = await response.json();
           console.log("✅ Room type saved successfully:", savedRoomType);
+
+          // Update individual rooms with their image URLs
+          if (roomsWithImageUrls.length > 0) {
+            const roomUpdates = roomsWithImageUrls
+              .map((room, idx) => {
+                const existingRoom = group.rooms[idx];
+                if (!existingRoom) return null;
+
+                return {
+                  id: existingRoom.id,
+                  name: room.name,
+                  description: room.description || "",
+                  doorlockId: room.doorlockId || "",
+                  imageUrl: room.imageUrls[0] || null // Use first image as main image
+                };
+              })
+              .filter(Boolean);
+
+            if (roomUpdates.length > 0) {
+              const roomsResponse = await fetch("/api/rooms/bulk-update", {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-organization-id": orgId as string
+                },
+                body: JSON.stringify(roomUpdates)
+              });
+
+              if (roomsResponse.ok) {
+                console.log("✅ Rooms updated successfully");
+              } else {
+                console.error("❌ Failed to update rooms");
+              }
+            }
+          }
+
           // Don't show toast here - let AccommodationsTable handle the final success message
         } else {
           const errorText = await response.text();
@@ -560,6 +689,8 @@ export const AccommodationDetailsForm: FC<Props> = ({
       );
       // Still call onSave to handle room updates even if room type save fails
       onSave(values);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -1173,9 +1304,13 @@ export const AccommodationDetailsForm: FC<Props> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) =>
-                      field.onChange(e.target.files?.[0] ?? null)
-                    }
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      field.onChange(file);
+                      if (file) {
+                        setFeaturedImagePreview(URL.createObjectURL(file));
+                      }
+                    }}
                     className="block w-full text-sm text-gray-900 dark:text-gray-300
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
@@ -1190,6 +1325,17 @@ export const AccommodationDetailsForm: FC<Props> = ({
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                       {field.value.name}
                     </p>
+                  )}
+                  {featuredImagePreview && (
+                    <div className="mt-2">
+                      <NextImage
+                        src={featuredImagePreview}
+                        alt="Featured preview"
+                        width={128}
+                        height={128}
+                        className="w-32 h-32 object-cover rounded border"
+                      />
+                    </div>
                   )}
                 </div>
               </FormControl>
@@ -1211,9 +1357,15 @@ export const AccommodationDetailsForm: FC<Props> = ({
                     type="file"
                     accept="image/*"
                     multiple
-                    onChange={(e) =>
-                      field.onChange(Array.from(e.target.files || []))
-                    }
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      field.onChange(files);
+                      if (files.length > 0) {
+                        setAdditionalImagePreviews(
+                          files.map((f) => URL.createObjectURL(f))
+                        );
+                      }
+                    }}
                     className="block w-full text-sm text-gray-900 dark:text-gray-300
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
@@ -1229,6 +1381,20 @@ export const AccommodationDetailsForm: FC<Props> = ({
                       {field.value.length} file
                       {field.value.length > 1 ? "s" : ""} selected
                     </p>
+                  )}
+                  {additionalImagePreviews.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {additionalImagePreviews.map((preview, idx) => (
+                        <NextImage
+                          key={idx}
+                          src={preview}
+                          alt={`Additional preview ${idx + 1}`}
+                          width={96}
+                          height={96}
+                          className="w-24 h-24 object-cover rounded border"
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </FormControl>
@@ -1370,10 +1536,12 @@ export const AccommodationDetailsForm: FC<Props> = ({
 
         {/* Buttons */}
         <div className="flex justify-end space-x-2">
-          <Button variant="ghost" onClick={onCancel}>
+          <Button variant="ghost" onClick={onCancel} disabled={isUploading}>
             Cancel
           </Button>
-          <Button type="submit">Save</Button>
+          <Button type="submit" disabled={isUploading}>
+            {isUploading ? "Uploading..." : "Save"}
+          </Button>
         </div>
       </form>
     </Form>

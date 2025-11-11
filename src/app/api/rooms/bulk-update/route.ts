@@ -21,12 +21,13 @@ export async function PUT(req: NextRequest) {
 
     const { propertyId } = validation;
 
-    // Expecting an array of rooms with id, name, description, doorlockId
+    // Expecting an array of rooms with id, name, description, doorlockId, imageUrl
     const roomsToUpdate: {
       id: string;
       name: string;
       description?: string;
       doorlockId?: string;
+      imageUrl?: string;
     }[] = await req.json();
 
     if (!Array.isArray(roomsToUpdate) || roomsToUpdate.length === 0) {
@@ -62,7 +63,8 @@ export async function PUT(req: NextRequest) {
             data: {
               name: r.name,
               description: r.description,
-              doorlockId: r.doorlockId
+              doorlockId: r.doorlockId,
+              imageUrl: r.imageUrl
             }
           })
         )
