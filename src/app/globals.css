@@ -322,7 +322,7 @@
   .dark h4,
   .dark h5,
   .dark h6,
-  .dark p,
+  .dark p:not(.go3279631147),
   .dark span:not(.sidebar-active-label):not([data-badge]),
   .dark div:not(.sidebar-active-icon):not([data-badge]),
   .dark button:not([data-badge]),
@@ -1493,22 +1493,4 @@ select:focus-visible {
   .google-style-calendar-container {
     touch-action: pan-y;
   }
-}
-
-/* ========================================
-   AVATAR DARK MODE OPTIMIZATION
-   ======================================== */
-
-/* Invert background colors in dark mode but not the text */
-.dark .avatar-wrapper svg,
-.dark-mode-avatar svg {
-  filter: invert(1);
-}
-
-/* Force white text explicitly in dark mode */
-.dark .avatar-wrapper svg text,
-.dark-mode-avatar svg text {
-  fill: #ffffff !important;
-  font-weight: 600 !important;
-  filter: invert(1);
 }

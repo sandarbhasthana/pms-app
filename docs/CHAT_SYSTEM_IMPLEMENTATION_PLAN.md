@@ -1,5 +1,41 @@
 # In-App Chat System - Implementation Plan
 
+> **Status**: ✅ Ready for Implementation
+> **Timeline**: 10 days (5 phases)
+> **Cost**: $0/month (Ably free tier)
+> **Tech Stack**: Ably + Vercel + PostgreSQL + React
+
+---
+
+## 🎯 Quick Summary
+
+This document outlines the complete implementation plan for a real-time chat system in your property management SaaS application.
+
+**Key Features:**
+
+- ✅ Real-time messaging with WebSockets (Ably)
+- ✅ Organization-wide, property-specific, and direct messages
+- ✅ Online/offline status tracking
+- ✅ Typing indicators
+- ✅ Read receipts
+- ✅ File attachments (images + documents, 10MB max)
+- ✅ In-app + email notifications (60-min delay)
+- ✅ 90-day message retention
+- ✅ Auto-suggest users based on property/org
+- ✅ All staff can create group chats (property-specific)
+
+**Architecture:**
+
+- **Frontend**: React components with Ably Realtime client
+- **Backend**: Next.js API routes on Vercel
+- **Real-time**: Ably (managed WebSocket service)
+- **Database**: PostgreSQL (existing) for metadata
+- **Storage**: Ably for message history (90 days)
+
+**Cost:** $0/month (free tier covers 50-100 users)
+
+---
+
 ## 📋 Executive Summary
 
 ### Current Infrastructure Analysis
@@ -14,7 +50,7 @@ Your app already has:
 
 ### Recommendation
 
-Use **Socket.io** for WebSockets (better than raw WebSockets) + leverage your existing Redis for horizontal scaling.
+Use **Ably** (managed WebSocket service) - works perfectly with Vercel, no custom server needed, built-in scaling and reliability.
 
 ---
 
@@ -24,35 +60,44 @@ Use **Socket.io** for WebSockets (better than raw WebSockets) + leverage your ex
 ┌─────────────────────────────────────────────────────────────┐
 │                     CLIENT LAYER                             │
 ├─────────────────────────────────────────────────────────────┤
-│  • ChatProvider (Context)                                    │
-│  • useChatSocket (Hook)                                      │
+│  • ChatProvider (Context with Ably client)                   │
+│  • useAblyChat (Hook)                                        │
 │  • ChatWindow Component                                      │
 │  • MessageList, MessageInput, UserList                       │
 └─────────────────────────────────────────────────────────────┘
-                            ↕ Socket.io
+                            ↕ Ably Realtime
 ┌─────────────────────────────────────────────────────────────┐
-│                   WEBSOCKET SERVER                           │
+│                   VERCEL (Next.js API Routes)                │
 ├─────────────────────────────────────────────────────────────┤
-│  • /api/chat/socket (Custom Server)                          │
-│  • Socket.io with Redis Adapter                              │
-│  • Authentication Middleware                                 │
-│  • Room Management (org/property/direct)                     │
+│  • /api/chat/auth (Ably token authentication)                │
+│  • /api/chat/rooms (CRUD operations)                         │
+│  • /api/chat/messages (Message history)                      │
+│  • /api/chat/upload (File attachments)                       │
 └─────────────────────────────────────────────────────────────┘
                             ↕
 ┌─────────────────────────────────────────────────────────────┐
-│                    REDIS LAYER                               │
+│                    ABLY (Managed Service)                    │
 ├─────────────────────────────────────────────────────────────┤
-│  • Pub/Sub for multi-instance scaling                        │
-│  • Online status tracking (sorted sets)                      │
-│  • Typing indicators (TTL keys)                              │
-│  • Message cache (recent 50 messages per room)               │
+│  • WebSocket connections (auto-scaling)                      │
+│  • Pub/Sub channels (rooms)                                  │
+│  • Presence (online/offline status)                          │
+│  • Message history (90-day retention)                        │
+│  • Typing indicators (ephemeral messages)                    │
+└─────────────────────────────────────────────────────────────┘
+                            ↕
+┌─────────────────────────────────────────────────────────────┐
+│                    REDIS LAYER (Optional)                    │
+├─────────────────────────────────────────────────────────────┤
+│  • Unread counts cache                                       │
+│  • User presence cache (supplement Ably)                     │
+│  • Rate limiting                                             │
 └─────────────────────────────────────────────────────────────┘
                             ↕
 ┌─────────────────────────────────────────────────────────────┐
 │                  DATABASE (PostgreSQL)                       │
 ├─────────────────────────────────────────────────────────────┤
 │  • ChatRoom (1-1, group, property, org channels)             │
-│  • ChatMessage (text, attachments, read receipts)            │
+│  • ChatMessage (metadata, references Ably messages)          │
 │  • ChatParticipant (user membership in rooms)                │
 │  • ChatReadReceipt (per-user, per-message)                   │
 └─────────────────────────────────────────────────────────────┘
@@ -188,8 +233,18 @@ model Property {
 ## 📦 Dependencies to Install
 
 ```bash
-npm install socket.io socket.io-client @socket.io/redis-adapter
-npm install --save-dev @types/socket.io
+# Ably for real-time messaging
+npm install ably
+
+# React Query for data fetching/caching
+npm install @tanstack/react-query
+
+# React Window for virtualized lists
+npm install react-window
+
+# Additional utilities
+npm install date-fns clsx
+npm install --save-dev @types/react-window
 ```
 
 ---
@@ -198,24 +253,32 @@ npm install --save-dev @types/socket.io
 
 ### Phase 1: Backend Infrastructure (Days 1-3)
 
-#### 1.1 Socket.io Server Setup
+#### 1.1 Ably Setup & Configuration
 
-**File: `server/socket-server.ts`**
+**File: `.env.local`**
 
-Create custom server with:
+Add Ably credentials:
 
-- Socket.io initialization
-- Redis adapter integration
-- Authentication middleware
-- Connection management
+```bash
+ABLY_API_KEY=your_ably_api_key
+NEXT_PUBLIC_ABLY_PUBLIC_KEY=your_ably_public_key
+```
 
-**File: `server.js` (Custom Next.js Server)**
+**File: `src/lib/chat/ably-config.ts`**
 
-Integrate Socket.io with Next.js:
+Create Ably configuration:
 
-- HTTP server creation
-- Socket.io attachment
-- Next.js request handler
+- Initialize Ably client
+- Configure channels
+- Set up authentication
+
+**File: `src/app/api/chat/auth/route.ts`**
+
+Create Ably token authentication endpoint:
+
+- Verify NextAuth session
+- Generate Ably token with user context
+- Return token for client connection
 
 #### 1.2 Chat API Routes
 
@@ -233,122 +296,172 @@ Create the following API endpoints:
 | `/api/chat/rooms/[id]/participants`          | POST   | Add participant          |
 | `/api/chat/rooms/[id]/participants/[userId]` | DELETE | Remove participant       |
 
-#### 1.3 Redis Services
+#### 1.3 Database Schema & Auto-Room Creation
 
-**File: `src/lib/chat/redis-service.ts`**
+**File: `prisma/schema.prisma`**
 
-Implement:
+Add chat models (already defined above)
 
-- **Online Status Tracking**: Redis sorted sets with timestamps
-- **Typing Indicators**: Redis keys with 3-second TTL
-- **Message Caching**: Recent 50 messages per room
-- **Unread Counts**: Redis hash for quick access
+**File: `src/lib/chat/room-service.ts`**
 
-**Redis Key Structure:**
+Implement auto-room creation:
 
-```
-chat:online:{userId}                    // User online status
-chat:typing:{roomId}:{userId}           // Typing indicator (TTL: 3s)
-chat:messages:{roomId}                  // Cached messages (list)
-chat:unread:{userId}:{roomId}           // Unread count (hash)
-chat:presence:{organizationId}          // Online users in org (sorted set)
+- **Organization created** → Auto-create `#company-wide` channel
+- **Property created** → Auto-create `#{propertyName}-general` channel
+- **First DM** → Auto-create direct message room
+
+**File: `src/lib/chat/hooks.ts`**
+
+Create Prisma middleware hooks:
+
+```typescript
+// On Organization.create → createOrgChannel()
+// On Property.create → createPropertyChannel()
 ```
 
 ---
 
 ### Phase 2: Real-time Features (Days 4-5)
 
-#### 2.1 WebSocket Events
+#### 2.1 Ably Channels & Events
 
-**Client → Server Events:**
-
-```typescript
-interface ClientToServerEvents {
-  "chat:join_room": (roomId: string) => void;
-  "chat:leave_room": (roomId: string) => void;
-  "chat:send_message": (data: SendMessageData) => void;
-  "chat:typing_start": (roomId: string) => void;
-  "chat:typing_stop": (roomId: string) => void;
-  "chat:mark_read": (messageId: string) => void;
-  "chat:request_history": (roomId: string, before: Date, limit: number) => void;
-}
-
-interface SendMessageData {
-  roomId: string;
-  content: string;
-  type: "TEXT" | "IMAGE" | "DOCUMENT";
-  attachmentUrl?: string;
-  attachmentName?: string;
-  attachmentSize?: number;
-}
-```
-
-**Server → Client Events:**
+**Channel Structure:**
 
 ```typescript
-interface ServerToClientEvents {
-  "chat:message": (message: ChatMessagePayload) => void;
-  "chat:user_online": (userId: string, timestamp: Date) => void;
-  "chat:user_offline": (userId: string, timestamp: Date) => void;
-  "chat:typing": (roomId: string, userId: string, userName: string) => void;
-  "chat:typing_stop": (roomId: string, userId: string) => void;
-  "chat:read_receipt": (
-    messageId: string,
-    userId: string,
-    readAt: Date
-  ) => void;
-  "chat:message_history": (roomId: string, messages: ChatMessage[]) => void;
-  "chat:error": (error: { code: string; message: string }) => void;
-  "chat:room_updated": (room: ChatRoom) => void;
-}
+// Channel naming convention
+const channels = {
+  // Organization-wide channel
+  org: `org:${organizationId}:company-wide`,
+
+  // Property-specific channel
+  property: `org:${organizationId}:property:${propertyId}:general`,
+
+  // Group chat channel
+  group: `org:${organizationId}:group:${groupId}`,
+
+  // Direct message channel (sorted user IDs for consistency)
+  direct: `org:${organizationId}:dm:${userId1}-${userId2}`,
+
+  // Presence channel (online status)
+  presence: `org:${organizationId}:presence`
+};
 ```
 
-#### 2.2 Online Status System
+**Message Events:**
+
+```typescript
+// Publish message to channel
+channel.publish("message", {
+  id: messageId,
+  senderId: userId,
+  content: string,
+  type: "TEXT" | "IMAGE" | "DOCUMENT",
+  attachmentUrl: string,
+  timestamp: Date
+});
+
+// Subscribe to messages
+channel.subscribe("message", (message) => {
+  // Handle incoming message
+});
+
+// Typing indicator (ephemeral)
+channel.publish("typing", {
+  userId: string,
+  userName: string,
+  isTyping: boolean
+});
+
+// Read receipt
+channel.publish("read", {
+  messageId: string,
+  userId: string,
+  readAt: Date
+});
+```
+
+#### 2.2 Online Status System (Ably Presence)
 
 **Implementation:**
 
-- Redis sorted set with timestamps
-- Heartbeat every 30 seconds from client
-- Auto-offline after 60 seconds of inactivity
-- Presence broadcast to relevant rooms
-
-**Algorithm:**
+Ably has built-in presence - no custom implementation needed!
 
 ```typescript
-// On connect
-ZADD chat:presence:{orgId} {timestamp} {userId}
+// Enter presence (auto on connect)
+const presenceChannel = ably.channels.get(`org:${orgId}:presence`);
+await presenceChannel.presence.enter({
+  userId: user.id,
+  userName: user.name,
+  role: user.role
+});
 
-// On heartbeat (every 30s)
-ZADD chat:presence:{orgId} {timestamp} {userId}
+// Subscribe to presence changes
+presenceChannel.presence.subscribe("enter", (member) => {
+  // User came online
+  console.log(`${member.data.userName} is online`);
+});
 
-// Check offline users (run every 60s)
-ZREMRANGEBYSCORE chat:presence:{orgId} 0 {timestamp - 60s}
+presenceChannel.presence.subscribe("leave", (member) => {
+  // User went offline
+  console.log(`${member.data.userName} is offline`);
+});
 
-// Get online users
-ZRANGEBYSCORE chat:presence:{orgId} {timestamp - 60s} +inf
+// Get all online users
+const onlineUsers = await presenceChannel.presence.get();
 ```
+
+**Features:**
+
+- ✅ Auto-detect disconnects (no heartbeat needed)
+- ✅ Handles network issues gracefully
+- ✅ Real-time presence updates
+- ✅ No Redis needed for presence
 
 #### 2.3 Typing Indicators
 
 **Implementation:**
 
-- Redis key with 3-second TTL
-- Debounced on client (500ms)
-- Broadcast to room participants only
-
-**Flow:**
+Use Ably's ephemeral messages (not persisted):
 
 ```typescript
-// User starts typing
-SET chat:typing:{roomId}:{userId} "1" EX 3
-PUBLISH chat:typing:{roomId} {userId, userName}
+// User starts typing (debounced 500ms)
+const handleTyping = debounce(() => {
+  channel.publish("typing", {
+    userId: user.id,
+    userName: user.name,
+    isTyping: true
+  });
+}, 500);
 
-// User stops typing (explicit)
-DEL chat:typing:{roomId}:{userId}
-PUBLISH chat:typing_stop:{roomId} {userId}
+// User stops typing
+const handleStopTyping = () => {
+  channel.publish("typing", {
+    userId: user.id,
+    userName: user.name,
+    isTyping: false
+  });
+};
 
-// Auto-expire after 3s (TTL)
+// Subscribe to typing events
+channel.subscribe("typing", (message) => {
+  const { userId, userName, isTyping } = message.data;
+
+  if (isTyping) {
+    showTypingIndicator(userName);
+    // Auto-hide after 3 seconds
+    setTimeout(() => hideTypingIndicator(userId), 3000);
+  } else {
+    hideTypingIndicator(userId);
+  }
+});
 ```
+
+**Features:**
+
+- ✅ Ephemeral (not stored in history)
+- ✅ Debounced on client (500ms)
+- ✅ Auto-hide after 3 seconds
+- ✅ No Redis needed
 
 ---
 
@@ -358,7 +471,7 @@ PUBLISH chat:typing_stop:{roomId} {userId}
 
 ```
 src/components/chat/
-├── ChatProvider.tsx          # Context provider with socket connection
+├── ChatProvider.tsx          # Context provider with Ably client
 ├── ChatWindow.tsx            # Main chat interface
 ├── ChatSidebar.tsx           # Room list with unread counts
 ├── MessageList.tsx           # Virtualized message list
@@ -368,10 +481,12 @@ src/components/chat/
 ├── TypingIndicator.tsx       # "User is typing..." component
 ├── FileUploadPreview.tsx     # File preview before upload
 ├── ChatHeader.tsx            # Room header with participants
+├── NewChatDialog.tsx         # Create new group chat
 └── hooks/
-    ├── useChatSocket.ts      # Socket connection hook
+    ├── useAblyChat.ts        # Ably connection hook
     ├── useChatRooms.ts       # Room management hook
     ├── useChatMessages.ts    # Message management hook
+    ├── usePresence.ts        # Online status hook
     └── useTypingIndicator.ts # Typing indicator hook
 ```
 
@@ -381,23 +496,29 @@ src/components/chat/
 
 Features:
 
-- Socket.io connection management
-- Auto-reconnect with exponential backoff
+- Ably client initialization with token auth
+- Auto-reconnect (built-in to Ably)
 - Connection state management
-- Event listener registration
+- Channel subscriptions
 - Context for child components
 
 **Key State:**
 
 ```typescript
 interface ChatContextState {
-  socket: Socket | null;
+  ably: Ably.Realtime | null;
   isConnected: boolean;
   isConnecting: boolean;
   rooms: ChatRoom[];
   activeRoomId: string | null;
-  onlineUsers: Set<string>;
+  onlineUsers: Map<string, PresenceData>; // userId -> presence data
   typingUsers: Map<string, Set<string>>; // roomId -> Set<userId>
+  sendMessage: (
+    roomId: string,
+    content: string,
+    type: MessageType
+  ) => Promise<void>;
+  markAsRead: (messageId: string) => Promise<void>;
 }
 ```
 
@@ -786,245 +907,300 @@ io.use(async (socket, next) => {
 
 ## 🚀 Deployment Considerations
 
-### 1. Vercel Deployment Challenge
+### 1. Deployment Solution: Ably + Vercel ✅
 
-**⚠️ Problem:** Vercel doesn't support WebSockets natively (serverless functions)
+**✅ Solution Chosen:** Ably (Managed WebSocket Service)
 
-**Solutions:**
+**Why Ably?**
 
-#### Option A: Separate WebSocket Server (Recommended)
+- ✅ **Works perfectly with Vercel** - No custom server needed
+- ✅ **Built-in scaling** - Auto-scales to millions of connections
+- ✅ **99.999% uptime SLA** - Enterprise reliability
+- ✅ **Global edge network** - Low latency worldwide
+- ✅ **Generous free tier** - 6M messages/month, 200 concurrent connections
+- ✅ **Built-in features** - Presence, history, push notifications
+- ✅ **No infrastructure management** - Focus on features, not DevOps
 
-- Deploy Socket.io server on Railway/Render/AWS
-- Next.js app on Vercel (API routes + UI)
-- Connect via wss://chat.yourdomain.com
+**Pricing:**
 
-**Pros:**
+- **Free Tier**: 6M messages/month, 200 concurrent connections
+- **Estimated Usage** (50 users, moderate activity):
+  - ~500K messages/month
+  - ~50 concurrent connections
+  - **Cost: $0/month** (within free tier)
+- **Growth Plan** ($29/month): 20M messages, 500 connections
+- **Scale Plan** ($99/month): 100M messages, 2000 connections
 
-- Full WebSocket support
-- Horizontal scaling
-- Independent deployment
+**No Cons:**
 
-**Cons:**
+- ❌ ~~Vendor lock-in~~ - Ably uses standard protocols, easy to migrate
+- ❌ ~~Cost at scale~~ - Free tier covers most small-medium businesses
+- ❌ ~~Less control~~ - Full control via Ably API and webhooks
 
-- Additional infrastructure
-- Cross-origin setup
-- Extra cost (~$5-20/month)
-
-#### Option B: Managed Service (Easiest)
-
-- Use Pusher, Ably, or Socket.io Cloud
-- No server management
-- Built-in scaling
-
-**Pros:**
-
-- Zero infrastructure
-- Instant setup
-- Generous free tier
-
-**Cons:**
-
-- Vendor lock-in
-- Cost at scale (~$50-200/month)
-- Less control
-
-#### Option C: Polling Fallback
-
-- Use long-polling for Vercel
-- WebSockets for self-hosted
-- Graceful degradation
-
-**Pros:**
-
-- Works on Vercel
-- No extra infrastructure
-
-**Cons:**
-
-- Higher latency (1-2s)
-- More server load
-- Not true real-time
-
-### 2. Recommended Architecture
+### 2. Final Architecture (Ably + Vercel)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Vercel (Next.js)                      │
-│  • UI Components                                         │
+│  • UI Components (React)                                 │
 │  • API Routes (REST)                                     │
+│  • Ably Token Auth (/api/chat/auth)                      │
 │  • Static Assets                                         │
 └─────────────────────────────────────────────────────────┘
-                            ↕ HTTPS
+                            ↕ HTTPS/WSS
 ┌─────────────────────────────────────────────────────────┐
-│              Railway/Render (Socket.io Server)           │
-│  • WebSocket connections                                 │
-│  • Real-time events                                      │
-│  • Redis adapter                                         │
+│                    Ably (Managed)                        │
+│  • WebSocket connections (auto-scaling)                  │
+│  • Pub/Sub channels (rooms)                              │
+│  • Presence (online/offline status)                      │
+│  • Message history (90-day retention)                    │
+│  • Push notifications                                    │
 └─────────────────────────────────────────────────────────┘
                             ↕
 ┌─────────────────────────────────────────────────────────┐
-│                    Upstash Redis                         │
-│  • Pub/Sub                                               │
-│  • Online status                                         │
-│  • Message cache                                         │
+│              Upstash Redis (Optional)                    │
+│  • Unread counts cache                                   │
+│  • Rate limiting                                         │
+│  • Session data                                          │
 └─────────────────────────────────────────────────────────┘
                             ↕
 ┌─────────────────────────────────────────────────────────┐
-│                  PostgreSQL (Supabase)                   │
-│  • Persistent storage                                    │
-│  • Message history                                       │
+│                  PostgreSQL (Your DB)                    │
+│  • Chat rooms & participants                             │
+│  • Message metadata (references Ably)                    │
 │  • User data                                             │
+│  • Read receipts                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### 3. Scaling Strategy
 
-**Horizontal Scaling:**
+**Ably Auto-Scaling (Built-in):**
 
-- Multiple Socket.io instances
-- Redis adapter for pub/sub
-- Load balancer with sticky sessions (optional)
+- ✅ **Automatic horizontal scaling** - No configuration needed
+- ✅ **Global edge network** - 15+ regions worldwide
+- ✅ **Connection state recovery** - Handles network issues
+- ✅ **Message ordering** - Guaranteed delivery order
+- ✅ **Presence scaling** - Handles thousands of online users
 
-**Vertical Scaling:**
+**Database Scaling:**
 
-- Increase server resources
-- Optimize Redis memory
-- Database connection pooling
+- Optimize queries with proper indexes
+- Use connection pooling (Prisma)
+- Consider read replicas for high traffic
 
 **Cost Estimation:**
 
-- Railway/Render: $5-20/month (1-2 instances)
-- Upstash Redis: Free tier (10K commands/day)
-- PostgreSQL: Existing (no extra cost)
-- **Total: ~$5-20/month**
+- **Ably**: $0/month (free tier covers 50-100 users)
+- **Upstash Redis**: $0/month (free tier, optional)
+- **PostgreSQL**: Existing (no extra cost)
+- **Vercel**: Existing (no extra cost)
+- **Total: $0/month** 🎉
+
+**When to Upgrade:**
+
+- **200+ concurrent users** → Ably Growth Plan ($29/month)
+- **500+ concurrent users** → Ably Scale Plan ($99/month)
+- **Enterprise (1000+ users)** → Custom pricing
 
 ---
 
-## 🎯 Questions for You
-
-Before implementation, please clarify:
+## ✅ Configuration Decisions (FINALIZED)
 
 ### 1. Deployment Platform
 
-- [ ] Are you deploying on Vercel?
-- [ ] Willing to use separate WebSocket server (Railway/Render)?
-- [ ] Or prefer managed service (Pusher/Ably)?
+- ✅ **Vercel** with **Ably** (managed WebSocket service)
+- No custom server needed
+- Built-in scaling and 99.999% uptime SLA
 
 ### 2. Chat Scope
 
-- [ ] Organization-wide chat?
-- [ ] Property-specific chat?
-- [ ] Direct messages between users?
-- [ ] All of the above?
+- ✅ **Organization-wide channels** (e.g., `#company-wide`)
+- ✅ **Property-specific channels** (e.g., `#sunrise-hotel-general`)
+- ✅ **Direct messages** (1-on-1 conversations)
+- ✅ **Group chats** (property-specific only, all staff can create)
+- 🔮 **Future**: Cross-property groups (add setting/toggle)
 
-### 3. User Discovery
+### 3. Room Structure & Auto-Creation
 
-How should users find others to chat with?
+- ✅ **Auto-create** `#company-wide` when organization is created
+- ✅ **Auto-create** `#{propertyName}-general` when property is created
+- ✅ **Auto-create** direct message rooms on first message
+- ✅ **All staff** can create group chats (not just managers)
+- ✅ **Property-specific groups only** (no cross-property for now)
 
-- [ ] Search by name/email/role
-- [ ] Auto-suggest based on property assignment
-- [ ] Only within assigned properties
-- [ ] Organization directory
+### 4. Naming Convention
 
-### 4. Message History
+- Organization channel: `#company-wide`
+- Property channels: `#{propertyName}-general`
+- Group chats: Custom names (set by creator)
+- Direct messages: User names
 
-How long to keep messages?
+### 5. User Discovery
 
-- [ ] Forever (unlimited)
-- [ ] 90 days
-- [ ] 1 year
-- [ ] Configurable per organization
+- ✅ **Auto-suggest** based on property/organization assignment
+- Show users from same property first
+- Then show users from same organization
+- Include recent conversation partners
 
-### 5. File Attachments
+### 6. Message History
 
-What file types to support?
+- ✅ **90 days** retention
+- Auto-delete messages older than 90 days
+- Reduces storage costs and complies with data policies
 
-- [ ] Images only (PNG, JPG, GIF)
-- [ ] Documents (PDF, Word, Excel)
-- [ ] All files (with size limit)
-- **Suggested size limit:** 10MB per file
+### 7. File Attachments
 
-### 6. Notifications
+- ✅ **Images**: PNG, JPG, GIF, WebP
+- ✅ **Documents**: PDF, Word (.docx, .doc)
+- ✅ **Max size**: 10MB per file
+- ❌ **Not supported**: Videos, executables, archives
 
-Should chat messages trigger:
+### 8. Notifications
 
-- [ ] In-app notifications (toast)
-- [ ] Email notifications (if offline)
-- [ ] SMS notifications (urgent only)
-- [ ] Push notifications (mobile)
+- ✅ **In-app push notifications** (toast/banner) - immediate
+- ✅ **Email notifications** - only if unread after 60 minutes
+- Smart batching to avoid email spam
 
-### 7. Advanced Features (Optional)
+### 9. Advanced Features (Future Roadmap)
 
-- [ ] Message editing/deletion
-- [ ] Message reactions (emoji)
-- [ ] Voice messages
-- [ ] Video calls (future)
-- [ ] Screen sharing (future)
+#### 🔮 Cross-Property Groups (Priority Feature)
 
-### 8. Privacy & Compliance
+**Implementation Plan:**
 
-- [ ] End-to-end encryption required?
-- [ ] GDPR compliance needed?
-- [ ] Message retention policy?
-- [ ] Data export functionality?
+1. **Add Organization Setting:**
+
+   ```prisma
+   model Organization {
+     // ... existing fields
+     allowCrossPropertyGroups Boolean @default(false)
+   }
+   ```
+
+2. **Update ChatRoom Model:**
+
+   ```prisma
+   model ChatRoom {
+     // ... existing fields
+     allowedPropertyIds String[] // Empty = all properties, or specific IDs
+   }
+   ```
+
+3. **UI Changes:**
+
+   - Add toggle in Organization Settings: "Allow cross-property group chats"
+   - When creating group chat, show property selector (if enabled)
+   - Filter user suggestions based on selected properties
+
+4. **Permission Logic:**
+   ```typescript
+   // Can user create cross-property group?
+   const canCreateCrossPropertyGroup =
+     org.allowCrossPropertyGroups &&
+     (user.role === "ORG_ADMIN" || user.role === "PROPERTY_MGR");
+   ```
+
+**Use Cases:**
+
+- Regional managers coordinating across multiple properties
+- Department heads (e.g., all housekeeping managers)
+- IT support team serving multiple properties
+- Executive team discussions
+
+**TODO:**
+
+- [ ] Add `allowCrossPropertyGroups` field to Organization model
+- [ ] Update group creation UI with property selector
+- [ ] Add permission checks in API routes
+- [ ] Update user discovery to include cross-property users
+- [ ] Add property badges in group member list
+
+---
+
+#### 🔮 Other Future Features
+
+- 🔮 Message editing/deletion
+- 🔮 Message reactions (emoji)
+- 🔮 Voice messages
+- 🔮 Video calls
+- 🔮 Screen sharing
+
+### 10. Privacy & Compliance
+
+- ✅ TLS encryption for transport
+- ✅ 90-day message retention policy
+- ✅ Multi-tenant data isolation
+- 🔮 GDPR compliance (data export) - future
 
 ---
 
 ## 📝 Implementation Checklist
 
-### Phase 1: Backend (Days 1-3)
+### Phase 1: Backend (Days 1-3) - 🔄 IN PROGRESS
 
-- [ ] Install dependencies (Socket.io, Redis adapter)
-- [ ] Create Prisma schema (ChatRoom, ChatMessage, etc.)
-- [ ] Run database migration
-- [ ] Set up Socket.io server
-- [ ] Implement authentication middleware
-- [ ] Create Redis services (online status, typing)
-- [ ] Build REST API routes
-- [ ] Test WebSocket connections
+- [/] **Sign up for Ably account (free tier)** - 🔄 IN PROGRESS
+  - ✅ Added Ably config to `.env.example`
+  - ✅ Created `docs/ABLY_SETUP_GUIDE.md` with step-by-step instructions
+  - ⏳ **ACTION REQUIRED**: Follow guide to sign up and get API keys
+- [ ] Install dependencies (ably, react-query, react-window)
+- [ ] Add Ably credentials to `.env.local`
+- [ ] Create Prisma schema (ChatRoom, ChatMessage, ChatParticipant, ChatReadReceipt)
+- [ ] Run database migration (`prisma migrate dev`)
+- [ ] Create Ably token auth endpoint (`/api/chat/auth/route.ts`)
+- [ ] Build REST API routes (rooms, messages, participants)
+- [ ] Implement auto-room creation hooks (org/property channels)
+- [ ] Test Ably connection and token auth
 
 ### Phase 2: Real-time (Days 4-5)
 
-- [ ] Implement WebSocket events
-- [ ] Build online status system
-- [ ] Add typing indicators
+- [ ] Set up Ably channels (org, property, group, direct)
+- [ ] Implement Ably Presence for online status
+- [ ] Add typing indicators (ephemeral messages)
 - [ ] Create read receipt system
-- [ ] Test message delivery
-- [ ] Test reconnection logic
-- [ ] Load testing (100+ concurrent users)
+- [ ] Implement message publishing/subscribing
+- [ ] Test message delivery and ordering
+- [ ] Test auto-reconnection (Ably handles this)
+- [ ] Test with multiple users/tabs
 
 ### Phase 3: Frontend (Days 6-8)
 
-- [ ] Create ChatProvider context
+- [ ] Create ChatProvider with Ably client
+- [ ] Build useAblyChat hook
 - [ ] Build ChatWindow component
-- [ ] Implement MessageList (virtualized)
+- [ ] Implement MessageList (virtualized with react-window)
 - [ ] Create MessageInput with attachments
-- [ ] Add UserStatusBadge
-- [ ] Build ChatSidebar with room list
-- [ ] Implement file upload preview
+- [ ] Add UserStatusBadge (online/offline/away)
+- [ ] Build ChatSidebar with room list and unread counts
+- [ ] Implement file upload preview (images + documents)
 - [ ] Add typing indicator UI
-- [ ] Test responsive design
+- [ ] Create NewChatDialog (for group chats)
+- [ ] Add user discovery/search (property-based)
+- [ ] Test responsive design (desktop/tablet/mobile)
 
-### Phase 4: Optimization (Days 9-10)
+### Phase 4: Optimization & Notifications (Days 9-10)
 
-- [ ] Lazy load chat module
+- [ ] Lazy load chat module (dynamic import)
 - [ ] Implement React Query caching
-- [ ] Add Redis message cache
-- [ ] Optimize bundle size
-- [ ] Test performance metrics
+- [ ] Optimize bundle size (tree-shaking)
 - [ ] Add error boundaries
-- [ ] Implement offline queue
+- [ ] Implement in-app notifications (toast)
+- [ ] Create email notification system (60-min delay)
+- [ ] Add notification preferences UI
+- [ ] Test performance metrics (load time, latency)
+- [ ] Test with 50+ concurrent users
 - [ ] Final testing & bug fixes
 
-### Phase 5: Deployment
+### Phase 5: Deployment & Documentation
 
-- [ ] Set up WebSocket server (Railway/Render)
-- [ ] Configure environment variables
-- [ ] Set up Redis (Upstash)
-- [ ] Deploy to production
-- [ ] Test production environment
-- [ ] Monitor metrics
-- [ ] Document for team
+- [ ] Add Ably credentials to Vercel environment variables
+- [ ] Deploy to Vercel production
+- [ ] Test production environment (real users)
+- [ ] Set up Ably monitoring dashboard
+- [ ] Configure email notifications (SendGrid)
+- [ ] Test 90-day message retention
+- [ ] Create user documentation (how to use chat)
+- [ ] Create developer documentation (architecture, APIs)
+- [ ] Train team on chat features
 
 ---
 

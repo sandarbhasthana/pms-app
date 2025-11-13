@@ -62,7 +62,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CONFIRMATION_PENDING: {
     color: "#ec4899",
     bgColor: "bg-pink-100 dark:bg-pink-900",
-    textColor: "!text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "!text-gray-900 dark:!text-pink-200",
     icon: "clock",
     label: "Confirmation Pending",
     description: "Awaiting confirmation"
@@ -70,7 +70,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CONFIRMED: {
     color: "#6c956e",
     bgColor: "bg-[#6c956e] dark:bg-[#3b513b]",
-    textColor: "!text-white dark:!text-[#f0f8ff]",
+    textColor: "!text-white dark:!text-green-200",
     icon: "check-circle",
     label: "Confirmed",
     description: "Payment received"
@@ -78,7 +78,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CHECKIN_DUE: {
     color: "#0ea5e9",
     bgColor: "bg-sky-100 dark:bg-sky-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-sky-200",
     icon: "calendar-check",
     label: "Check-in Due",
     description: "Check-in expected today"
@@ -86,7 +86,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   IN_HOUSE: {
     color: "#22c55e",
     bgColor: "bg-green-100 dark:bg-green-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-green-200",
     icon: "home",
     label: "In-House",
     description: "Guest checked in"
@@ -94,7 +94,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CHECKOUT_DUE: {
     color: "#f59e0b",
     bgColor: "bg-amber-100 dark:bg-amber-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-amber-200",
     icon: "clock",
     label: "Checkout Due",
     description: "Checkout time approaching"
@@ -102,7 +102,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CHECKED_OUT: {
     color: "#8b5cf6",
     bgColor: "bg-purple-100 dark:bg-purple-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-purple-200",
     icon: "logout",
     label: "Checked Out",
     description: "Stay completed"
@@ -110,7 +110,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   NO_SHOW: {
     color: "#b91c1c",
     bgColor: "bg-red-100 dark:bg-red-900",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-red-200",
     icon: "x-circle",
     label: "No-Show",
     description: "Guest did not arrive"
@@ -118,7 +118,7 @@ export const STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   CANCELLED: {
     color: "#6b7280",
     bgColor: "bg-gray-100 dark:bg-gray-800",
-    textColor: "text-gray-900 dark:text-[#f0f8ff]",
+    textColor: "text-gray-900 dark:!text-gray-500",
     icon: "ban",
     label: "Cancelled",
     description: "Reservation cancelled"

@@ -611,14 +611,56 @@ export function PropertyDashboard() {
           <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              style={{
+                backgroundColor:
+                  activeTab === "overview"
+                    ? document.documentElement.classList.contains("dark")
+                      ? "#8b4aff"
+                      : "#7210a2"
+                    : "transparent"
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab === "overview") {
+                  e.currentTarget.style.backgroundColor = "#8b5cf6";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab === "overview") {
+                  e.currentTarget.style.backgroundColor =
+                    document.documentElement.classList.contains("dark")
+                      ? "#8b4aff"
+                      : "#7210a2";
+                }
+              }}
             >
               Overview
             </TabsTrigger>
             {canViewAnalytics && (
               <TabsTrigger
                 value="analytics"
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                style={{
+                  backgroundColor:
+                    activeTab === "analytics"
+                      ? document.documentElement.classList.contains("dark")
+                        ? "#8b4aff"
+                        : "#7210a2"
+                      : "transparent"
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab === "analytics") {
+                    e.currentTarget.style.backgroundColor = "#8b5cf6";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab === "analytics") {
+                    e.currentTarget.style.backgroundColor =
+                      document.documentElement.classList.contains("dark")
+                        ? "#8b4aff"
+                        : "#7210a2";
+                  }
+                }}
               >
                 Analytics & Reports
               </TabsTrigger>

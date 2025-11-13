@@ -13,7 +13,6 @@ import {
   Activity
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "@/components/reservation-status";
 import { getStatusConfig } from "@/lib/reservation-status/utils";
 import {
   apiDeduplicator,
@@ -299,25 +298,69 @@ export default function StatusOverviewCards({
             <CardTitle className="text-base">Status Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {Object.entries(data.statusCounts).map(([status, count]) => (
-                <div
-                  key={status}
-                  className="flex flex-col items-center justify-center p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <StatusBadge
-                    status={status as ReservationStatus}
-                    size="sm"
-                    showLabel={false}
-                  />
-                  <p className="text-2xl font-bold text-purple-primary mt-2">
-                    {count}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {getStatusConfig(status as ReservationStatus).label}
-                  </p>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              {Object.entries(data.statusCounts).map(([status, count]) => {
+                const config = getStatusConfig(status as ReservationStatus);
+                const iconMap = {
+                  clock: Clock,
+                  "check-circle": CheckCircle,
+                  "calendar-check": Calendar,
+                  home: Users,
+                  logout: Activity,
+                  "x-circle": XCircle,
+                  ban: AlertTriangle
+                };
+                const IconComponent =
+                  iconMap[config.icon as keyof typeof iconMap] || Clock;
+
+                // Get background colors matching bookings page and EditBookingSheet
+                const getStatusColors = (status: string) => {
+                  const isDark =
+                    typeof window !== "undefined" &&
+                    document.documentElement.classList.contains("dark");
+
+                  const colorMap: Record<
+                    string,
+                    { light: string; dark: string }
+                  > = {
+                    CONFIRMED: { light: "#6c956e", dark: "#3b513b" },
+                    CONFIRMATION_PENDING: { light: "#ec4899", dark: "#db2777" },
+                    CHECKIN_DUE: { light: "#0ea5e9", dark: "#0284c7" },
+                    IN_HOUSE: { light: "#22c55e", dark: "#10b981" },
+                    CHECKOUT_DUE: { light: "#f59e0b", dark: "#b45309" },
+                    CANCELLED: { light: "#6b7280", dark: "#4b5563" },
+                    CHECKED_OUT: { light: "#8b5cf6", dark: "#7c3aed" },
+                    NO_SHOW: { light: "#b91c1c", dark: "#991b1b" }
+                  };
+
+                  return isDark
+                    ? colorMap[status]?.dark || "#6b7280"
+                    : colorMap[status]?.light || "#6b7280";
+                };
+
+                return (
+                  <div
+                    key={status}
+                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700/50"
+                  >
+                    <div
+                      className="p-2.5 rounded-lg mb-3"
+                      style={{
+                        backgroundColor: getStatusColors(status),
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                      }}
+                    >
+                      <IconComponent className="h-5 w-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-purple-primary dark:text-purple-400 mb-1">
+                      {count}
+                    </p>
+                    <p className="text-[10px] font-medium text-gray-600 dark:text-gray-400 text-center leading-tight">
+                      {config.label}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

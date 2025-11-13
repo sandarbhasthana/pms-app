@@ -395,13 +395,16 @@ export default function OrganizationStatusOverview({
                   </div>
 
                   {metrics.needsAttentionProperties.includes(property.name) && (
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge className="text-xs font-semibold bg-gradient-to-r from-orange-500 to-red-500 text-white border-none shadow-md hover:shadow-lg transition-all duration-700 animate-bounce">
                       Needs Attention
                     </Badge>
                   )}
 
                   {property.name === metrics.topPerformingProperty && (
-                    <Badge variant="default" className="text-xs">
+                    <Badge
+                      variant="default"
+                      className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white border-none shadow-md"
+                    >
                       Top Performer
                     </Badge>
                   )}

@@ -51,9 +51,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     { label: "Calendar", href: "/dashboard/bookings", icon: Calendar },
     { label: "Settings", href: "/settings/general", icon: SettingsIcon },
     // Development test page - remove in production
-    ...(process.env.NODE_ENV === "development"
-      ? [{ label: "🧪 Test Stripe", href: "/test-stripe", icon: SettingsIcon }]
-      : [])
+    // ...(process.env.NODE_ENV === "development"
+    //   ? [{ label: "🧪 Test Stripe", href: "/test-stripe", icon: SettingsIcon }]
+    //   : [])
   ];
 
   return (
