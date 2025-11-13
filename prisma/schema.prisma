@@ -40,6 +40,7 @@ model Organization {
   performanceMetrics       PerformanceMetric[]
   queueMetrics             QueueMetric[]
   activities               SystemActivity[]
+  chatRooms                ChatRoom[]
 
   @@index([domain])
   @@index([stripeAccountId])
@@ -87,6 +88,7 @@ model Property {
   auditLogs               ReservationAuditLog[]
   approvalRequests        ApprovalRequest[]
   documents               ReservationDocument[]
+  chatRooms               ChatRoom[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -129,6 +131,9 @@ model User {
   approvalRequestsCreated  ApprovalRequest[]            @relation("ApprovalRequestedBy")
   approvalRequestsApproved ApprovalRequest[]            @relation("ApprovalApprovedBy")
   uploadedDocuments        ReservationDocument[]
+  chatParticipants         ChatParticipant[]
+  chatMessages             ChatMessage[]
+  chatReadReceipts         ChatReadReceipt[]
 }
 
 /// Join table: user membership in a tenant with a role
@@ -1370,4 +1375,102 @@ enum DocumentTag {
   AGREEMENT
   PHOTO
   OTHER
+}
+
+// ============================================================================
+// CHAT SYSTEM MODELS
+// ============================================================================
+
+/// Chat room types for different conversation contexts
+enum ChatRoomType {
+  DIRECT       // 1-on-1 chat between two users
+  GROUP        // Group chat (property-specific only for now)
+  PROPERTY     // Property-wide channel (e.g., #sunrise-hotel-general)
+  ORGANIZATION // Organization-wide channel (e.g., #company-wide)
+}
+
+/// Message types for different content
+enum MessageType {
+  TEXT     // Regular text message
+  IMAGE    // Image attachment
+  DOCUMENT // Document attachment (PDF, Word)
+  SYSTEM   // System message (e.g., "User joined", "User left")
+}
+
+/// Chat room model - represents a conversation space
+model ChatRoom {
+  id             String        @id @default(cuid())
+  type           ChatRoomType
+  name           String? // For group chats and channels
+  organizationId String
+  propertyId     String? // Null for org-wide rooms
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  lastMessageAt  DateTime? // Last message timestamp for sorting
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property?         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  participants ChatParticipant[]
+  messages     ChatMessage[]
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([lastMessageAt])
+  @@index([type])
+}
+
+/// Chat participant model - tracks user membership in rooms
+model ChatParticipant {
+  id         String    @id @default(cuid())
+  roomId     String
+  userId     String
+  joinedAt   DateTime  @default(now())
+  lastReadAt DateTime? // Last time user read messages in this room
+  isMuted    Boolean   @default(false) // User muted notifications for this room
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@index([roomId])
+}
+
+/// Chat message model - stores message metadata (content stored in Ably)
+model ChatMessage {
+  id             String        @id @default(cuid())
+  roomId         String
+  senderId       String
+  type           MessageType   @default(TEXT)
+  content        String?       @db.Text // Message content
+  attachmentUrl  String? // S3 URL for attachments
+  attachmentName String? // Original filename
+  attachmentSize Int? // File size in bytes
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  isEdited       Boolean       @default(false)
+  isDeleted      Boolean       @default(false) // Soft delete
+
+  room         ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender       User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readReceipts ChatReadReceipt[]
+
+  @@index([roomId, createdAt])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+/// Read receipt model - tracks which users have read which messages
+model ChatReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@index([messageId])
 }

@@ -1142,11 +1142,36 @@ io.use(async (socket, next) => {
   - ✅ Added Ably config to `.env.example`
   - ✅ Created `docs/ABLY_SETUP_GUIDE.md` with step-by-step instructions
   - ⏳ **ACTION REQUIRED**: Follow guide to sign up and get API keys
-- [ ] Install dependencies (ably, react-query, react-window)
-- [ ] Add Ably credentials to `.env.local`
-- [ ] Create Prisma schema (ChatRoom, ChatMessage, ChatParticipant, ChatReadReceipt)
-- [ ] Run database migration (`prisma migrate dev`)
-- [ ] Create Ably token auth endpoint (`/api/chat/auth/route.ts`)
+- [x] **Install dependencies** - ✅ COMPLETE
+  - ✅ Installed `ably` (real-time messaging)
+  - ✅ Installed `react-window` (virtualized lists)
+  - ✅ Installed `@types/react-window` (TypeScript types)
+  - ✅ Already have: `@tanstack/react-query`, `date-fns`, `clsx`
+- [ ] Add Ably credentials to `.env.local` - ⏳ Waiting for API keys
+- [x] **Create Prisma schema** - ✅ COMPLETE
+  - ✅ Added `ChatRoomType` enum (DIRECT, GROUP, PROPERTY, ORGANIZATION)
+  - ✅ Added `MessageType` enum (TEXT, IMAGE, DOCUMENT, SYSTEM)
+  - ✅ Added `ChatRoom` model with org/property relations
+  - ✅ Added `ChatParticipant` model with user/room relations
+  - ✅ Added `ChatMessage` model with attachments support
+  - ✅ Added `ChatReadReceipt` model for read tracking
+  - ✅ Updated User, Organization, Property models with chat relations
+- [x] **Run database migration** - ✅ COMPLETE
+  - ✅ Migration `20251113151758_add_chat_system` applied successfully
+  - ✅ Prisma Client regenerated
+  - ✅ Database schema in sync
+- [x] **Create Ably token auth endpoint** - ✅ COMPLETE
+  - ✅ Created `src/lib/chat/ably-config.ts` with:
+    - Server-side Ably client initialization
+    - Channel naming conventions (org, property, group, direct, presence)
+    - Event name constants
+    - Client options for browser
+  - ✅ Created `src/app/api/chat/auth/route.ts` with:
+    - POST endpoint for token generation
+    - NextAuth session verification
+    - Organization-scoped capabilities
+    - 1-hour token expiry
+    - GET endpoint for debugging
 - [ ] Build REST API routes (rooms, messages, participants)
 - [ ] Implement auto-room creation hooks (org/property channels)
 - [ ] Test Ably connection and token auth
