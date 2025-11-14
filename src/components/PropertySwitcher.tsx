@@ -71,9 +71,6 @@ export function PropertySwitcher({
       if (cookiePropertyId) {
         // First try to use property from cookie
         current = availableProperties.find((p) => p.id === cookiePropertyId);
-        if (process.env.NODE_ENV === "development") {
-          console.log(`🍪 Found property from cookie:`, current?.name);
-        }
       }
 
       if (!current && session?.user?.currentPropertyId) {

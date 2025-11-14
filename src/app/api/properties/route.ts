@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { withTenantContext } from "@/lib/tenant";
 import { getUserAvailableProperties } from "@/lib/session-utils";
+import { createPropertyChannel } from "@/lib/chat/room-service";
 
 /**
  * GET /api/properties
@@ -133,6 +134,19 @@ export async function POST(req: NextRequest) {
         }
       });
     });
+
+    // Create property-specific chat channel (#{propertyName}-general)
+    try {
+      await createPropertyChannel(property.id);
+      console.log(
+        `✅ Created #${property.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")}-general channel for property: ${property.name}`
+      );
+    } catch (chatError) {
+      console.error("Error creating property chat channel:", chatError);
+      // Don't fail the request if chat channel creation fails
+    }
 
     return NextResponse.json(property, { status: 201 });
   } catch (error) {

@@ -11,6 +11,7 @@ import { completeOnboardingSchema } from "@/lib/validations/organization-onboard
 import { ActivityTracker } from "@/lib/services/activity-tracker";
 import { sendWelcomeEmail } from "@/lib/email/templates/org-admin-welcome";
 import { generateSecurePassword } from "@/lib/utils/password-generator";
+import { createOrgChannel } from "@/lib/chat/room-service";
 
 /**
  * POST /api/admin/organizations/onboard
@@ -138,7 +139,18 @@ export async function POST(req: NextRequest) {
       return { organization, adminUser };
     });
 
-    // 5. Track system activity
+    // 5. Create organization-wide chat channel (#company-wide)
+    try {
+      await createOrgChannel(result.organization.id);
+      console.log(
+        `✅ Created #company-wide channel for organization: ${result.organization.name}`
+      );
+    } catch (chatError) {
+      console.error("Error creating org chat channel:", chatError);
+      // Don't fail the request if chat channel creation fails
+    }
+
+    // 6. Track system activity
     await ActivityTracker.trackActivity("ORGANIZATION_CREATED", {
       organizationId: result.organization.id,
       metadata: {

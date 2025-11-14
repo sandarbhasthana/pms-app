@@ -1,11 +1,11 @@
 /**
  * Ably Configuration
- * 
+ *
  * This file contains the Ably client configuration for the chat system.
  * We use token authentication for security instead of exposing API keys to clients.
  */
 
-import * as Ably from 'ably';
+import * as Ably from "ably";
 
 /**
  * Server-side Ably client (uses full API key with secret)
@@ -16,20 +16,18 @@ export function getServerAblyClient(): Ably.Realtime {
 
   if (!apiKey) {
     throw new Error(
-      'ABLY_API_KEY is not defined in environment variables. ' +
-      'Please add it to your .env.local file. ' +
-      'See docs/ABLY_SETUP_GUIDE.md for instructions.'
+      "ABLY_API_KEY is not defined in environment variables. " +
+        "Please add it to your .env.local file. " +
+        "See docs/ABLY_SETUP_GUIDE.md for instructions."
     );
   }
 
   return new Ably.Realtime({
     key: apiKey,
     // Enable presence for online/offline status
-    clientId: 'server',
+    clientId: "server",
     // Auto-connect
-    autoConnect: true,
-    // Recover connection state
-    recover: true,
+    autoConnect: true
   });
 }
 
@@ -42,14 +40,14 @@ export function getServerAblyRestClient(): Ably.Rest {
 
   if (!apiKey) {
     throw new Error(
-      'ABLY_API_KEY is not defined in environment variables. ' +
-      'Please add it to your .env.local file. ' +
-      'See docs/ABLY_SETUP_GUIDE.md for instructions.'
+      "ABLY_API_KEY is not defined in environment variables. " +
+        "Please add it to your .env.local file. " +
+        "See docs/ABLY_SETUP_GUIDE.md for instructions."
     );
   }
 
   return new Ably.Rest({
-    key: apiKey,
+    key: apiKey
   });
 }
 
@@ -92,7 +90,7 @@ export const AblyChannels = {
   /**
    * Typing indicator channel (per room)
    */
-  typing: (roomId: string) => `room:${roomId}:typing`,
+  typing: (roomId: string) => `room:${roomId}:typing`
 };
 
 /**
@@ -101,45 +99,42 @@ export const AblyChannels = {
  */
 export const AblyEvents = {
   // Message events
-  MESSAGE_SENT: 'message:sent',
-  MESSAGE_EDITED: 'message:edited',
-  MESSAGE_DELETED: 'message:deleted',
+  MESSAGE_SENT: "message:sent",
+  MESSAGE_EDITED: "message:edited",
+  MESSAGE_DELETED: "message:deleted",
 
   // Read receipt events
-  MESSAGE_READ: 'message:read',
+  MESSAGE_READ: "message:read",
 
   // Typing events
-  TYPING_START: 'typing:start',
-  TYPING_STOP: 'typing:stop',
+  TYPING_START: "typing:start",
+  TYPING_STOP: "typing:stop",
 
   // Room events
-  ROOM_CREATED: 'room:created',
-  ROOM_UPDATED: 'room:updated',
-  USER_JOINED: 'user:joined',
-  USER_LEFT: 'user:left',
+  ROOM_CREATED: "room:created",
+  ROOM_UPDATED: "room:updated",
+  USER_JOINED: "user:joined",
+  USER_LEFT: "user:left",
 
   // Presence events (built-in Ably events)
-  PRESENCE_ENTER: 'enter',
-  PRESENCE_LEAVE: 'leave',
-  PRESENCE_UPDATE: 'update',
+  PRESENCE_ENTER: "enter",
+  PRESENCE_LEAVE: "leave",
+  PRESENCE_UPDATE: "update"
 };
 
 /**
  * Ably client options for browser
  */
 export const clientOptions: Ably.ClientOptions = {
-  // Token auth endpoint (we'll create this next)
-  authUrl: '/api/chat/auth',
-  authMethod: 'POST',
-  // Enable presence
-  echoMessages: false, // Don't echo our own messages
+  // Token auth endpoint
+  authUrl: "/api/chat/auth",
+  authMethod: "POST",
+  // Don't echo our own messages
+  echoMessages: false,
   // Auto-connect
   autoConnect: true,
-  // Recover connection state
-  recover: true,
   // Disconnect after 15 seconds of inactivity
   disconnectedRetryTimeout: 15000,
   // Suspend after 30 seconds
-  suspendedRetryTimeout: 30000,
+  suspendedRetryTimeout: 30000
 };
-

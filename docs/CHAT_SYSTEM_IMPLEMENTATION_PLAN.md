@@ -1172,20 +1172,80 @@ io.use(async (socket, next) => {
     - Organization-scoped capabilities
     - 1-hour token expiry
     - GET endpoint for debugging
-- [ ] Build REST API routes (rooms, messages, participants)
-- [ ] Implement auto-room creation hooks (org/property channels)
+- [x] **Build REST API routes** - ✅ COMPLETE
+  - ✅ Created `src/lib/chat/types.ts` - TypeScript types for chat system
+  - ✅ Created `src/lib/chat/room-service.ts` - Business logic for room operations
+  - ✅ Created `src/app/api/chat/rooms/route.ts` - POST/GET rooms
+  - ✅ Created `src/app/api/chat/rooms/[id]/route.ts` - GET/PATCH/DELETE room
+  - ✅ Created `src/app/api/chat/rooms/[id]/messages/route.ts` - GET/POST messages
+  - ✅ Created `src/app/api/chat/rooms/[id]/participants/route.ts` - Manage participants
+  - ✅ Created `src/app/api/chat/messages/[id]/read/route.ts` - Mark as read
+  - ✅ Created `src/app/api/chat/upload/route.ts` - File upload (images, documents)
+  - ✅ All routes include Ably real-time event publishing
+  - ✅ Cursor-based pagination for messages
+  - ✅ Unread count calculation
+  - ✅ Read receipts tracking
+- [x] **Implement auto-room creation hooks** - ✅ COMPLETE
+  - ✅ Modified `src/app/api/admin/organizations/onboard/route.ts`
+    - Auto-creates `#company-wide` channel when organization is created
+    - Adds all organization users as participants
+  - ✅ Modified `src/app/api/properties/route.ts`
+    - Auto-creates `#{propertyName}-general` channel when property is created
+    - Adds all property staff as participants
+  - ✅ Direct message rooms auto-created on first message (already in room-service.ts)
+  - ✅ Error handling: Chat channel creation failures don't block org/property creation
+- [x] **Code cleanup and optimization** - ✅ COMPLETE
+  - ✅ Created `src/lib/chat/upload-utils.ts` - Extracted file validation utilities
+  - ✅ Fixed Next.js route export error (removed exported helper function from route file)
+  - ✅ Removed unused imports from `room-service.ts`
+  - ✅ All TypeScript errors resolved
 - [ ] Test Ably connection and token auth
 
-### Phase 2: Real-time (Days 4-5)
+### Phase 2: Frontend Components & Real-time Features (Days 4-5)
 
-- [ ] Set up Ably channels (org, property, group, direct)
-- [ ] Implement Ably Presence for online status
-- [ ] Add typing indicators (ephemeral messages)
-- [ ] Create read receipt system
-- [ ] Implement message publishing/subscribing
+**Status**: ✅ **37.5% Complete** (3/8 tasks)
+
+#### Completed Tasks ✅
+
+1. **React Hooks for Ably Connection** ✅
+
+   - ✅ Created `src/hooks/useAbly.ts` - Ably connection management with auto-reconnect
+   - ✅ Created `src/hooks/useAblyChannel.ts` - Channel subscription and publishing
+   - ✅ Created `src/hooks/usePresence.ts` - Presence tracking (online/offline)
+   - ✅ All hooks include comprehensive error handling and cleanup
+
+2. **ChatProvider Context** ✅
+
+   - ✅ Created `src/contexts/ChatContext.tsx` - Global chat state management
+   - ✅ Integrated into `src/app/providers.tsx` - Available app-wide
+   - ✅ Manages room list, active room, unread counts
+   - ✅ Provides `useChat()` hook for components
+
+3. **Chat UI Components** ✅
+   - ✅ Created `src/app/dashboard/chat/page.tsx` - Dedicated chat page
+   - ✅ Created `src/components/chat/ChatInterface.tsx` - Main Teams-style layout
+   - ✅ Created `src/components/chat/ChatRoomList.tsx` - Unified conversation list
+   - ✅ Created `src/components/chat/ChatWindow.tsx` - Chat window container
+   - ✅ Created `src/components/chat/ChatHeader.tsx` - Room header with info
+   - ✅ Created `src/components/chat/MessageList.tsx` - Message display with auto-scroll
+   - ✅ Created `src/components/chat/MessageItem.tsx` - Individual message rendering
+   - ✅ Created `src/components/chat/MessageInput.tsx` - Text input with file upload
+   - ✅ Created `src/components/chat/FloatingChatButton.tsx` - Bottom-right floating icon
+   - ✅ Created `src/components/chat/FloatingChatWindow.tsx` - Messenger-style overlay
+   - ✅ Added "Teams" menu item to Sidebar with unread badge
+   - ✅ Integrated FloatingChatButton into AppShell
+   - ✅ All components styled with dark mode support
+
+#### Remaining Tasks 🔄
+
+- [ ] Implement real-time message updates (Ably subscriptions in MessageList)
+- [ ] Add typing indicators UI and logic
+- [ ] Implement file upload UI with preview
+- [ ] Add presence tracking (online/offline badges)
+- [ ] Add unread count badges in FloatingChatButton
+- [ ] Test real-time features with multiple users
 - [ ] Test message delivery and ordering
-- [ ] Test auto-reconnection (Ably handles this)
-- [ ] Test with multiple users/tabs
+- [ ] Test auto-reconnection and error recovery
 
 ### Phase 3: Frontend (Days 6-8)
 

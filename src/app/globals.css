@@ -322,13 +322,21 @@
   .dark h4,
   .dark h5,
   .dark h6,
-  .dark p:not(.go3279631147),
   .dark span:not(.sidebar-active-label):not([data-badge]),
-  .dark div:not(.sidebar-active-icon):not([data-badge]),
+  .dark div:not(.sidebar-active-icon):not([data-badge]):not([data-avatar]),
   .dark button:not([data-badge]),
   .dark a,
   .dark label {
     color: #f0f8ff !important; /* Alice Blue text */
+  }
+
+  /* Preserve avatar text colors - prevent global override with higher specificity */
+  [data-avatar="true"],
+  [data-avatar="true"] *,
+  .dark [data-avatar="true"],
+  .dark [data-avatar="true"] * {
+    color: purple !important;
+    fill: inherit !important;
   }
 
   /* Badge text color override - gray-700 for both light and dark modes */

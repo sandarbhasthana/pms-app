@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { FloatingChatButton } from "@/components/chat/FloatingChatButton";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +34,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area - now takes full width */}
       <main className="flex-1 p-4">{children}</main>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>
   );
 }

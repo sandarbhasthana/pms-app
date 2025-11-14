@@ -104,7 +104,10 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center avatar-wrapper">
+          <div
+            className="w-full h-full flex items-center justify-center avatar-wrapper"
+            data-avatar="true"
+          >
             <Avvvatars
               value={avvvatarsValue}
               displayValue={getDisplayValue()}

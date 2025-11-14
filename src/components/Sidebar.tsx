@@ -9,10 +9,12 @@ import {
   LayoutDashboard,
   CalendarDays,
   Calendar,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useChat } from "@/contexts/ChatContext";
 
 interface SidebarProps {
   open?: boolean;
@@ -20,10 +22,17 @@ interface SidebarProps {
 }
 
 const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN"]);
+const ALL_STAFF_ROLES = new Set([
+  "FRONT_DESK",
+  "PROPERTY_MGR",
+  "ORG_ADMIN",
+  "SUPER_ADMIN"
+]);
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { totalUnreadCount } = useChat();
 
   // Handle ESC key to close sidebar
   useEffect(() => {
@@ -39,22 +48,49 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     }
   }, [open, onClose]);
 
-  // Hide completely if not authenticated or role is below Property Manager
+  // Hide completely if not authenticated
   if (status !== "authenticated" || !session?.user?.role) return null;
   const role = session.user.role as string;
-  if (!PM_OR_ABOVE.has(role)) return null;
 
+  // Navigation items
   const nav = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Reservations", href: "/reservations", icon: CalendarDays },
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+      allowedRoles: ALL_STAFF_ROLES // All staff can access
+    },
+    {
+      label: "Reservations",
+      href: "/reservations",
+      icon: CalendarDays,
+      allowedRoles: ALL_STAFF_ROLES // All staff can access
+    },
     // Calendar maps to Dashboard/bookings
-    { label: "Calendar", href: "/dashboard/bookings", icon: Calendar },
-    { label: "Settings", href: "/settings/general", icon: SettingsIcon },
+    {
+      label: "Calendar",
+      href: "/dashboard/bookings",
+      icon: Calendar,
+      allowedRoles: ALL_STAFF_ROLES // All staff can access
+    },
+    {
+      label: "Teams",
+      href: "/dashboard/chat",
+      icon: MessageSquare,
+      badge: totalUnreadCount,
+      allowedRoles: ALL_STAFF_ROLES // All staff can access
+    },
+    {
+      label: "Settings",
+      href: "/settings/general",
+      icon: SettingsIcon,
+      allowedRoles: PM_OR_ABOVE // Only managers and above
+    }
     // Development test page - remove in production
     // ...(process.env.NODE_ENV === "development"
     //   ? [{ label: "🧪 Test Stripe", href: "/test-stripe", icon: SettingsIcon }]
     //   : [])
-  ];
+  ].filter((item) => item.allowedRoles.has(role));
 
   return (
     <>
@@ -80,7 +116,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               item.href === "/dashboard"
                 ? pathname === "/dashboard" ||
                   (pathname.startsWith("/dashboard/") &&
-                    pathname !== "/dashboard/bookings")
+                    pathname !== "/dashboard/bookings" &&
+                    pathname !== "/dashboard/chat")
                 : pathname === item.href ||
                   pathname.startsWith(item.href + "/");
             return (
@@ -88,19 +125,28 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm text-gray-600 dark:text-gray-400 transition-colors",
+                  "flex items-center justify-between rounded-md px-3 py-2 text-sm text-gray-600 dark:text-gray-400 transition-colors",
                   active
                     ? "bg-purple-lightest dark:bg-purple-darker/20 font-medium text-purple-primary dark:text-purple-light hover:bg-purple-lightest dark:hover:bg-purple-darker/20"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
                 )}
                 onClick={onClose} // Close sidebar when navigation item is clicked
               >
-                <Icon
-                  className={cn("h-5 w-5", active && "sidebar-active-icon")}
-                />
-                <span className={cn("ml-3", active && "sidebar-active-label")}>
-                  {item.label}
-                </span>
+                <div className="flex items-center">
+                  <Icon
+                    className={cn("h-5 w-5", active && "sidebar-active-icon")}
+                  />
+                  <span
+                    className={cn("ml-3", active && "sidebar-active-label")}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold text-white bg-red-500 rounded-full">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

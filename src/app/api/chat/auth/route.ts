@@ -1,9 +1,9 @@
 /**
  * Ably Token Authentication Endpoint
- * 
+ *
  * This endpoint generates Ably tokens for authenticated users.
  * Tokens are scoped to the user's organization and include their user ID as clientId.
- * 
+ *
  * Security:
  * - Only authenticated users can get tokens
  * - Tokens are scoped to user's organization (can only access org channels)
@@ -11,10 +11,10 @@
  * - Tokens expire after 1 hour (configurable)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import * as Ably from 'ably';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import * as Ably from "ably";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,18 +23,19 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized. Please sign in.' },
+        { error: "Unauthorized. Please sign in." },
         { status: 401 }
       );
     }
 
-    // 2. Get organization ID from request body or session
-    const body = await request.json();
-    const organizationId = body.organizationId;
+    // 2. Get organization ID from query params (Ably sends authParams as query string)
+    const { searchParams } = new URL(request.url);
+    const organizationId =
+      searchParams.get("organizationId") || session.user.orgId;
 
     if (!organizationId) {
       return NextResponse.json(
-        { error: 'Organization ID is required' },
+        { error: "Organization ID is required" },
         { status: 400 }
       );
     }
@@ -47,9 +48,9 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.ABLY_API_KEY;
 
     if (!apiKey) {
-      console.error('ABLY_API_KEY is not configured');
+      console.error("ABLY_API_KEY is not configured");
       return NextResponse.json(
-        { error: 'Chat service is not configured' },
+        { error: "Chat service is not configured" },
         { status: 500 }
       );
     }
@@ -67,24 +68,42 @@ export async function POST(request: NextRequest) {
 
       // Capabilities: what this user can do
       capability: {
-        // Organization-wide channel
-        [`org:${organizationId}:company-wide`]: ['subscribe', 'publish', 'presence'],
+        // Organization-wide channel (for global updates)
+        [`org:${organizationId}`]: ["subscribe", "publish", "presence"],
+
+        // Organization company-wide chat channel
+        [`org:${organizationId}:company-wide`]: [
+          "subscribe",
+          "publish",
+          "presence"
+        ],
 
         // All property channels in this org
-        [`org:${organizationId}:property:*`]: ['subscribe', 'publish', 'presence'],
+        [`org:${organizationId}:property:*`]: [
+          "subscribe",
+          "publish",
+          "presence"
+        ],
 
         // All group channels in this org
-        [`org:${organizationId}:group:*`]: ['subscribe', 'publish', 'presence'],
+        [`org:${organizationId}:group:*`]: ["subscribe", "publish", "presence"],
 
         // All direct message channels in this org
-        [`org:${organizationId}:dm:*`]: ['subscribe', 'publish', 'presence'],
+        [`org:${organizationId}:dm:*`]: ["subscribe", "publish", "presence"],
+
+        // All room channels in this org (for direct messages)
+        [`org:${organizationId}:room:*`]: ["subscribe", "publish", "presence"],
 
         // Presence channel
-        [`org:${organizationId}:presence`]: ['subscribe', 'publish', 'presence'],
+        [`org:${organizationId}:presence`]: [
+          "subscribe",
+          "publish",
+          "presence"
+        ],
 
         // Typing indicators for all rooms
-        ['room:*:typing']: ['subscribe', 'publish'],
-      },
+        ["room:*:typing"]: ["subscribe", "publish"]
+      }
     };
 
     // 7. Create token request
@@ -93,9 +112,9 @@ export async function POST(request: NextRequest) {
     // 8. Return token request to client
     return NextResponse.json(tokenRequest, { status: 200 });
   } catch (error) {
-    console.error('Error generating Ably token:', error);
+    console.error("Error generating Ably token:", error);
     return NextResponse.json(
-      { error: 'Failed to generate authentication token' },
+      { error: "Failed to generate authentication token" },
       { status: 500 }
     );
   }
@@ -108,17 +127,17 @@ export async function GET() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return NextResponse.json({
-    message: 'Ably token auth endpoint is working',
+    message: "Ably token auth endpoint is working",
     user: {
       id: session.user.id,
       email: session.user.email,
-      name: session.user.name,
+      name: session.user.name
     },
-    instructions: 'Send POST request with { organizationId: "..." } to get token',
+    instructions:
+      'Send POST request with { organizationId: "..." } to get token'
   });
 }
-

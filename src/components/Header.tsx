@@ -18,16 +18,23 @@ interface HeaderProps {
 }
 
 const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN"]);
+const ALL_STAFF_ROLES = new Set([
+  "FRONT_DESK",
+  "PROPERTY_MGR",
+  "ORG_ADMIN",
+  "SUPER_ADMIN"
+]);
 
 export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
   const { data: session } = useSession();
   const role = session?.user?.role as string | undefined;
-  const canSeeSidebarToggle = !!role && PM_OR_ABOVE.has(role);
+  // Allow all staff roles to see sidebar toggle (for Teams access)
+  const canSeeSidebarToggle = !!role && ALL_STAFF_ROLES.has(role);
 
   return (
     <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-white dark:bg-gray-900 shadow-sm">
       <div className="flex items-center space-x-2 md:space-x-3">
-        {/* Hamburger menu toggle - only for PM and above */}
+        {/* Hamburger menu toggle - for all staff roles */}
         {canSeeSidebarToggle && (
           <Button
             variant="ghost"
