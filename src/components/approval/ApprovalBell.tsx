@@ -76,7 +76,7 @@ export function ApprovalBell({ className }: ApprovalBellProps) {
           )}
           title="Approval Requests"
         >
-          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#ab2aea]" />
+          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] scale-140" />
 
           {/* Badge for pending count */}
           {pendingCount > 0 && (

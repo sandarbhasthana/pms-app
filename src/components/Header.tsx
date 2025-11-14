@@ -17,7 +17,7 @@ interface HeaderProps {
   sidebarOpen?: boolean;
 }
 
-const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN"]);
+const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN", "FRONT_DESK", "HOUSEKEEPING", "MAINTENANCE", "SECURITY", "GUEST_SERVICES", "ACCOUNTANT", "IT_SUPPORT"]);
 const ALL_STAFF_ROLES = new Set([
   "FRONT_DESK",
   "PROPERTY_MGR",
