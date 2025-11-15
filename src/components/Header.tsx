@@ -6,7 +6,7 @@ import Image from "next/image";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { PropertySwitcher } from "@/components/PropertySwitcher";
-import { ApprovalBell } from "@/components/approval/ApprovalBell";
+import { UnifiedNotificationBell } from "@/components/notifications/UnifiedNotificationBell";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -17,7 +17,18 @@ interface HeaderProps {
   sidebarOpen?: boolean;
 }
 
-const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN", "FRONT_DESK", "HOUSEKEEPING", "MAINTENANCE", "SECURITY", "GUEST_SERVICES", "ACCOUNTANT", "IT_SUPPORT"]);
+const PM_OR_ABOVE = new Set([
+  "PROPERTY_MGR",
+  "ORG_ADMIN",
+  "SUPER_ADMIN",
+  "FRONT_DESK",
+  "HOUSEKEEPING",
+  "MAINTENANCE",
+  "SECURITY",
+  "GUEST_SERVICES",
+  "ACCOUNTANT",
+  "IT_SUPPORT"
+]);
 const ALL_STAFF_ROLES = new Set([
   "FRONT_DESK",
   "PROPERTY_MGR",
@@ -75,8 +86,8 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Property switcher - only for non-SUPER_ADMIN users */}
         {role !== "SUPER_ADMIN" && <PropertySwitcher />}
-        {/* Approval requests bell - only for PROPERTY_MGR and above */}
-        {role && PM_OR_ABOVE.has(role) && <ApprovalBell />}
+        {/* Unified notification bell - for PROPERTY_MGR and above */}
+        {role && PM_OR_ABOVE.has(role) && <UnifiedNotificationBell />}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}
