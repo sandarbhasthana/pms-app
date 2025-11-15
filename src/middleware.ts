@@ -153,6 +153,7 @@ export async function middleware(req: NextRequest) {
     host.includes("localhost:") ||
     host.includes("vercel.app") || // Allow all Vercel deployment URLs
     host.includes("http://192.168.1.41:") ||
+    host.includes("railway.app") ||
     /^\d+\.\d+\.\d+\.\d+/.test(host) // Allow IP addresses (e.g., 192.168.1.41:4001)
   ) {
     return NextResponse.next();
