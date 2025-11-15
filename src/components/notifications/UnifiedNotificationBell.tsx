@@ -20,7 +20,7 @@ import {
   XCircleIcon,
   BellIcon
 } from "@heroicons/react/24/outline";
-import { MessageSquare, CheckCheck } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
