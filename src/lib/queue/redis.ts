@@ -10,6 +10,7 @@ import { Redis } from "ioredis";
 // Supports both Upstash (production) and local Redis (development)
 const getRedisConfig = () => {
   const upstashUrl = process.env.UPSTASH_REDIS_URL;
+  const isProduction = process.env.NODE_ENV === "production";
 
   if (upstashUrl) {
     // Production: Use Upstash Redis
@@ -35,6 +36,19 @@ const getRedisConfig = () => {
       console.error("❌ Failed to parse UPSTASH_REDIS_URL:", error);
       throw new Error("Invalid UPSTASH_REDIS_URL format");
     }
+  }
+
+  // Production without Upstash URL - throw error
+  if (isProduction) {
+    console.error(
+      "❌ UPSTASH_REDIS_URL is required in production environment!"
+    );
+    console.error(
+      "💡 Add UPSTASH_REDIS_URL to your Railway environment variables"
+    );
+    throw new Error(
+      "UPSTASH_REDIS_URL environment variable is required in production"
+    );
   }
 
   // Development: Use local Redis
