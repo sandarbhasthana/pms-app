@@ -7,8 +7,17 @@ import {
 } from "@/types/notifications";
 import { getEmailTemplate, replaceTemplateVariables } from "./email-templates";
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization of Resend to avoid build-time errors
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(
+      process.env.RESEND_API_KEY || "dummy-key-for-build"
+    );
+  }
+  return resendInstance;
+}
 
 // Email configuration
 const EMAIL_CONFIG = {
@@ -72,6 +81,7 @@ export class NotificationEmailService {
         `📧 Sending notification email to ${recipientEmail}: ${template.subject}`
       );
 
+      const resend = getResendClient();
       const result = await resend.emails.send(emailData);
 
       if (result.error) {

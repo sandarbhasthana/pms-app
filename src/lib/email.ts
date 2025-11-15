@@ -1,14 +1,23 @@
 // File: src/lib/email.ts
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization of Resend to avoid build-time errors
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(
+      process.env.RESEND_API_KEY || "dummy-key-for-build"
+    );
+  }
+  return resendInstance;
+}
 
 // Email configuration
 const EMAIL_CONFIG = {
-  from: process.env.EMAIL_FROM || 'noreply@yourdomain.com',
-  replyTo: process.env.EMAIL_REPLY_TO || 'support@yourdomain.com',
-  baseUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  from: process.env.EMAIL_FROM || "noreply@yourdomain.com",
+  replyTo: process.env.EMAIL_REPLY_TO || "support@yourdomain.com",
+  baseUrl: process.env.NEXTAUTH_URL || "http://localhost:3000"
 };
 
 export interface InvitationEmailData {
@@ -29,12 +38,14 @@ export interface InvitationEmailData {
 /**
  * Send invitation email to new staff member
  */
-export async function sendInvitationEmail(data: InvitationEmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendInvitationEmail(
+  data: InvitationEmailData
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     // Validate required environment variables
     if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured');
-      return { success: false, error: 'Email service not configured' };
+      console.error("RESEND_API_KEY is not configured");
+      return { success: false, error: "Email service not configured" };
     }
 
     const invitationUrl = `${EMAIL_CONFIG.baseUrl}/api/auth/invite/${data.token}`;
@@ -42,10 +53,20 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<{ 
     const expiryTime = data.expiresAt.toLocaleTimeString();
 
     // Generate email HTML content
-    const htmlContent = generateInvitationEmailHTML(data, invitationUrl, expiryDate, expiryTime);
-    
+    const htmlContent = generateInvitationEmailHTML(
+      data,
+      invitationUrl,
+      expiryDate,
+      expiryTime
+    );
+
     // Generate email text content (fallback)
-    const textContent = generateInvitationEmailText(data, invitationUrl, expiryDate, expiryTime);
+    const textContent = generateInvitationEmailText(
+      data,
+      invitationUrl,
+      expiryDate,
+      expiryTime
+    );
 
     const emailData = {
       from: EMAIL_CONFIG.from,
@@ -53,26 +74,28 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<{ 
       replyTo: EMAIL_CONFIG.replyTo,
       subject: `Invitation to join ${data.organizationName} - Property Management System`,
       html: htmlContent,
-      text: textContent,
+      text: textContent
     };
 
     console.log(`📧 Sending invitation email to ${data.email}...`);
-    
+
+    const resend = getResendClient();
     const result = await resend.emails.send(emailData);
 
     if (result.error) {
-      console.error('Failed to send invitation email:', result.error);
+      console.error("Failed to send invitation email:", result.error);
       return { success: false, error: result.error.message };
     }
 
-    console.log(`✅ Invitation email sent successfully to ${data.email} (ID: ${result.data?.id})`);
+    console.log(
+      `✅ Invitation email sent successfully to ${data.email} (ID: ${result.data?.id})`
+    );
     return { success: true, messageId: result.data?.id };
-
   } catch (error) {
-    console.error('Error sending invitation email:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    console.error("Error sending invitation email:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
     };
   }
 }
@@ -81,13 +104,15 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<{ 
  * Generate HTML email content for invitation
  */
 function generateInvitationEmailHTML(
-  data: InvitationEmailData, 
-  invitationUrl: string, 
-  expiryDate: string, 
+  data: InvitationEmailData,
+  invitationUrl: string,
+  expiryDate: string,
   expiryTime: string
 ): string {
   const roleDisplay = getRoleDisplayName(data.organizationRole);
-  const propertyRoleDisplay = data.propertyRole ? getRoleDisplayName(data.propertyRole) : null;
+  const propertyRoleDisplay = data.propertyRole
+    ? getRoleDisplayName(data.propertyRole)
+    : null;
   const shiftDisplay = getShiftDisplayName(data.shift);
 
   return `
@@ -124,7 +149,11 @@ function generateInvitationEmailHTML(
         <div class="content">
             <p>Hello,</p>
             
-            <p><strong>${data.inviterName}</strong> has invited you to join <strong>${data.organizationName}</strong> as a team member in our Property Management System.</p>
+            <p><strong>${
+              data.inviterName
+            }</strong> has invited you to join <strong>${
+    data.organizationName
+  }</strong> as a team member in our Property Management System.</p>
             
             <div class="invitation-details">
                 <h3 style="margin-top: 0; color: #1e293b;">📋 Invitation Details</h3>
@@ -136,36 +165,54 @@ function generateInvitationEmailHTML(
                     <span class="detail-label">Your Role:</span>
                     <span class="detail-value">${roleDisplay}</span>
                 </div>
-                ${data.propertyName ? `
+                ${
+                  data.propertyName
+                    ? `
                 <div class="detail-row">
                     <span class="detail-label">Property Assignment:</span>
                     <span class="detail-value">${data.propertyName}</span>
                 </div>
-                ` : ''}
-                ${propertyRoleDisplay ? `
+                `
+                    : ""
+                }
+                ${
+                  propertyRoleDisplay
+                    ? `
                 <div class="detail-row">
                     <span class="detail-label">Property Role:</span>
                     <span class="detail-value">${propertyRoleDisplay}</span>
                 </div>
-                ` : ''}
-                ${shiftDisplay ? `
+                `
+                    : ""
+                }
+                ${
+                  shiftDisplay
+                    ? `
                 <div class="detail-row">
                     <span class="detail-label">Shift Assignment:</span>
                     <span class="detail-value">${shiftDisplay}</span>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 <div class="detail-row">
                     <span class="detail-label">Invited by:</span>
-                    <span class="detail-value">${data.inviterName} (${data.inviterEmail})</span>
+                    <span class="detail-value">${data.inviterName} (${
+    data.inviterEmail
+  })</span>
                 </div>
             </div>
 
-            ${data.message ? `
+            ${
+              data.message
+                ? `
             <div class="message-box">
                 <h4 style="margin-top: 0; color: #0284c7;">💬 Personal Message</h4>
                 <p style="margin-bottom: 0;">${data.message}</p>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${invitationUrl}" class="cta-button">Accept Invitation & Join Team</a>
@@ -184,7 +231,11 @@ function generateInvitationEmailHTML(
                 <li>Collaborate with your team members</li>
             </ul>
             
-            <p>If you have any questions about this invitation, please contact <strong>${data.inviterName}</strong> at <a href="mailto:${data.inviterEmail}">${data.inviterEmail}</a>.</p>
+            <p>If you have any questions about this invitation, please contact <strong>${
+              data.inviterName
+            }</strong> at <a href="mailto:${data.inviterEmail}">${
+    data.inviterEmail
+  }</a>.</p>
         </div>
         
         <div class="footer">
@@ -203,13 +254,15 @@ function generateInvitationEmailHTML(
  * Generate plain text email content for invitation (fallback)
  */
 function generateInvitationEmailText(
-  data: InvitationEmailData, 
-  invitationUrl: string, 
-  expiryDate: string, 
+  data: InvitationEmailData,
+  invitationUrl: string,
+  expiryDate: string,
   expiryTime: string
 ): string {
   const roleDisplay = getRoleDisplayName(data.organizationRole);
-  const propertyRoleDisplay = data.propertyRole ? getRoleDisplayName(data.propertyRole) : null;
+  const propertyRoleDisplay = data.propertyRole
+    ? getRoleDisplayName(data.propertyRole)
+    : null;
   const shiftDisplay = getShiftDisplayName(data.shift);
 
   return `
@@ -220,12 +273,12 @@ You've been invited to join our property management team.
 INVITATION DETAILS:
 - Organization: ${data.organizationName}
 - Your Role: ${roleDisplay}
-${data.propertyName ? `- Property Assignment: ${data.propertyName}` : ''}
-${propertyRoleDisplay ? `- Property Role: ${propertyRoleDisplay}` : ''}
-${shiftDisplay ? `- Shift Assignment: ${shiftDisplay}` : ''}
+${data.propertyName ? `- Property Assignment: ${data.propertyName}` : ""}
+${propertyRoleDisplay ? `- Property Role: ${propertyRoleDisplay}` : ""}
+${shiftDisplay ? `- Shift Assignment: ${shiftDisplay}` : ""}
 - Invited by: ${data.inviterName} (${data.inviterEmail})
 
-${data.message ? `PERSONAL MESSAGE:\n${data.message}\n` : ''}
+${data.message ? `PERSONAL MESSAGE:\n${data.message}\n` : ""}
 
 To accept this invitation and join the team, click the link below:
 ${invitationUrl}
@@ -251,19 +304,19 @@ If you didn't expect this invitation, you can safely ignore this email.
  */
 function getRoleDisplayName(role: string): string {
   const roleLabels: Record<string, string> = {
-    "SUPER_ADMIN": "Super Administrator",
-    "ORG_ADMIN": "Organization Administrator",
-    "PROPERTY_MGR": "Property Manager",
-    "FRONT_DESK": "Front Desk Staff",
-    "HOUSEKEEPING": "Housekeeping Staff",
-    "MAINTENANCE": "Maintenance Staff",
-    "ACCOUNTANT": "Accountant",
-    "OWNER": "Property Owner",
-    "IT_SUPPORT": "IT Support",
-    "SECURITY": "Security Staff",
-    "GUEST_SERVICES": "Guest Services"
+    SUPER_ADMIN: "Super Administrator",
+    ORG_ADMIN: "Organization Administrator",
+    PROPERTY_MGR: "Property Manager",
+    FRONT_DESK: "Front Desk Staff",
+    HOUSEKEEPING: "Housekeeping Staff",
+    MAINTENANCE: "Maintenance Staff",
+    ACCOUNTANT: "Accountant",
+    OWNER: "Property Owner",
+    IT_SUPPORT: "IT Support",
+    SECURITY: "Security Staff",
+    GUEST_SERVICES: "Guest Services"
   };
-  
+
   return roleLabels[role] || role;
 }
 
@@ -272,35 +325,37 @@ function getRoleDisplayName(role: string): string {
  */
 function getShiftDisplayName(shift?: string): string | null {
   if (!shift) return null;
-  
+
   const shiftLabels: Record<string, string> = {
-    "MORNING": "Morning Shift (6 AM - 2 PM)",
-    "EVENING": "Evening Shift (2 PM - 10 PM)",
-    "NIGHT": "Night Shift (10 PM - 6 AM)",
-    "FLEXIBLE": "Flexible Schedule"
+    MORNING: "Morning Shift (6 AM - 2 PM)",
+    EVENING: "Evening Shift (2 PM - 10 PM)",
+    NIGHT: "Night Shift (10 PM - 6 AM)",
+    FLEXIBLE: "Flexible Schedule"
   };
-  
+
   return shiftLabels[shift] || shift;
 }
 
 /**
  * Test email configuration
  */
-export async function testEmailConfiguration(): Promise<{ success: boolean; error?: string }> {
+export async function testEmailConfiguration(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     if (!process.env.RESEND_API_KEY) {
-      return { success: false, error: 'RESEND_API_KEY is not configured' };
+      return { success: false, error: "RESEND_API_KEY is not configured" };
     }
 
     // Test with a simple email send (you can comment this out in production)
-    console.log('✅ Email service configuration is valid');
+    console.log("✅ Email service configuration is valid");
     return { success: true };
-    
   } catch (error) {
-    console.error('Email configuration test failed:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    console.error("Email configuration test failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
     };
   }
 }

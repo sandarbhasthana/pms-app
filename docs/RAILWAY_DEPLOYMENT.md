@@ -141,25 +141,29 @@ NEXTAUTH_SECRET=your-secret-here
 NEXT_PUBLIC_ABLY_KEY=your-ably-key
 ABLY_API_KEY=your-ably-api-key
 
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=your-redis-url
-UPSTASH_REDIS_REST_TOKEN=your-redis-token
+# Upstash Redis (REQUIRED for BullMQ background jobs)
+# Get this from Upstash dashboard: redis://default:password@host:port
+UPSTASH_REDIS_URL=redis://default:your-password@your-redis.upstash.io:6379
+
+# Upstash Redis REST API (optional - for caching)
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-token
+
+# Email Service (REQUIRED - using Resend)
+RESEND_API_KEY=re_your_api_key
+EMAIL_FROM=noreply@yourdomain.com
+EMAIL_REPLY_TO=support@yourdomain.com
 
 # AWS S3 (File Uploads)
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=your-region
 AWS_S3_BUCKET_NAME=your-bucket-name
+NEXT_PUBLIC_S3_IMAGE_HOSTNAME=your-bucket.s3.region.amazonaws.com
 
 # Stripe (Payments)
 STRIPE_SECRET_KEY=your-stripe-secret
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-public-key
-
-# Email (if using)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
 
 # Node Environment
 NODE_ENV=production
