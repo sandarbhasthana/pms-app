@@ -79,10 +79,10 @@ export function ChatRoomList() {
             type="button"
             onClick={() => setActiveRoomId(room.id)}
             className={cn(
-              "w-full px-4 py-3 flex items-start gap-3 transition-all duration-200",
+              "w-full px-4 py-3 flex items-start gap-3 transition-all duration-200 border-l-4",
               isActive
-                ? "bg-purple-50 dark:bg-purple-500/20 border-l-4 border-l-purple-600"
-                : "hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-4 border-l-transparent"
+                ? "bg-purple-50 dark:bg-purple-500/20 border-l-purple-600"
+                : "hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-transparent"
             )}
           >
             {/* Room Icon or Avatar */}
@@ -96,14 +96,14 @@ export function ChatRoomList() {
             ) : (
               <div
                 className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
+                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br text-white shadow-sm",
                   room.type === "ORGANIZATION"
-                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm"
+                    ? "from-blue-500 to-blue-600"
                     : room.type === "PROPERTY"
-                    ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-sm"
+                    ? "from-green-500 to-green-600"
                     : room.type === "GROUP"
-                    ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-sm"
-                    : "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-sm"
+                    ? "from-orange-500 to-orange-600"
+                    : "from-purple-500 to-purple-600"
                 )}
               >
                 <RoomIcon className="h-5 w-5" />
@@ -116,9 +116,10 @@ export function ChatRoomList() {
                 <h3
                   className={cn(
                     "text-sm truncate",
+                    hasUnread ? "font-semibold" : "font-medium",
                     hasUnread
-                      ? "font-semibold text-gray-900 dark:text-gray-100"
-                      : "font-medium text-gray-700 dark:text-gray-300"
+                      ? "text-gray-900 dark:text-gray-100"
+                      : "text-gray-700 dark:text-gray-300"
                   )}
                 >
                   {roomName}
