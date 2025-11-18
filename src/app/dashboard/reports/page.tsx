@@ -33,7 +33,7 @@ export default function ReportsPage() {
           </AlertTitle>
           <AlertDescription className="text-orange-800 dark:text-orange-300">
             Background report generation requires persistent server connections
-            which are not supported on Vercel's serverless platform. Please use
+            which are not supported on Vercel&apos;s serverless platform. Please use
             the Railway deployment to access report features.
           </AlertDescription>
         </Alert>
