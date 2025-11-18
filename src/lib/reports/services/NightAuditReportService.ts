@@ -83,7 +83,10 @@ export class NightAuditReportService extends ReportService {
     const reportDate = request.startDate
       ? new Date(request.startDate)
       : new Date();
-    const nightStart = this.calculateNightStart(reportDate);
+
+    // Use the selected date directly (6 AM on selected date to 6 AM next day)
+    const nightStart = startOfDay(reportDate);
+    nightStart.setHours(6, 0, 0, 0);
     const nightEnd = addHours(nightStart, 24);
 
     console.log(
@@ -240,7 +243,7 @@ export class NightAuditReportService extends ReportService {
     // Build report data
     const reportData: ReportData = {
       title: "Night Audit Report",
-      subtitle: `${property.name} - ${nightStart.toLocaleDateString()}`,
+      subtitle: property.name, // Just property name, no date
       generatedAt: new Date(),
       generatedBy: user?.name || user?.email || "System",
       organizationName: organization?.name || "Unknown",
@@ -254,24 +257,6 @@ export class NightAuditReportService extends ReportService {
     };
 
     return reportData;
-  }
-
-  /**
-   * Calculate night start time (6 AM of the previous day)
-   * If report is run at 7 PM on Aug 15, it should be 6 AM Aug 14
-   * If report is run at 6 AM on Aug 15, it should be 6 AM Aug 14
-   */
-  private calculateNightStart(reportDate: Date): Date {
-    const currentHour = reportDate.getHours();
-
-    // If before 6 AM, go back 2 days, otherwise go back 1 day
-    const daysToSubtract = currentHour < 6 ? 2 : 1;
-
-    const nightStart = startOfDay(reportDate);
-    nightStart.setDate(nightStart.getDate() - daysToSubtract);
-    nightStart.setHours(6, 0, 0, 0);
-
-    return nightStart;
   }
 
   private async fetchCheckIns(

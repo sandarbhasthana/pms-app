@@ -10,10 +10,14 @@ import { ReportData } from "../types";
 
 export async function generatePDF(data: ReportData): Promise<Buffer> {
   try {
-    // Use custom font to avoid .afm file issues (same as existing implementation)
+    // Use custom fonts to avoid .afm file issues
     const fontPath = path.join(
       process.cwd(),
       "public/fonts/FiraSans-Regular.ttf"
+    );
+    const fontBoldPath = path.join(
+      process.cwd(),
+      "public/fonts/FiraSans-Bold.ttf"
     );
 
     // Create document with custom font
@@ -34,51 +38,219 @@ export async function generatePDF(data: ReportData): Promise<Buffer> {
       doc.on("end", () => resolve(Buffer.concat(buffers)));
     });
 
-    // Header - Title
-    doc.fontSize(20).text(data.title, { align: "center" });
-    doc.moveDown(0.5);
+    // Define theme colors
+    const primaryColor = "#7210a2"; // Purple
+    const secondaryColor = "#f3f4f6"; // Light gray
+    const textColor = "#1f2937"; // Dark gray
+    const borderColor = "#d1d5db"; // Border gray
+
+    // Header - Title with purple text (no background)
+    doc
+      .strokeColor(primaryColor)
+      .fontSize(22)
+      .font(fontPath)
+      .text(data.title, 50, doc.y, {
+        width: doc.page.width - 100,
+        align: "center"
+      });
+
+    doc.moveDown(2);
+    doc.fillColor(textColor);
 
     // Subtitle if exists
     if (data.subtitle) {
-      doc.fontSize(12).text(data.subtitle, { align: "center" });
-      doc.moveDown(0.5);
+      doc
+        .fontSize(14)
+        .fillColor("#6b7280")
+        .text(data.subtitle, { align: "center" });
+      doc.moveDown(1.5);
     }
 
-    // Metadata
-    doc.fontSize(10);
-    doc.text(`Organization: ${data.organizationName}`);
+    // Property Details Table
+    const tableStartY = doc.y;
+    const tableWidth = doc.page.width - 100;
+    const rowHeight = 25;
+    const col1Width = tableWidth * 0.3; // 30% for labels
+    const col2Width = tableWidth * 0.7; // 70% for values
+    let currentY = tableStartY;
 
+    // Table header
+    doc
+      .rect(50, currentY, tableWidth, rowHeight)
+      .fillAndStroke(primaryColor, primaryColor);
+    doc
+      .fillColor("#ffffff")
+      .fontSize(12)
+      .font(fontPath)
+      .text("Property Details", 60, currentY + 7, { width: tableWidth - 20 });
+
+    currentY += rowHeight;
+    doc.fillColor(textColor);
+
+    // Organization row
+    doc.rect(50, currentY, col1Width, rowHeight).stroke(borderColor);
+    doc
+      .rect(50 + col1Width, currentY, col2Width, rowHeight)
+      .stroke(borderColor);
+
+    // Save the Y position for this row
+    const orgRowY = currentY;
+
+    doc
+      .fontSize(10)
+      .font(fontPath)
+      .fillColor("#6b7280")
+      .text("Organization:", 60, orgRowY + 7, {
+        width: col1Width - 20,
+        lineBreak: false
+      });
+
+    doc
+      .font(fontBoldPath)
+      .fillColor(textColor)
+      .text(data.organizationName, 50 + col1Width + 10, orgRowY + 7, {
+        width: col2Width - 20,
+        align: "center",
+        lineBreak: false
+      });
+
+    currentY += rowHeight;
+
+    // Property row
     if (data.propertyName) {
-      doc.text(`Property: ${data.propertyName}`);
+      doc.rect(50, currentY, col1Width, rowHeight).stroke(borderColor);
+      doc
+        .rect(50 + col1Width, currentY, col2Width, rowHeight)
+        .stroke(borderColor);
+
+      const propRowY = currentY;
+
+      doc
+        .fontSize(10)
+        .font(fontPath)
+        .fillColor("#6b7280")
+        .text("Property:", 60, propRowY + 7, {
+          width: col1Width - 20,
+          lineBreak: false
+        });
+
+      doc
+        .font(fontBoldPath)
+        .fillColor(textColor)
+        .text(data.propertyName, 50 + col1Width + 10, propRowY + 7, {
+          width: col2Width - 20,
+          align: "center",
+          lineBreak: false
+        });
+
+      currentY += rowHeight;
     }
 
+    // Date Range row
     if (data.dateRange) {
-      doc.text(
-        `Date Range: ${data.dateRange.start.toLocaleDateString()} - ${data.dateRange.end.toLocaleDateString()}`
-      );
+      doc.rect(50, currentY, col1Width, rowHeight).stroke(borderColor);
+      doc
+        .rect(50 + col1Width, currentY, col2Width, rowHeight)
+        .stroke(borderColor);
+
+      const dateRowY = currentY;
+
+      doc
+        .fontSize(10)
+        .font(fontPath)
+        .fillColor("#6b7280")
+        .text("Date Range:", 60, dateRowY + 7, {
+          width: col1Width - 20,
+          lineBreak: false
+        });
+
+      doc
+        .font(fontPath)
+        .fillColor(textColor)
+        .text(
+          `${data.dateRange.start.toLocaleDateString()} - ${data.dateRange.end.toLocaleDateString()}`,
+          50 + col1Width + 10,
+          dateRowY + 7,
+          {
+            width: col2Width - 20,
+            align: "center",
+            lineBreak: false
+          }
+        );
+
+      currentY += rowHeight;
     }
 
-    doc.text(
-      `Generated: ${data.generatedAt.toLocaleString()} by ${data.generatedBy}`
-    );
-    doc.moveDown(1);
+    doc.moveDown(2);
 
     // Summary section if exists
     if (data.summary && Object.keys(data.summary).length > 0) {
-      doc.fontSize(14).text("Summary", { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(10);
+      const summaryY = doc.y;
 
+      // Summary header
+      doc
+        .rect(50, summaryY, tableWidth, rowHeight)
+        .fillAndStroke(primaryColor, primaryColor);
+      doc
+        .fillColor("#ffffff")
+        .fontSize(12)
+        .font(fontPath)
+        .text("Summary", 60, summaryY + 7, { width: tableWidth - 20 });
+
+      currentY = summaryY + rowHeight;
+      doc.fillColor(textColor).font(fontPath);
+
+      // Summary rows in 2-column table format
+      let rowIndex = 0;
       Object.entries(data.summary).forEach(([key, value]) => {
         // Skip emptyMessage in summary section (will be shown separately)
         if (key === "emptyMessage") return;
 
         const label = key.replace(/([A-Z])/g, " $1").trim();
         const displayLabel = label.charAt(0).toUpperCase() + label.slice(1);
-        doc.text(`${displayLabel}: ${value}`);
+
+        const summaryRowY = currentY;
+
+        // Alternate row colors
+        if (rowIndex % 2 === 0) {
+          doc
+            .rect(50, summaryRowY, col1Width, rowHeight)
+            .fillAndStroke(secondaryColor, borderColor);
+          doc
+            .rect(50 + col1Width, summaryRowY, col2Width, rowHeight)
+            .fillAndStroke(secondaryColor, borderColor);
+        } else {
+          doc.rect(50, summaryRowY, col1Width, rowHeight).stroke(borderColor);
+          doc
+            .rect(50 + col1Width, summaryRowY, col2Width, rowHeight)
+            .stroke(borderColor);
+        }
+
+        // Label in first column
+        doc
+          .fillColor("#6b7280")
+          .fontSize(10)
+          .font(fontPath)
+          .text(displayLabel + ":", 60, summaryRowY + 7, {
+            width: col1Width - 20,
+            lineBreak: false
+          });
+
+        // Value in second column (centered)
+        doc
+          .fillColor(textColor)
+          .font(fontPath)
+          .text(String(value), 50 + col1Width + 10, summaryRowY + 7, {
+            width: col2Width - 20,
+            align: "center",
+            lineBreak: false
+          });
+
+        currentY += rowHeight;
+        rowIndex++;
       });
 
-      doc.moveDown(1);
+      doc.moveDown(2);
     }
 
     // Check for empty message
@@ -87,47 +259,57 @@ export async function generatePDF(data: ReportData): Promise<Buffer> {
       doc
         .fontSize(12)
         .fillColor("#f59e0b")
+        .font(fontPath)
         .text(emptyMessage, { align: "center" });
-      doc.moveDown(1);
-      doc.fillColor("#000000");
+      doc.moveDown(2);
+      doc.fillColor(textColor);
     }
 
     // Data table
     if (data.data && data.data.length > 0) {
-      doc.fontSize(14).text("Details", { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(9);
+      const detailsY = doc.y;
 
-      // Create simple table
+      // Details header
+      doc
+        .rect(50, detailsY, tableWidth, rowHeight)
+        .fillAndStroke(primaryColor, primaryColor);
+      doc
+        .fillColor("#ffffff")
+        .fontSize(12)
+        .font(fontPath)
+        .text("Details", 60, detailsY + 7, { width: tableWidth - 20 });
+
+      doc.moveDown(1);
+
+      // Create data table
       const headers = Object.keys(data.data[0]).map((key) =>
         key.replace(/([A-Z])/g, " $1").trim()
       );
 
-      // Table header
       const startX = 50;
       let startY = doc.y;
       const colWidth = (doc.page.width - 100) / headers.length;
-      const rowHeight = 20;
+      const dataRowHeight = 22;
 
       // Draw header row
       doc
-        .rect(startX, startY, doc.page.width - 100, rowHeight)
-        .fillAndStroke("#7210a2", "#7210a2");
+        .rect(startX, startY, doc.page.width - 100, dataRowHeight)
+        .fillAndStroke(primaryColor, primaryColor);
 
-      doc.fillColor("#ffffff");
+      doc.fillColor("#ffffff").fontSize(9).font(fontPath);
       headers.forEach((header, i) => {
-        doc.text(header, startX + i * colWidth + 5, startY + 5, {
+        doc.text(header, startX + i * colWidth + 5, startY + 6, {
           width: colWidth - 10,
           align: "left"
         });
       });
 
-      startY += rowHeight;
-      doc.fillColor("#000000");
+      startY += dataRowHeight;
+      doc.fillColor(textColor);
 
       // Draw data rows
       data.data.forEach((row, rowIndex) => {
-        if (startY > doc.page.height - 100) {
+        if (startY > doc.page.height - 120) {
           doc.addPage();
           startY = 50;
         }
@@ -135,36 +317,57 @@ export async function generatePDF(data: ReportData): Promise<Buffer> {
         // Alternate row colors
         if (rowIndex % 2 === 0) {
           doc
-            .rect(startX, startY, doc.page.width - 100, rowHeight)
-            .fillAndStroke("#f3f4f6", "#d1d5db");
+            .rect(startX, startY, doc.page.width - 100, dataRowHeight)
+            .fillAndStroke(secondaryColor, borderColor);
         } else {
           doc
-            .rect(startX, startY, doc.page.width - 100, rowHeight)
-            .stroke("#d1d5db");
+            .rect(startX, startY, doc.page.width - 100, dataRowHeight)
+            .stroke(borderColor);
         }
 
-        doc.fillColor("#000000");
+        doc.fillColor(textColor).fontSize(8).font(fontPath);
         Object.values(row).forEach((value, i) => {
-          doc.text(String(value ?? ""), startX + i * colWidth + 5, startY + 5, {
+          doc.text(String(value ?? ""), startX + i * colWidth + 5, startY + 6, {
             width: colWidth - 10,
             align: "left"
           });
         });
 
-        startY += rowHeight;
+        startY += dataRowHeight;
       });
     }
 
-    // Footer
+    // Signature section - placed dynamically after content
+    doc.moveDown(3);
     doc
       .fontSize(8)
       .fillColor("#6b7280")
+      .font(fontPath)
       .text(
         "This is an automated report generated by the Property Management System.",
         50,
-        doc.page.height - 50,
+        doc.y,
         { align: "center" }
       );
+
+    doc.moveDown(0.5);
+    doc
+      .fontSize(9)
+      .fillColor(textColor)
+      .font(fontPath)
+      .text(
+        `Generated on ${data.generatedAt.toLocaleDateString()} at ${data.generatedAt.toLocaleTimeString()}`,
+        50,
+        doc.y,
+        { align: "center" }
+      );
+
+    doc.moveDown(0.3);
+    doc
+      .fontSize(9)
+      .fillColor("#6b7280")
+      .font(fontPath)
+      .text(`By: ${data.generatedBy}`, 50, doc.y, { align: "center" });
 
     doc.end();
     const pdfBuffer = await pdfReady;

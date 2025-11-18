@@ -130,23 +130,52 @@ export abstract class ReportService {
     let contentType: string;
     let fileName: string;
 
+    // Get property name for filename
+    let propertyName = "AllProperties";
+    if (this.propertyId) {
+      const property = await prisma.property.findUnique({
+        where: { id: this.propertyId },
+        select: { name: true }
+      });
+      if (property) {
+        propertyName = property.name.replace(/[^a-zA-Z0-9]/g, "_");
+      }
+    }
+
+    // Get report type name (e.g., "NIGHT_AUDIT" -> "NightAudit")
+    const reportTypeName = data.title
+      .replace(/\s+/g, "")
+      .replace(/[^a-zA-Z0-9]/g, "");
+
+    // Format current date/time: YYYYMMDD_HHMMSS
+    const now = new Date();
+    const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}${String(now.getDate()).padStart(2, "0")}_${String(
+      now.getHours()
+    ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+      now.getSeconds()
+    ).padStart(2, "0")}`;
+
     // Generate file based on format
+    // Filename format: PropertyName_ReportType_YYYYMMDD_HHMMSS.extension
     switch (format) {
       case ExportFormat.PDF:
         buffer = await generatePDF(data);
         contentType = "application/pdf";
-        fileName = `${data.title.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+        fileName = `${propertyName}_${reportTypeName}_${dateTime}.pdf`;
         break;
       case ExportFormat.EXCEL:
         buffer = await generateExcel(data);
         contentType =
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        fileName = `${data.title.replace(/\s+/g, "-").toLowerCase()}.xlsx`;
+        fileName = `${propertyName}_${reportTypeName}_${dateTime}.xlsx`;
         break;
       case ExportFormat.CSV:
         buffer = await generateCSV(data);
         contentType = "text/csv";
-        fileName = `${data.title.replace(/\s+/g, "-").toLowerCase()}.csv`;
+        fileName = `${propertyName}_${reportTypeName}_${dateTime}.csv`;
         break;
       default:
         throw new Error(`Unsupported format: ${format}`);
