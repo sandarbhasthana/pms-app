@@ -2,39 +2,69 @@
  * Redis Connection Configuration for BullMQ
  *
  * Centralized Redis connection management for job queues
+ *
+ * Platform Support:
+ * - Vercel: Serverless - Redis/BullMQ disabled (no persistent connections)
+ * - Railway: Persistent server - Full Redis/BullMQ support with Upstash
+ * - Local: Development - Local Redis
  */
 
 import { Redis } from "ioredis";
 
+// Detect if running on Vercel (serverless environment)
+const isVercel =
+  process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+
 // Redis connection configuration
-// Supports both Upstash (production) and local Redis (development)
+// Supports both Upstash (Railway) and local Redis (development)
 const getRedisConfig = () => {
+  // Vercel: Disable Redis (serverless can't maintain persistent connections)
+  if (isVercel) {
+    console.log("⚠️  Running on Vercel (serverless) - Redis/BullMQ disabled");
+    console.log("💡 Background jobs will be skipped on Vercel");
+    return null;
+  }
+
   const upstashUrl = process.env.UPSTASH_REDIS_URL;
   const isProduction = process.env.NODE_ENV === "production";
 
   if (upstashUrl) {
-    // Production: Use Upstash Redis
-    console.log("🔗 Using Upstash Redis (Production)");
-    try {
-      const url = new URL(upstashUrl);
-      return {
-        host: url.hostname,
-        port: parseInt(url.port) || 6379,
-        password: url.password,
-        username: url.username || "default",
-        tls: {}, // Upstash requires TLS
-        maxRetriesPerRequest: null, // Required by BullMQ
-        retryDelayOnFailover: 100,
-        enableReadyCheck: false,
-        lazyConnect: true,
-        connectTimeout: 20000,
-        commandTimeout: 30000,
-        keepAlive: 30000,
-        family: 4
-      };
-    } catch (error) {
-      console.error("❌ Failed to parse UPSTASH_REDIS_URL:", error);
-      throw new Error("Invalid UPSTASH_REDIS_URL format");
+    // Railway Production: Use Upstash Redis with TCP connection
+    console.log("🔗 Using Upstash Redis (Railway Production)");
+
+    // Check if it's a redis:// URL (TCP) or https:// URL (REST)
+    if (upstashUrl.startsWith("redis://")) {
+      try {
+        const url = new URL(upstashUrl);
+        return {
+          host: url.hostname,
+          port: parseInt(url.port) || 6379,
+          password: url.password,
+          username: url.username || "default",
+          tls: {}, // Upstash requires TLS
+          maxRetriesPerRequest: null, // Required by BullMQ
+          retryDelayOnFailover: 100,
+          enableReadyCheck: false,
+          lazyConnect: true,
+          connectTimeout: 20000,
+          commandTimeout: 30000,
+          keepAlive: 30000,
+          family: 4
+        };
+      } catch (error) {
+        console.error("❌ Failed to parse UPSTASH_REDIS_URL:", error);
+        throw new Error("Invalid UPSTASH_REDIS_URL format");
+      }
+    } else {
+      console.error("❌ UPSTASH_REDIS_URL must be redis:// format for Railway");
+      console.error(
+        "💡 Current URL format:",
+        upstashUrl.substring(0, 20) + "..."
+      );
+      console.error("💡 Expected format: redis://default:password@host:port");
+      throw new Error(
+        "Invalid UPSTASH_REDIS_URL format - must start with redis://"
+      );
     }
   }
 
@@ -105,6 +135,37 @@ export const getRedisConnection = (): Redis => {
     }
 
     const config = getRedisConfig();
+
+    // Vercel: Return mock Redis instance (no persistent connections in serverless)
+    if (config === null) {
+      console.log("🔇 Redis disabled - returning mock instance");
+      redisInstance = {
+        on: () => {},
+        off: () => {},
+        disconnect: () => Promise.resolve(),
+        quit: () => Promise.resolve("OK"),
+        get: () => Promise.resolve(null),
+        set: () => Promise.resolve("OK"),
+        setex: () => Promise.resolve("OK"),
+        del: () => Promise.resolve(0),
+        exists: () => Promise.resolve(0),
+        expire: () => Promise.resolve(0),
+        ttl: () => Promise.resolve(-1),
+        keys: () => Promise.resolve([]),
+        scan: () => Promise.resolve(["0", []]),
+        hget: () => Promise.resolve(null),
+        hset: () => Promise.resolve(0),
+        hdel: () => Promise.resolve(0),
+        hgetall: () => Promise.resolve({}),
+        lpush: () => Promise.resolve(0),
+        rpush: () => Promise.resolve(0),
+        lpop: () => Promise.resolve(null),
+        rpop: () => Promise.resolve(null),
+        lrange: () => Promise.resolve([]),
+        llen: () => Promise.resolve(0)
+      } as unknown as Redis;
+      return redisInstance;
+    }
 
     // Create Redis instance with proper connection handling
     redisInstance = new Redis({

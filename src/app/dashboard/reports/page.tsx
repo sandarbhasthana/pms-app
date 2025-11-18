@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, FileText, Clock } from "lucide-react";
+import { BarChart3, FileText, Clock, AlertTriangle } from "lucide-react";
 import { ReportGenerationForm } from "@/components/reports/ReportGenerationForm";
 import { ReportHistoryList } from "@/components/reports/ReportHistoryList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ReportsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("generate");
+
+  // Check if running on Vercel
+  const isVercel =
+    typeof window !== "undefined" &&
+    (window.location.hostname.includes("vercel.app") ||
+      window.location.hostname.includes("vercel.com"));
 
   const handleReportGenerated = () => {
     // Refresh the history list when a new report is generated
@@ -17,6 +24,21 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
+      {/* Vercel Warning Banner */}
+      {isVercel && (
+        <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20">
+          <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+          <AlertTitle className="text-orange-900 dark:text-orange-200 font-semibold">
+            Reports Not Available on Vercel
+          </AlertTitle>
+          <AlertDescription className="text-orange-800 dark:text-orange-300">
+            Background report generation requires persistent server connections
+            which are not supported on Vercel's serverless platform. Please use
+            the Railway deployment to access report features.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Page Header - Matching Dashboard Style */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">

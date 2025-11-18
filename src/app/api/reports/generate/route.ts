@@ -71,7 +71,28 @@ export async function POST(req: NextRequest) {
         config
       };
 
-      // Queue the report generation job
+      // Check if running on Vercel (serverless - no BullMQ support)
+      const isVercel =
+        process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+
+      if (isVercel) {
+        // Vercel: Return error message - reports not supported in serverless
+        console.log(
+          "⚠️  Report generation not supported on Vercel (serverless)"
+        );
+        return NextResponse.json(
+          {
+            error: "Report generation not available",
+            message:
+              "Background report generation is not supported on Vercel. Please use Railway deployment for report features.",
+            details:
+              "Vercel's serverless architecture doesn't support persistent Redis connections required for BullMQ job queues."
+          },
+          { status: 503 } // 503 Service Unavailable
+        );
+      }
+
+      // Queue the report generation job (Railway only)
       const job = await addJobToQueue(
         "reports",
         "generate-report",
