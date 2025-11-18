@@ -9,8 +9,9 @@ import { PropertySwitcher } from "@/components/PropertySwitcher";
 import { UnifiedNotificationBell } from "@/components/notifications/UnifiedNotificationBell";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -38,6 +39,7 @@ const ALL_STAFF_ROLES = new Set([
 
 export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const role = session?.user?.role as string | undefined;
   // Allow all staff roles to see sidebar toggle (for Teams access)
   const canSeeSidebarToggle = !!role && ALL_STAFF_ROLES.has(role);
@@ -86,6 +88,18 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Property switcher - only for non-SUPER_ADMIN users */}
         {role !== "SUPER_ADMIN" && <PropertySwitcher />}
+        {/* Reports icon - for PROPERTY_MGR and above */}
+        {role && PM_OR_ABOVE.has(role) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/dashboard/reports")}
+            className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors"
+            title="Reports"
+          >
+            <BarChart3 className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9]" />
+          </Button>
+        )}
         {/* Unified notification bell - for PROPERTY_MGR and above */}
         {role && PM_OR_ABOVE.has(role) && <UnifiedNotificationBell />}
         {/* User menu with avatar and account options */}

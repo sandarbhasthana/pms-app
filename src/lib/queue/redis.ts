@@ -53,15 +53,19 @@ const getRedisConfig = () => {
 
   // Development: Use local Redis
   console.log("🔗 Using Local Redis (Development)");
+
+  // For WSL2, use localhost which will automatically resolve to WSL IP
+  // Windows will handle the WSL2 networking automatically
+  const redisHost = process.env.REDIS_HOST || "localhost";
+
   return {
-    host: process.env.REDIS_HOST || "127.0.0.1",
+    host: redisHost,
     port: parseInt(process.env.REDIS_PORT || "6379"),
     password: process.env.REDIS_PASSWORD || "Sandhu123",
     db: parseInt(process.env.REDIS_DB || "0"),
     maxRetriesPerRequest: null, // Required by BullMQ for blocking operations
     retryDelayOnFailover: 100,
     enableReadyCheck: false,
-    lazyConnect: true,
     // Increased timeouts for better reliability
     connectTimeout: 20000, // 20 seconds
     commandTimeout: 30000, // 30 seconds
@@ -69,7 +73,17 @@ const getRedisConfig = () => {
     // Additional BullMQ optimizations
     keepAlive: 30000,
     family: 4, // Force IPv4
-    maxLoadingTimeout: 5000
+    maxLoadingTimeout: 5000,
+    // Retry strategy for WSL2 connection issues
+    retryStrategy: (times: number) => {
+      if (times > 10) {
+        console.error("❌ Redis connection failed after 10 retries");
+        return null; // Stop retrying
+      }
+      const delay = Math.min(times * 100, 3000);
+      console.log(`🔄 Redis retry attempt ${times}, waiting ${delay}ms...`);
+      return delay;
+    }
   };
 };
 
@@ -92,20 +106,22 @@ export const getRedisConnection = (): Redis => {
 
     const config = getRedisConfig();
 
-    // Only create real connection when actually needed
-    if (
-      process.env.NODE_ENV === "production" ||
-      process.env.REDIS_ENABLED === "true"
-    ) {
-      redisInstance = new Redis(config);
-    } else {
-      // Return a Redis instance with lazy connection for development
-      redisInstance = new Redis({
-        ...config,
-        lazyConnect: true,
-        enableOfflineQueue: false
-      });
-    }
+    // Create Redis instance with proper connection handling
+    redisInstance = new Redis({
+      ...config,
+      lazyConnect: false, // Connect immediately (no need to call .connect())
+      enableOfflineQueue: true, // Queue commands while connecting
+      reconnectOnError: (err) => {
+        const targetError = "READONLY";
+        if (err.message.includes(targetError)) {
+          // Only reconnect when the error contains "READONLY"
+          return true;
+        }
+        return false;
+      }
+    });
+
+    // Connection will be established automatically with lazyConnect: false
   }
   return redisInstance;
 };

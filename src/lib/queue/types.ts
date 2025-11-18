@@ -5,6 +5,7 @@
  */
 
 import { ReservationStatus } from "@prisma/client";
+import { ReportGenerationRequest } from "../reports/types";
 
 // Base job data interface
 export interface BaseJobData {
@@ -70,6 +71,15 @@ export interface PaymentStatusJobData extends BaseJobData {
   dryRun?: boolean;
 }
 
+// Report generation job data
+export interface ReportGenerationJobData {
+  jobType: "generate-report";
+  request: ReportGenerationRequest;
+  propertyId?: string; // Optional since reports can be org-wide
+  triggeredBy?: string;
+  timestamp?: Date;
+}
+
 // Union type for all job data
 export type QueueJobData =
   | NoShowDetectionJobData
@@ -77,7 +87,8 @@ export type QueueJobData =
   | CleanupJobData
   | AutoCheckinJobData
   | StatusUpdateJobData
-  | PaymentStatusJobData;
+  | PaymentStatusJobData
+  | ReportGenerationJobData;
 
 // Job result interface
 export interface JobResult {

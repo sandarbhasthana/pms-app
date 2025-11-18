@@ -45,6 +45,18 @@ const queueConfigs: Record<string, QueueConfig> = {
         delay: 500
       }
     }
+  },
+  reports: {
+    name: "reports",
+    defaultJobOptions: {
+      removeOnComplete: 100,
+      removeOnFail: 50,
+      attempts: 2,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      }
+    }
   }
 };
 
@@ -73,6 +85,12 @@ export const cronSchedules: Record<string, CronSchedule> = {
     testing: "*/30 * * * *", // Every 30 minutes
     staging: "0 */3 * * *", // Every 3 hours
     production: "0 */4 * * *" // Every 4 hours
+  },
+  "report-cleanup": {
+    development: "*/15 * * * *", // Every 15 minutes
+    testing: "0 */2 * * *", // Every 2 hours
+    staging: "0 2 * * *", // Daily at 2:00 AM
+    production: "0 2 * * *" // Daily at 2:00 AM
   }
 };
 
@@ -92,12 +110,14 @@ export const reservationAutomationQueue = createQueue(
 );
 export const statusUpdatesQueue = createQueue(queueConfigs["status-updates"]);
 export const notificationsQueue = createQueue(queueConfigs["notifications"]);
+export const reportsQueue = createQueue(queueConfigs["reports"]);
 
 // Queue registry for easy access
 export const queues = {
   "reservation-automation": reservationAutomationQueue,
   "status-updates": statusUpdatesQueue,
-  notifications: notificationsQueue
+  notifications: notificationsQueue,
+  reports: reportsQueue
 } as const;
 
 // Helper function to get current environment cron schedule

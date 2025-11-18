@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
 console.log("🚂 Railway Start Process...");
 
@@ -38,4 +38,3 @@ try {
   console.error("❌ Start failed:", error.message);
   process.exit(1);
 }
-
