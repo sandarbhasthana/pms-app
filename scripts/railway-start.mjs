@@ -37,8 +37,33 @@ try {
     console.log("✅ Prisma client already exists");
   }
 
-  console.log("🚀 Starting Next.js server...");
-  execSync("next start", { stdio: "inherit" });
+  // Check if running on Vercel (serverless - no workers needed)
+  const isVercel =
+    process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+
+  if (isVercel) {
+    console.log("⚠️  Running on Vercel - Starting Next.js server only");
+    console.log("💡 Workers are disabled on serverless platforms");
+    execSync("next start", { stdio: "inherit" });
+  } else {
+    // Railway: Start both Next.js server and workers
+    console.log("🚀 Starting Next.js server and BullMQ workers...");
+
+    // Use concurrently to run both processes
+    // Install concurrently if not already installed
+    try {
+      execSync("npm list concurrently", { stdio: "ignore" });
+    } catch {
+      console.log("📦 Installing concurrently...");
+      execSync("npm install --no-save concurrently", { stdio: "inherit" });
+    }
+
+    // Start both server and workers
+    execSync(
+      'npx concurrently --kill-others --names "SERVER,WORKERS" --prefix-colors "blue,green" "next start" "tsx scripts/start-workers.ts"',
+      { stdio: "inherit" }
+    );
+  }
 } catch (error) {
   console.error("❌ Start failed:", error.message);
   process.exit(1);
