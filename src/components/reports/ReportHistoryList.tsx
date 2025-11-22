@@ -26,12 +26,15 @@ import {
   XCircle,
   AlertCircle,
   MoreVertical,
-  Trash2
+  Trash2,
+  Mail
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ReportStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { SendEmailDialog } from "./SendEmailDialog";
+import { useSession } from "next-auth/react";
 
 interface Report {
   id: string;
@@ -46,10 +49,13 @@ interface Report {
 }
 
 export function ReportHistoryList() {
+  const { data: session } = useSession();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchReports();
@@ -70,6 +76,11 @@ export function ReportHistoryList() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSendEmail = (reportId: string) => {
+    setSelectedReportId(reportId);
+    setEmailDialogOpen(true);
   };
 
   const handleDownload = async (reportId: string) => {
@@ -135,37 +146,66 @@ export function ReportHistoryList() {
   const getStatusIcon = (status: ReportStatus) => {
     switch (status) {
       case "COMPLETED":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-3.5 w-3.5" />;
       case "FAILED":
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-3.5 w-3.5" />;
       case "PROCESSING":
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
       case "CANCELLED":
-        return <XCircle className="h-4 w-4 text-slate-600" />;
+        return <XCircle className="h-3.5 w-3.5" />;
       case "PENDING":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-3.5 w-3.5" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-3.5 w-3.5" />;
     }
   };
 
   const getStatusBadge = (status: ReportStatus) => {
-    const variants: Record<ReportStatus, string> = {
-      PENDING:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-      PROCESSING:
-        "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-      COMPLETED:
-        "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      FAILED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-      CANCELLED:
-        "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400"
+    const variants: Record<
+      ReportStatus,
+      { bg: string; text: string; border: string }
+    > = {
+      PENDING: {
+        bg: "bg-yellow-100 dark:bg-yellow-500/20",
+        text: "text-yellow-700 dark:text-yellow-300",
+        border: "border-yellow-300 dark:border-yellow-500/50"
+      },
+      PROCESSING: {
+        bg: "bg-orange-100 dark:bg-orange-500/20",
+        text: "text-orange-700 dark:text-orange-300",
+        border: "border-orange-300 dark:border-orange-500/50"
+      },
+      COMPLETED: {
+        bg: "bg-green-100 dark:bg-green-500/20",
+        text: "text-green-700 dark:text-green-300",
+        border: "border-green-300 dark:border-green-500/50"
+      },
+      FAILED: {
+        bg: "bg-red-100 dark:bg-red-500/20",
+        text: "text-red-700 dark:text-red-300",
+        border: "border-red-300 dark:border-red-500/50"
+      },
+      CANCELLED: {
+        bg: "bg-slate-100 dark:bg-slate-500/20",
+        text: "text-slate-700 dark:text-slate-300",
+        border: "border-slate-300 dark:border-slate-500/50"
+      }
     };
 
+    const variant = variants[status];
+
     return (
-      <Badge className={cn("flex items-center gap-1", variants[status])}>
+      <Badge
+        variant="outline"
+        className={cn(
+          "inline-flex items-center gap-1.5 w-fit px-2.5 py-1 font-medium border",
+          variant.bg,
+          variant.text,
+          variant.border
+        )}
+      >
         {getStatusIcon(status)}
-        {status}
+        <span className="capitalize">{status.toLowerCase()}</span>
       </Badge>
     );
   };
@@ -288,7 +328,7 @@ export function ReportHistoryList() {
                 <TableCell>
                   <Badge
                     variant="outline"
-                    className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                    className="inline-flex items-center w-fit px-2.5 py-1 font-medium border bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-500/50"
                   >
                     {report.format}
                   </Badge>
@@ -301,9 +341,9 @@ export function ReportHistoryList() {
                   {report.status === "COMPLETED" ? (
                     <Badge
                       variant="outline"
-                      className="flex items-center gap-1 w-fit bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800"
+                      className="inline-flex items-center gap-1.5 w-fit px-2.5 py-1 font-medium border bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-500/50"
                     >
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3.5 w-3.5" />
                       {getTimeUntilDeletion(report.expiresAt)}
                     </Badge>
                   ) : (
@@ -332,7 +372,7 @@ export function ReportHistoryList() {
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem
                           onClick={() => handleDownload(report.id)}
                           disabled={downloading === report.id}
@@ -340,6 +380,13 @@ export function ReportHistoryList() {
                         >
                           <Download className="mr-2 h-4 w-4" />
                           Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleSendEmail(report.id)}
+                          className="cursor-pointer"
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          Send to Email
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(report.id)}
@@ -384,6 +431,16 @@ export function ReportHistoryList() {
           </div>
         </div>
       </div>
+
+      {/* Send Email Dialog */}
+      {selectedReportId && (
+        <SendEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          reportId={selectedReportId}
+          userEmail={session?.user?.email || ""}
+        />
+      )}
     </div>
   );
 }

@@ -1,16 +1,9 @@
 // File: src/lib/email.ts
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 
-// Lazy initialization of Resend to avoid build-time errors
-let resendInstance: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!resendInstance) {
-    resendInstance = new Resend(
-      process.env.RESEND_API_KEY || "dummy-key-for-build"
-    );
-  }
-  return resendInstance;
+// Initialize SendGrid with API key
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
 // Email configuration
@@ -43,8 +36,8 @@ export async function sendInvitationEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     // Validate required environment variables
-    if (!process.env.RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not configured");
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error("SENDGRID_API_KEY is not configured");
       return { success: false, error: "Email service not configured" };
     }
 
@@ -69,7 +62,10 @@ export async function sendInvitationEmail(
     );
 
     const emailData = {
-      from: EMAIL_CONFIG.from,
+      from: {
+        email: EMAIL_CONFIG.from,
+        name: "PMS Notifications"
+      },
       to: data.email,
       replyTo: EMAIL_CONFIG.replyTo,
       subject: `Invitation to join ${data.organizationName} - Property Management System`,
@@ -79,20 +75,36 @@ export async function sendInvitationEmail(
 
     console.log(`📧 Sending invitation email to ${data.email}...`);
 
-    const resend = getResendClient();
-    const result = await resend.emails.send(emailData);
+    const result = await sgMail.send(emailData);
 
-    if (result.error) {
-      console.error("Failed to send invitation email:", result.error);
-      return { success: false, error: result.error.message };
-    }
+    // SendGrid returns an array, get the first response
+    const response = result[0];
+    const messageId = response.headers["x-message-id"] || `sg-${Date.now()}`;
 
     console.log(
-      `✅ Invitation email sent successfully to ${data.email} (ID: ${result.data?.id})`
+      `✅ Invitation email sent successfully to ${data.email} (ID: ${messageId})`
     );
-    return { success: true, messageId: result.data?.id };
-  } catch (error) {
+    return { success: true, messageId };
+  } catch (error: unknown) {
     console.error("Error sending invitation email:", error);
+
+    // Handle SendGrid specific errors
+    if (error && typeof error === "object" && "response" in error) {
+      const sendGridError = error as {
+        response: {
+          body: { errors?: Array<{ message?: string; code?: string }> };
+        };
+        message?: string;
+      };
+      const { message, code } = sendGridError.response.body.errors?.[0] || {};
+      return {
+        success: false,
+        error: `SendGrid Error (${code}): ${
+          message || sendGridError.message || "Unknown SendGrid error"
+        }`
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred"
@@ -337,6 +349,86 @@ function getShiftDisplayName(shift?: string): string | null {
 }
 
 /**
+ * Generic email sending function
+ */
+export interface SendEmailOptions {
+  to: string | string[] | null | undefined;
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  replyTo?: string;
+}
+
+export async function sendEmail(
+  options: SendEmailOptions
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    // Validate recipient email
+    if (!options.to) {
+      console.error("Recipient email is required");
+      return { success: false, error: "Recipient email is required" };
+    }
+
+    // Validate required environment variables
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error("SENDGRID_API_KEY is not configured");
+      return { success: false, error: "Email service not configured" };
+    }
+
+    const emailData = {
+      from: options.from
+        ? typeof options.from === "string"
+          ? { email: options.from, name: "PMS Notifications" }
+          : options.from
+        : { email: EMAIL_CONFIG.from, name: "PMS Notifications" },
+      to: options.to,
+      replyTo: options.replyTo || EMAIL_CONFIG.replyTo,
+      subject: options.subject,
+      html: options.html,
+      text: options.text
+    };
+
+    console.log(`📧 Sending email to ${options.to}...`);
+
+    const result = await sgMail.send(emailData);
+
+    // SendGrid returns an array, get the first response
+    const response = result[0];
+    const messageId = response.headers["x-message-id"] || `sg-${Date.now()}`;
+
+    console.log(
+      `✅ Email sent successfully to ${options.to} (ID: ${messageId})`
+    );
+    return { success: true, messageId };
+  } catch (error: unknown) {
+    console.error("Error sending email:", error);
+
+    // Handle SendGrid specific errors
+    if (error && typeof error === "object" && "response" in error) {
+      const sendGridError = error as {
+        response: {
+          body: { errors?: Array<{ message?: string; code?: string }> };
+        };
+        message?: string;
+      };
+      const { message, code } = sendGridError.response.body.errors?.[0] || {};
+      return {
+        success: false,
+        error: `SendGrid Error (${code}): ${
+          message || sendGridError.message || "Unknown SendGrid error"
+        }`
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    };
+  }
+}
+
+/**
  * Test email configuration
  */
 export async function testEmailConfiguration(): Promise<{
@@ -344,8 +436,8 @@ export async function testEmailConfiguration(): Promise<{
   error?: string;
 }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      return { success: false, error: "RESEND_API_KEY is not configured" };
+    if (!process.env.SENDGRID_API_KEY) {
+      return { success: false, error: "SENDGRID_API_KEY is not configured" };
     }
 
     // Test with a simple email send (you can comment this out in production)
