@@ -53,7 +53,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className={cn("ml-[-0.75rem] mr-1 md:mr-2 px-3")}
+            className={cn("ml-[-0.75rem] mr-1 md:mr-2 px-3 cursor-pointer")}
             title={sidebarOpen ? "Close menu" : "Open menu"}
           >
             {sidebarOpen ? (
@@ -87,21 +87,21 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
       {/* Right-side controls */}
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Property switcher - only for non-SUPER_ADMIN users */}
-        {role !== "SUPER_ADMIN" && <PropertySwitcher />}
+        {role !== "SUPER_ADMIN" && <PropertySwitcher className="cursor-pointer" />}
         {/* Reports icon - for PROPERTY_MGR and above */}
         {role && PM_OR_ABOVE.has(role) && (
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push("/dashboard/reports")}
-            className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors"
+            className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors cursor-pointer"
             title="Reports"
           >
-            <BarChart3 className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9]" />
+            <BarChart3 className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] cursor-pointer" />
           </Button>
         )}
         {/* Unified notification bell - for PROPERTY_MGR and above */}
-        {role && PM_OR_ABOVE.has(role) && <UnifiedNotificationBell />}
+        {role && PM_OR_ABOVE.has(role) && <UnifiedNotificationBell className="cursor-pointer"/>}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}

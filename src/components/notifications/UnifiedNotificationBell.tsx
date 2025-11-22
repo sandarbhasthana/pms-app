@@ -97,7 +97,7 @@ export function UnifiedNotificationBell({
           )}
           title="Notifications"
         >
-          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] scale-140" />
+          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] scale-140 cursor-pointer" />
 
           {/* Status Dots - Red/Orange for messages, Green for approvals */}
           {chatUnreadCount > 0 && (

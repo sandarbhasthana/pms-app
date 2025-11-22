@@ -83,6 +83,16 @@ export function ReportHistoryList() {
     setEmailDialogOpen(true);
   };
 
+  const handleEmailDialogClose = (open: boolean) => {
+    setEmailDialogOpen(open);
+    if (!open) {
+      // Use setTimeout to ensure state updates happen after dialog animation completes
+      setTimeout(() => {
+        setSelectedReportId(null);
+      }, 200);
+    }
+  };
+
   const handleDownload = async (reportId: string) => {
     setDownloading(reportId);
     try {
@@ -296,22 +306,22 @@ export function ReportHistoryList() {
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900/50">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[20%]">
                 Report Type
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[10%]">
                 Format
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[12%]">
                 Status
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[18%]">
                 Generated
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[15%]">
                 Expires In
               </TableHead>
-              <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300 w-[10%]">
                 Actions
               </TableHead>
             </TableRow>
@@ -433,14 +443,12 @@ export function ReportHistoryList() {
       </div>
 
       {/* Send Email Dialog */}
-      {selectedReportId && (
-        <SendEmailDialog
-          open={emailDialogOpen}
-          onOpenChange={setEmailDialogOpen}
-          reportId={selectedReportId}
-          userEmail={session?.user?.email || ""}
-        />
-      )}
+      <SendEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={handleEmailDialogClose}
+        reportId={selectedReportId || ""}
+        userEmail={session?.user?.email || ""}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,42 @@ export function SendEmailDialog({
   );
   const [customEmail, setCustomEmail] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Cleanup effect - force remove overlays
+  useEffect(() => {
+    if (!open) {
+      // Reset form
+      setEmailOption("logged-in");
+      setCustomEmail("");
+      setSending(false);
+
+      // Force cleanup after animation
+      const cleanup = setTimeout(() => {
+        // Remove any lingering overlays
+        document
+          .querySelectorAll("[data-radix-dialog-overlay]")
+          .forEach((el) => {
+            el.remove();
+          });
+        // Reset body styles
+        document.body.style.pointerEvents = "";
+        document.body.style.overflow = "";
+      }, 300);
+
+      return () => clearTimeout(cleanup);
+    }
+  }, [open]);
+
+  // Reset form when dialog closes
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      // Reset form state when closing
+      setEmailOption("logged-in");
+      setCustomEmail("");
+      setSending(false);
+    }
+    onOpenChange(newOpen);
+  };
 
   const handleSubmit = async () => {
     // Validate custom email if selected
@@ -76,10 +112,7 @@ export function SendEmailDialog({
             emailOption === "custom" ? customEmail : "your email"
           }`
         );
-        onOpenChange(false);
-        // Reset form
-        setEmailOption("logged-in");
-        setCustomEmail("");
+        handleOpenChange(false);
       } else {
         toast.error(data.error || "Failed to send report via email");
       }
@@ -91,9 +124,24 @@ export function SendEmailDialog({
     }
   };
 
+  // Don't render the dialog at all if reportId is empty
+  if (!reportId) {
+    return null;
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onPointerDownOutside={(e) => {
+          // Allow closing by clicking outside
+          handleOpenChange(false);
+        }}
+        onEscapeKeyDown={(e) => {
+          // Allow closing with Escape key
+          handleOpenChange(false);
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-purple-600" />
@@ -163,7 +211,7 @@ export function SendEmailDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={sending}
           >
             Cancel

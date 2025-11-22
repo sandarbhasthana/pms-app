@@ -194,11 +194,11 @@ export function PropertySwitcher({
           </span>
         )}
 
-        <Link href="/admin/settings/properties">
+        <Link href="/admin/settings/properties" className="cursor-pointer">
           <Button
             variant="outline"
             size="sm"
-            className="h-9 px-3 justify-between min-w-[160px] max-w-[200px] border-dashed border-2 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            className="h-9 px-3 justify-between min-w-[160px] max-w-[200px] border-dashed border-2 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer"
           >
             <div className="flex items-center space-x-2 truncate">
               <Plus className="h-4 w-4 flex-shrink-0 text-purple-600" />
