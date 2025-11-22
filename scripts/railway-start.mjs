@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -49,20 +49,52 @@ try {
     // Railway: Start both Next.js server and workers
     console.log("🚀 Starting Next.js server and BullMQ workers...");
 
-    // Use concurrently to run both processes
-    // Install concurrently if not already installed
-    try {
-      execSync("npm list concurrently", { stdio: "ignore" });
-    } catch {
-      console.log("📦 Installing concurrently...");
-      execSync("npm install --no-save concurrently", { stdio: "inherit" });
-    }
+    // Start Next.js server
+    const server = spawn("npx", ["next", "start"], {
+      stdio: "inherit",
+      shell: true
+    });
 
-    // Start both server and workers
-    execSync(
-      'npx concurrently --kill-others --names "SERVER,WORKERS" --prefix-colors "blue,green" "next start" "tsx scripts/start-workers.ts"',
-      { stdio: "inherit" }
-    );
+    // Start workers after a short delay
+    setTimeout(() => {
+      console.log("🔧 Starting BullMQ workers...");
+      const workers = spawn("npx", ["tsx", "scripts/start-workers.ts"], {
+        stdio: "inherit",
+        shell: true
+      });
+
+      workers.on("error", (error) => {
+        console.error("❌ Workers error:", error);
+      });
+
+      workers.on("exit", (code) => {
+        console.log(`⚠️  Workers exited with code ${code}`);
+      });
+    }, 3000);
+
+    // Handle server errors
+    server.on("error", (error) => {
+      console.error("❌ Server error:", error);
+      process.exit(1);
+    });
+
+    server.on("exit", (code) => {
+      console.log(`⚠️  Server exited with code ${code}`);
+      process.exit(code || 1);
+    });
+
+    // Handle process termination
+    process.on("SIGTERM", () => {
+      console.log("🛑 Received SIGTERM, shutting down gracefully...");
+      server.kill("SIGTERM");
+      process.exit(0);
+    });
+
+    process.on("SIGINT", () => {
+      console.log("🛑 Received SIGINT, shutting down gracefully...");
+      server.kill("SIGINT");
+      process.exit(0);
+    });
   }
 } catch (error) {
   console.error("❌ Start failed:", error.message);
