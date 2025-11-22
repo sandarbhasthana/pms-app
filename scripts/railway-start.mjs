@@ -49,26 +49,32 @@ try {
     // Railway: Start both Next.js server and workers
     console.log("🚀 Starting Next.js server and BullMQ workers...");
 
+    let workersProcess = null;
+
     // Start Next.js server
     const server = spawn("npx", ["next", "start"], {
       stdio: "inherit",
-      shell: true
+      shell: true,
+      detached: false
     });
 
     // Start workers after a short delay
     setTimeout(() => {
       console.log("🔧 Starting BullMQ workers...");
-      const workers = spawn("npx", ["tsx", "scripts/start-workers.ts"], {
+      workersProcess = spawn("npx", ["tsx", "scripts/start-workers.ts"], {
         stdio: "inherit",
-        shell: true
+        shell: true,
+        detached: false
       });
 
-      workers.on("error", (error) => {
+      workersProcess.on("error", (error) => {
         console.error("❌ Workers error:", error);
       });
 
-      workers.on("exit", (code) => {
+      workersProcess.on("exit", (code) => {
         console.log(`⚠️  Workers exited with code ${code}`);
+        // Don't exit the main process if workers crash
+        // They can be restarted independently
       });
     }, 3000);
 
@@ -80,20 +86,45 @@ try {
 
     server.on("exit", (code) => {
       console.log(`⚠️  Server exited with code ${code}`);
+      // Kill workers if server exits
+      if (workersProcess) {
+        workersProcess.kill("SIGTERM");
+      }
       process.exit(code || 1);
     });
 
-    // Handle process termination
-    process.on("SIGTERM", () => {
-      console.log("🛑 Received SIGTERM, shutting down gracefully...");
-      server.kill("SIGTERM");
-      process.exit(0);
-    });
+    // Handle process termination gracefully
+    const shutdown = (signal) => {
+      console.log(`🛑 Received ${signal}, shutting down gracefully...`);
 
-    process.on("SIGINT", () => {
-      console.log("🛑 Received SIGINT, shutting down gracefully...");
-      server.kill("SIGINT");
-      process.exit(0);
+      // Kill server first
+      if (server && !server.killed) {
+        server.kill("SIGTERM");
+      }
+
+      // Kill workers
+      if (workersProcess && !workersProcess.killed) {
+        workersProcess.kill("SIGTERM");
+      }
+
+      // Give processes time to clean up
+      setTimeout(() => {
+        process.exit(0);
+      }, 2000);
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+
+    // Keep the main process alive
+    // This prevents Railway from thinking the process has exited
+    const keepAlive = setInterval(() => {
+      // Do nothing, just keep the event loop active
+    }, 60000); // Check every minute
+
+    // Clean up interval on exit
+    process.on("exit", () => {
+      clearInterval(keepAlive);
     });
   }
 } catch (error) {
