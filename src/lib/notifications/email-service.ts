@@ -1,22 +1,15 @@
 // File: src/lib/notifications/email-service.ts
 
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 import {
   NotificationPayload,
   NotificationPriority
 } from "@/types/notifications";
 import { getEmailTemplate, replaceTemplateVariables } from "./email-templates";
 
-// Lazy initialization of Resend to avoid build-time errors
-let resendInstance: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!resendInstance) {
-    resendInstance = new Resend(
-      process.env.RESEND_API_KEY || "dummy-key-for-build"
-    );
-  }
-  return resendInstance;
+// Initialize SendGrid with API key
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
 // Email configuration
@@ -53,8 +46,8 @@ export class NotificationEmailService {
   ): Promise<EmailDeliveryResult> {
     try {
       // Validate email service configuration
-      if (!process.env.RESEND_API_KEY) {
-        console.error("RESEND_API_KEY is not configured");
+      if (!process.env.SENDGRID_API_KEY) {
+        console.error("SENDGRID_API_KEY is not configured");
         return { success: false, error: "Email service not configured" };
       }
 
@@ -81,26 +74,20 @@ export class NotificationEmailService {
         `📧 Sending notification email to ${recipientEmail}: ${template.subject}`
       );
 
-      const resend = getResendClient();
-      const result = await resend.emails.send(emailData);
+      const result = await sgMail.send(emailData);
 
-      if (result.error) {
-        console.error("Failed to send notification email:", result.error);
-        return { success: false, error: result.error.message };
-      }
+      const messageId = result[0]?.headers?.["x-message-id"] || "unknown";
 
       console.log(
-        `✅ Notification email sent successfully to ${recipientEmail} (ID: ${result.data?.id})`
+        `✅ Notification email sent successfully to ${recipientEmail} (ID: ${messageId})`
       );
 
       // Store message ID for delivery tracking
-      if (result.data?.id) {
-        console.log(
-          `📧 Email message ID: ${result.data.id} ready for tracking`
-        );
+      if (messageId) {
+        console.log(`📧 Email message ID: ${messageId} ready for tracking`);
       }
 
-      return { success: true, messageId: result.data?.id };
+      return { success: true, messageId };
     } catch (error) {
       console.error("Error sending notification email:", error);
       return {

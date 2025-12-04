@@ -1,21 +1,14 @@
 /**
  * Report Generated Email Template
- * 
+ *
  * Sends notification when a report has been generated and is ready for download
  */
 
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 
-// Lazy initialization of Resend
-let resendInstance: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!resendInstance) {
-    resendInstance = new Resend(
-      process.env.RESEND_API_KEY || "dummy-key-for-build"
-    );
-  }
-  return resendInstance;
+// Initialize SendGrid with API key
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
 // Email configuration
@@ -56,21 +49,24 @@ export async function sendReportGeneratedEmail(
       text: textContent
     };
 
-    console.log(`📧 Sending report notification email to ${data.recipientEmail}...`);
-
-    const resend = getResendClient();
-    const result = await resend.emails.send(emailData);
-
-    if (result.error) {
-      console.error("Failed to send report notification email:", result.error);
-      return { success: false, error: result.error.message };
-    }
-
     console.log(
-      `✅ Report notification email sent successfully to ${data.recipientEmail} (ID: ${result.data?.id})`
+      `📧 Sending report notification email to ${data.recipientEmail}...`
     );
 
-    return { success: true, messageId: result.data?.id };
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error("SENDGRID_API_KEY is not configured");
+      return { success: false, error: "Email service not configured" };
+    }
+
+    const result = await sgMail.send(emailData);
+
+    const messageId = result[0]?.headers?.["x-message-id"] || "unknown";
+
+    console.log(
+      `✅ Report notification email sent successfully to ${data.recipientEmail} (ID: ${messageId})`
+    );
+
+    return { success: true, messageId };
   } catch (error) {
     console.error("Error sending report notification email:", error);
     return {
@@ -100,7 +96,10 @@ function generateReportEmailHTML(data: ReportGeneratedEmailData): string {
   const now = new Date();
   const diffMs = expiresAt.getTime() - now.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const timeUntilDeletion = diffDays > 0 ? `${diffDays} day${diffDays > 1 ? "s" : ""}` : "less than 1 day";
+  const timeUntilDeletion =
+    diffDays > 0
+      ? `${diffDays} day${diffDays > 1 ? "s" : ""}`
+      : "less than 1 day";
 
   return `
 <!DOCTYPE html>
@@ -133,12 +132,16 @@ function generateReportEmailHTML(data: ReportGeneratedEmailData): string {
                         <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Organization:</td>
                         <td style="padding: 8px 0; color: #374151;">${organizationName}</td>
                     </tr>
-                    ${propertyName ? `
+                    ${
+                      propertyName
+                        ? `
                     <tr>
                         <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Property:</td>
                         <td style="padding: 8px 0; color: #374151;">${propertyName}</td>
                     </tr>
-                    ` : ""}
+                    `
+                        : ""
+                    }
                     <tr>
                         <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Report Type:</td>
                         <td style="padding: 8px 0; color: #374151;">${reportType}</td>
@@ -176,7 +179,9 @@ function generateReportEmailHTML(data: ReportGeneratedEmailData): string {
         <!-- Footer -->
         <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #6b7280;">
-                This email was sent to ${data.recipientEmail} because a report was generated for your account.
+                This email was sent to ${
+                  data.recipientEmail
+                } because a report was generated for your account.
             </p>
         </div>
     </div>
@@ -203,7 +208,10 @@ function generateReportEmailText(data: ReportGeneratedEmailData): string {
 
   const diffMs = expiresAt.getTime() - new Date().getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const timeUntilDeletion = diffDays > 0 ? `${diffDays} day${diffDays > 1 ? "s" : ""}` : "less than 1 day";
+  const timeUntilDeletion =
+    diffDays > 0
+      ? `${diffDays} day${diffDays > 1 ? "s" : ""}`
+      : "less than 1 day";
 
   return `
 📊 REPORT READY
@@ -226,7 +234,8 @@ ${downloadUrl}
 If you have any questions or need assistance, please contact our support team.
 
 ---
-This email was sent to ${data.recipientEmail} because a report was generated for your account.
+This email was sent to ${
+    data.recipientEmail
+  } because a report was generated for your account.
   `;
 }
-

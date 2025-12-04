@@ -133,11 +133,11 @@ export function SendEmailDialog({
     <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
       <DialogContent
         className="sm:max-w-[425px]"
-        onPointerDownOutside={(e) => {
+        onPointerDownOutside={() => {
           // Allow closing by clicking outside
           handleOpenChange(false);
         }}
-        onEscapeKeyDown={(e) => {
+        onEscapeKeyDown={() => {
           // Allow closing with Escape key
           handleOpenChange(false);
         }}

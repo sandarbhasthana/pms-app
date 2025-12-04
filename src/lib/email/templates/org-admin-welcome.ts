@@ -1,10 +1,12 @@
 // Welcome email template for organization admin users
 
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 import { WelcomeEmailData } from "@/lib/types/organization-onboarding";
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize SendGrid with API key
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 // Email configuration
 const EMAIL_CONFIG = {
@@ -20,8 +22,8 @@ export async function sendWelcomeEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     // Validate required environment variables
-    if (!process.env.RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not configured");
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error("SENDGRID_API_KEY is not configured");
       return { success: false, error: "Email service not configured" };
     }
 
@@ -40,17 +42,14 @@ export async function sendWelcomeEmail(
 
     console.log(`📧 Sending welcome email to ${data.adminEmail}...`);
 
-    const result = await resend.emails.send(emailData);
+    const result = await sgMail.send(emailData);
 
-    if (result.error) {
-      console.error("Failed to send welcome email:", result.error);
-      return { success: false, error: result.error.message };
-    }
+    const messageId = result[0]?.headers?.["x-message-id"] || "unknown";
 
     console.log(
-      `✅ Welcome email sent successfully to ${data.adminEmail} (ID: ${result.data?.id})`
+      `✅ Welcome email sent successfully to ${data.adminEmail} (ID: ${messageId})`
     );
-    return { success: true, messageId: result.data?.id };
+    return { success: true, messageId };
   } catch (error) {
     console.error("Error sending welcome email:", error);
     return {

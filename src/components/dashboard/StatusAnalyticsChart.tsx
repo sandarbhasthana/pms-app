@@ -186,6 +186,13 @@ export default function StatusAnalyticsChart({
     payload?: Record<string, unknown>;
   }
 
+  // Custom label props for pie chart
+  interface PieChartLabelProps {
+    name?: string;
+    percentage?: number;
+    value?: number;
+  }
+
   const CustomTooltip = (props: {
     active?: boolean;
     payload?: CustomTooltipPayload[];
@@ -310,8 +317,8 @@ export default function StatusAnalyticsChart({
                     cy="50%"
                     outerRadius={80}
                     dataKey="value"
-                    label={({ name, percentage }) =>
-                      `${name}: ${(percentage as number).toFixed(1)}%`
+                    label={(props: PieChartLabelProps) =>
+                      `${props.name}: ${(props.percentage ?? 0).toFixed(1)}%`
                     }
                   >
                     {chartData.pieData.map((entry, index) => (
