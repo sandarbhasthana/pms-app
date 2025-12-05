@@ -74,19 +74,28 @@ export function StaffManagement() {
   const [showEmailTestModal, setShowEmailTestModal] = useState(false);
   const [activeTab, setActiveTab] = useState("staff");
 
+  // Get orgId from cookie or session as fallback
+  const getOrgId = () => {
+    const cookieOrgId = getOrgIdFromCookie();
+    const sessionOrgId = session?.user?.orgId;
+    return cookieOrgId || sessionOrgId || null;
+  };
+
   // Fetch staff members
   const fetchStaffMembers = async () => {
     try {
-      const orgId = getOrgIdFromCookie();
+      const orgId = getOrgId();
       console.log("🔍 Fetching staff members for orgId:", orgId);
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json"
-      };
-
-      if (orgId) {
-        headers["x-organization-id"] = orgId;
+      if (!orgId) {
+        console.error("❌ No orgId available from cookie or session");
+        return;
       }
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        "x-organization-id": orgId
+      };
 
       const response = await fetch("/api/admin/users", {
         method: "GET",
@@ -117,14 +126,17 @@ export function StaffManagement() {
   // Fetch invitations
   const fetchInvitations = async () => {
     try {
-      const orgId = getOrgIdFromCookie();
-      const headers: HeadersInit = {
-        "Content-Type": "application/json"
-      };
+      const orgId = getOrgId();
 
-      if (orgId) {
-        headers["x-organization-id"] = orgId;
+      if (!orgId) {
+        console.error("❌ No orgId available from cookie or session");
+        return;
       }
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        "x-organization-id": orgId
+      };
 
       const response = await fetch("/api/admin/users/invite", {
         method: "GET",
@@ -148,8 +160,11 @@ export function StaffManagement() {
     }
   };
 
-  // Initial data fetch
+  // Initial data fetch - wait for session to be available
   useEffect(() => {
+    // Only fetch when session is loaded
+    if (!session) return;
+
     const loadData = async () => {
       setLoading(true);
       await Promise.all([fetchStaffMembers(), fetchInvitations()]);
@@ -157,7 +172,8 @@ export function StaffManagement() {
     };
 
     loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   // Handle successful invitation
   const handleInvitationSent = () => {
