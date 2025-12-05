@@ -143,7 +143,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   </span>
                 </div>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold text-white bg-red-500 rounded-full">
+                  <span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-red-500 rounded-full">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}

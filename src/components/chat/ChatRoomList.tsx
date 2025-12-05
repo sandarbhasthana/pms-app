@@ -9,7 +9,14 @@
 
 import { useChat } from "@/contexts/ChatContext";
 import { cn } from "@/lib/utils";
-import { Loader2, Users, Building2, Home, MessageCircle } from "lucide-react";
+import {
+  Loader2,
+  Users,
+  Building2,
+  Home,
+  MessageCircle,
+  BellOff
+} from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useSession } from "next-auth/react";
@@ -73,6 +80,12 @@ export function ChatRoomList() {
             })
           : "";
 
+        // Check if current user has muted this room
+        const currentParticipant = room.participants.find(
+          (p) => p.userId === session?.user?.id
+        );
+        const isMuted = currentParticipant?.isMuted || false;
+
         return (
           <button
             key={room.id}
@@ -96,7 +109,7 @@ export function ChatRoomList() {
             ) : (
               <div
                 className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br text-white shadow-sm",
+                  "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-linear-to-br text-white shadow-sm",
                   room.type === "ORGANIZATION"
                     ? "from-blue-500 to-blue-600"
                     : room.type === "PROPERTY"
@@ -113,19 +126,26 @@ export function ChatRoomList() {
             {/* Room Info */}
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center justify-between mb-1">
-                <h3
-                  className={cn(
-                    "text-sm truncate",
-                    hasUnread ? "font-semibold" : "font-medium",
-                    hasUnread
-                      ? "text-gray-900 dark:text-gray-100"
-                      : "text-gray-700 dark:text-gray-300"
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <h3
+                    className={cn(
+                      "text-sm truncate",
+                      hasUnread ? "font-semibold" : "font-medium",
+                      hasUnread
+                        ? "text-gray-900 dark:text-gray-100"
+                        : "text-gray-700 dark:text-gray-300"
+                    )}
+                  >
+                    {roomName}
+                  </h3>
+                  {isMuted && (
+                    <span title="Muted">
+                      <BellOff className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 shrink-0" />
+                    </span>
                   )}
-                >
-                  {roomName}
-                </h3>
+                </div>
                 {lastMessageTime && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 shrink-0">
                     {lastMessageTime}
                   </span>
                 )}
@@ -144,7 +164,7 @@ export function ChatRoomList() {
                 </p>
 
                 {hasUnread && (
-                  <span className="ml-2 flex-shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold text-white bg-red-500 rounded-full">
+                  <span className="ml-2 shrink-0 flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-red-500 rounded-full">
                     {room.unreadCount! > 99 ? "99+" : room.unreadCount}
                   </span>
                 )}

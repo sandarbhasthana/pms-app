@@ -53,7 +53,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className={cn("ml-[-0.75rem] mr-1 md:mr-2 px-3 cursor-pointer")}
+            className={cn("-ml-3 mr-1 md:mr-2 px-3 cursor-pointer")}
             title={sidebarOpen ? "Close menu" : "Open menu"}
           >
             {sidebarOpen ? (
@@ -97,7 +97,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors cursor-pointer"
             title="Reports"
           >
-            <BarChart3 className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] cursor-pointer" />
+            <BarChart3 className="h-6 w-6 text-gray-800! dark:text-[#f0f8f9]! cursor-pointer" />
           </Button>
         )}
         {/* Unified notification bell - for PROPERTY_MGR and above */}
