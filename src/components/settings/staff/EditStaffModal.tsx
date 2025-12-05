@@ -435,7 +435,7 @@ export function EditStaffModal({
                         >
                           <SelectTrigger className="w-full overflow-hidden">
                             <div className="flex items-center min-w-0 w-full">
-                              <Building className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <Building className="mr-2 h-4 w-4 text-gray-400 shrink-0" />
                               <div className="truncate flex-1 text-left">
                                 <SelectValue placeholder="Select property" />
                               </div>
@@ -462,7 +462,7 @@ export function EditStaffModal({
                         >
                           <SelectTrigger className="w-full overflow-hidden">
                             <div className="flex items-center min-w-0 w-full">
-                              <MapPin className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <MapPin className="mr-2 h-4 w-4 text-gray-400 shrink-0" />
                               <div className="truncate flex-1 text-left">
                                 <SelectValue placeholder="Select role" />
                               </div>
@@ -489,7 +489,7 @@ export function EditStaffModal({
                         >
                           <SelectTrigger className="w-full overflow-hidden">
                             <div className="flex items-center min-w-0 w-full">
-                              <Clock className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <Clock className="mr-2 h-4 w-4 text-gray-400 shrink-0" />
                               <div className="truncate flex-1 text-left">
                                 <SelectValue placeholder="Select shift" />
                               </div>

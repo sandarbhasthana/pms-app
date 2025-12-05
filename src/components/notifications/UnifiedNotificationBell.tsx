@@ -97,7 +97,7 @@ export function UnifiedNotificationBell({
           )}
           title="Notifications"
         >
-          <BellIcon className="h-6 w-6 !text-gray-800 dark:!text-[#f0f8f9] scale-140 cursor-pointer" />
+          <BellIcon className="h-6 w-6 text-gray-800! dark:text-[#f0f8f9]! scale-140 cursor-pointer" />
 
           {/* Status Dots - Red/Orange for messages, Green for approvals */}
           {chatUnreadCount > 0 && (
@@ -207,7 +207,7 @@ export function UnifiedNotificationBell({
           {/* Messages Tab */}
           <TabsContent value="messages" className="mt-2">
             {chatUnreadCount === 0 ? (
-              <div className="p-4 text-center text-sm text-gray-500 dark:!text-[#f0f8f9]">
+              <div className="p-4 text-center text-sm text-gray-500 dark:text-[#f0f8f9]!">
                 No unread messages
               </div>
             ) : (
@@ -224,21 +224,21 @@ export function UnifiedNotificationBell({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                            <p className="text-base font-medium text-gray-900 dark:!text-[#f0f8f9] truncate">
+                            <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                            <p className="text-base font-medium text-gray-900 dark:text-[#f0f8f9]! truncate">
                               {room.lastMessage?.sender.name || room.name}
                             </p>
                           </div>
                           {room.lastMessage && (
-                            <p className="text-xs text-gray-600 dark:!text-[#f0f8f9] truncate ml-6">
+                            <p className="text-xs text-gray-600 dark:text-[#f0f8f9]! truncate ml-6">
                               {room.lastMessage.content}
                             </p>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <div className="flex flex-col items-end gap-1 shrink-0">
                           <Badge
                             variant="destructive"
-                            className="h-5 min-w-[20px] px-1 flex items-center justify-center text-xs bg-red-600 hover:bg-red-700"
+                            className="h-5 min-w-5 px-1 flex items-center justify-center text-xs bg-red-600 hover:bg-red-700"
                           >
                             {(room.unreadCount ?? 0) > 9
                               ? "9+"

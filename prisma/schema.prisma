@@ -54,6 +54,7 @@ model Property {
   id                      String              @id @default(cuid())
   organizationId          String
   name                    String
+  shortName               String?             // User-defined short name for compact display (e.g., "Main" instead of "Grand Palace Hotel Main Property")
   // Address fields - stored separately for proper formatting and querying
   suite                   String?             // Apt/Suite #, Floor
   street                  String?             // Street Address

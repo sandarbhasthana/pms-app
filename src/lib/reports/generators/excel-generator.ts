@@ -6,6 +6,10 @@
 
 import ExcelJS from "exceljs";
 import { ReportData } from "../types";
+import { fetchHeaderImage } from "../utils/fetch-header-image";
+
+// Header takes first 6 rows
+const HEADER_ROWS = 6;
 
 export async function generateExcel(data: ReportData): Promise<Buffer> {
   try {
@@ -21,17 +25,85 @@ export async function generateExcel(data: ReportData): Promise<Buffer> {
       { width: 20 }
     ];
 
+    // Calculate total content width (5 columns * 20 width = 100 units)
+    const totalColumns = 5;
+    const lastColumnLetter = String.fromCharCode(64 + totalColumns); // 'E'
+
+    // Add header image or fallback text in first 6 rows
+    let headerImageAdded = false;
+    if (data.printHeader?.imageUrl) {
+      try {
+        const imageBuffer = await fetchHeaderImage(data.printHeader.imageUrl);
+        if (imageBuffer) {
+          // Add image to workbook
+          // Type assertion needed due to ExcelJS type definition mismatch with Node.js Buffer
+          const imageId = workbook.addImage({
+            buffer: imageBuffer as unknown as ExcelJS.Buffer,
+            extension: "png"
+          });
+
+          // Merge cells for header area (rows 1-6, columns A-E)
+          worksheet.mergeCells(`A1:${lastColumnLetter}${HEADER_ROWS}`);
+
+          // Set row heights for header area
+          for (let i = 1; i <= HEADER_ROWS; i++) {
+            worksheet.getRow(i).height = 30; // ~180 total height
+          }
+
+          // Add image spanning the header area
+          // Type assertion needed due to ExcelJS type definition expecting full Anchor type
+          worksheet.addImage(imageId, {
+            tl: { col: 0, row: 0 },
+            br: { col: totalColumns, row: HEADER_ROWS },
+            editAs: "oneCell"
+          } as unknown as ExcelJS.ImageRange);
+
+          headerImageAdded = true;
+        }
+      } catch (error) {
+        console.error("Failed to add header image to Excel:", error);
+      }
+    }
+
+    // Fallback: Add property name as text header if no image
+    if (!headerImageAdded) {
+      // Merge cells for header area
+      worksheet.mergeCells(`A1:${lastColumnLetter}${HEADER_ROWS}`);
+
+      // Set row heights for header area
+      for (let i = 1; i <= HEADER_ROWS; i++) {
+        worksheet.getRow(i).height = 30;
+      }
+
+      const headerCell = worksheet.getCell("A1");
+      headerCell.value = data.propertyName || data.organizationName;
+      headerCell.font = { size: 24, bold: true, color: { argb: "FF7210A2" } };
+      headerCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true
+      };
+      headerCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF3E8FF" } // Light purple background
+      };
+    }
+
+    // Content starts after header rows
+    let currentRow = HEADER_ROWS + 2; // Add a blank row after header
+
     // Add title
-    worksheet.mergeCells("A1:E1");
-    const titleCell = worksheet.getCell("A1");
+    worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`);
+    const titleCell = worksheet.getCell(`A${currentRow}`);
     titleCell.value = data.title;
     titleCell.font = { size: 16, bold: true };
     titleCell.alignment = { horizontal: "center", vertical: "middle" };
 
     // Add subtitle if exists
-    let currentRow = 2;
+    currentRow++;
     if (data.subtitle) {
-      worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+      worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`);
       const subtitleCell = worksheet.getCell(`A${currentRow}`);
       subtitleCell.value = data.subtitle;
       subtitleCell.font = { size: 12 };
@@ -95,7 +167,7 @@ export async function generateExcel(data: ReportData): Promise<Buffer> {
     // Check for empty message
     const emptyMessage = data.summary?.emptyMessage;
     if (emptyMessage && typeof emptyMessage === "string") {
-      worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+      worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`);
       const emptyCell = worksheet.getCell(`A${currentRow}`);
       emptyCell.value = emptyMessage;
       emptyCell.font = { size: 12, bold: true, color: { argb: "FFF59E0B" } };

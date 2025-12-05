@@ -245,7 +245,7 @@ export function InvitationsList({
                   </div>
                   {invitation.phone && (
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      <Phone className="h-3 w-3 text-gray-400 dark:!text-purple-400" />
+                      <Phone className="h-3 w-3 text-gray-400 dark:text-purple-400!" />
                       <span>{invitation.phone}</span>
                     </div>
                   )}

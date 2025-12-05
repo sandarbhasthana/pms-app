@@ -4,6 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { withTenantContext } from "@/lib/tenant";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
+import { addPrintHeader, HeaderConfig } from "@/lib/reports/utils/pdf-header";
+
+type PropertySettingsData = {
+  propertyName: string;
+  printHeaderImage: string | null;
+  propertyPhone: string;
+  propertyEmail: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+};
 
 export const runtime = "nodejs";
 
@@ -40,6 +53,36 @@ export async function GET(
       );
     }
 
+    // Fetch property settings for print header
+    const propertySettings: PropertySettingsData | null =
+      await withTenantContext(orgId, (tx) =>
+        tx.propertySettings.findUnique({
+          where: { propertyId: reservation.propertyId },
+          select: {
+            propertyName: true,
+            printHeaderImage: true,
+            propertyPhone: true,
+            propertyEmail: true,
+            street: true,
+            city: true,
+            state: true,
+            zip: true,
+            country: true
+          }
+        })
+      );
+
+    // Build header config
+    const headerConfig: HeaderConfig = {
+      printHeaderImageUrl: propertySettings?.printHeaderImage,
+      propertyName: propertySettings?.propertyName || "Property",
+      propertyAddress: propertySettings
+        ? `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`
+        : undefined,
+      propertyPhone: propertySettings?.propertyPhone,
+      propertyEmail: propertySettings?.propertyEmail
+    };
+
     // Calculate payment status
     const paymentStatus = await calculatePaymentStatus(id, orgId);
 
@@ -67,13 +110,18 @@ export async function GET(
       doc.on("end", () => resolve(Buffer.concat(buffers)));
     });
 
-    // Header
-    doc.fontSize(24).text("RESERVATION REPORT", { align: "center" });
+    // Add print header (image or fallback text)
+    const contentStartY = await addPrintHeader(doc, headerConfig);
+
+    // Document title
+    doc
+      .fontSize(18)
+      .text("RESERVATION REPORT", 50, contentStartY, { align: "center" });
     doc.moveDown(0.5);
     doc.fontSize(10).text(`Generated on: ${new Date().toLocaleDateString()}`, {
       align: "center"
     });
-    doc.moveDown(2);
+    doc.moveDown(1.5);
 
     // Invoice-style table
     const startX = 50;

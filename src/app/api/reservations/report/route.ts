@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { withTenantContext } from "@/lib/tenant";
 import { parseISO } from "date-fns";
+import { addPrintHeader, HeaderConfig } from "@/lib/reports/utils/pdf-header";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,19 @@ type ReservationFromDB = {
   checkIn: Date;
   checkOut: Date;
   status: string;
+  propertyId: string;
+};
+
+type PropertySettingsData = {
+  propertyName: string;
+  printHeaderImage: string | null;
+  propertyPhone: string;
+  propertyEmail: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -53,6 +67,52 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Filter by propertyId if specified, otherwise use first reservation's property
+    const propertyIdParam = searchParams.get("propertyId");
+    let targetPropertyId: string | null = propertyIdParam;
+
+    if (propertyIdParam) {
+      all = all.filter((r) => r.propertyId === propertyIdParam);
+    } else if (all.length > 0) {
+      // Use the first reservation's property for the header
+      targetPropertyId = all[0].propertyId;
+    }
+
+    // Fetch property settings for print header
+    let headerConfig: HeaderConfig = {
+      propertyName: "Property Management System"
+    };
+
+    if (targetPropertyId) {
+      const propertySettings: PropertySettingsData | null =
+        await withTenantContext(orgId, (tx) =>
+          tx.propertySettings.findUnique({
+            where: { propertyId: targetPropertyId! },
+            select: {
+              propertyName: true,
+              printHeaderImage: true,
+              propertyPhone: true,
+              propertyEmail: true,
+              street: true,
+              city: true,
+              state: true,
+              zip: true,
+              country: true
+            }
+          })
+        );
+
+      if (propertySettings) {
+        headerConfig = {
+          printHeaderImageUrl: propertySettings.printHeaderImage,
+          propertyName: propertySettings.propertyName,
+          propertyAddress: `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`,
+          propertyPhone: propertySettings.propertyPhone,
+          propertyEmail: propertySettings.propertyEmail
+        };
+      }
+    }
+
     // generate PDF with custom font to avoid .afm file issues
     const fontPath = path.join(
       process.cwd(),
@@ -77,10 +137,13 @@ export async function GET(req: NextRequest) {
       doc.on("end", () => resolve(Buffer.concat(buffers)))
     );
 
+    // Add print header (image or fallback text)
+    const contentStartY = await addPrintHeader(doc, headerConfig);
+
     doc
       .fontSize(18)
-      .text("All Reservations Report", { align: "center" })
-      .moveDown();
+      .text("All Reservations Report", 50, contentStartY, { align: "center" })
+      .moveDown(1.5);
     all.forEach((r) => {
       doc
         .fontSize(12)

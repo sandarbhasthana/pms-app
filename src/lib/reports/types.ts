@@ -67,6 +67,13 @@ export interface ReportData {
   data: Record<string, string | number | Date>[];
   summary?: Record<string, string | number>;
   charts?: ReportChart[];
+  // Print header configuration
+  printHeader?: {
+    imageUrl?: string | null;
+    propertyAddress?: string;
+    propertyPhone?: string;
+    propertyEmail?: string;
+  };
 }
 
 export interface ReportChart {

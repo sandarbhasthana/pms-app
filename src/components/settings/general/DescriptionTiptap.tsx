@@ -41,6 +41,7 @@ import { Palette } from "lucide-react";
 interface FormValues {
   propertyType: string;
   propertyName: string;
+  shortName: string;
   phoneCode: string;
   propertyPhone: string;
   propertyEmail: string;
@@ -591,7 +592,7 @@ const DescriptionTiptap = ({ control, errors }: Props) => {
           {showColorPalette && (
             <div
               ref={colorDropdownRef}
-              className="absolute z-50 mt-2 p-4 grid grid-cols-3 grid-rows-2 gap-3 rounded-md shadow-lg border border-muted bg-background dark:bg-muted/90 w-fit min-w-[9rem]"
+              className="absolute z-50 mt-2 p-4 grid grid-cols-3 grid-rows-2 gap-3 rounded-md shadow-lg border border-muted bg-background dark:bg-muted/90 w-fit min-w-36"
             >
               {predefinedColors.map((col) => (
                 <button

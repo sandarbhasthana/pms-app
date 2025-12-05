@@ -45,7 +45,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
   const canSeeSidebarToggle = !!role && ALL_STAFF_ROLES.has(role);
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-white dark:bg-gray-900 shadow-sm">
+    <header className="sticky top-0 z-40 flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-white dark:bg-gray-900 shadow-sm">
       <div className="flex items-center space-x-2 md:space-x-3">
         {/* Hamburger menu toggle - for all staff roles */}
         {canSeeSidebarToggle && (
@@ -87,7 +87,9 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
       {/* Right-side controls */}
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Property switcher - only for non-SUPER_ADMIN users */}
-        {role !== "SUPER_ADMIN" && <PropertySwitcher className="cursor-pointer" />}
+        {role !== "SUPER_ADMIN" && (
+          <PropertySwitcher className="cursor-pointer" />
+        )}
         {/* Reports icon - for PROPERTY_MGR and above */}
         {role && PM_OR_ABOVE.has(role) && (
           <Button
@@ -101,7 +103,9 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
           </Button>
         )}
         {/* Unified notification bell - for PROPERTY_MGR and above */}
-        {role && PM_OR_ABOVE.has(role) && <UnifiedNotificationBell className="cursor-pointer"/>}
+        {role && PM_OR_ABOVE.has(role) && (
+          <UnifiedNotificationBell className="cursor-pointer" />
+        )}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}

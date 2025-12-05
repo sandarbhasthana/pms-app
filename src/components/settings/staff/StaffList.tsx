@@ -21,17 +21,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit, Trash2, Phone, Mail, Clock } from "lucide-react";
 import {
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Phone,
-  Mail,
-  MapPin,
-  Clock
-} from "lucide-react";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 import { EditStaffModal } from "./EditStaffModal";
 import { DeleteStaffModal } from "./DeleteStaffModal";
+
+// Property type to emoji mapping
+const propertyTypeIcons: Record<string, string> = {
+  Hotel: "🏨",
+  Resort: "🏖️",
+  Motel: "🏩",
+  Inn: "🛏️",
+  Lodge: "🏕️",
+  Hostel: "🛌",
+  Apartment: "🏢",
+  Villa: "🏡",
+  Other: "🏠"
+};
 
 interface StaffMember {
   id: string;
@@ -43,6 +54,8 @@ interface StaffMember {
   propertyAssignments: Array<{
     propertyId: string;
     propertyName: string;
+    propertyShortName?: string | null;
+    propertyType?: string | null;
     role: string;
     shift?: string;
     createdAt: string;
@@ -258,7 +271,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
       <TableHead
         className={`cursor-pointer select-none text-center ${className} ${
           isActive
-            ? "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30"
+            ? "bg-linear-to-b from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30"
             : ""
         }`}
         onClick={() => handleSort(field)}
@@ -268,7 +281,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
           <div className="flex flex-col items-center gap-0.5">
             {/* Up Triangle */}
             <div
-              className={`w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+              className={`w-0 h-0 border-l-4 border-r-4 border-b-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
                 isActive && isAsc
                   ? "border-b-[#7210a2] dark:border-b-[#a855f7]"
                   : "border-b-gray-400 dark:border-b-gray-500"
@@ -276,7 +289,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
             />
             {/* Down Triangle */}
             <div
-              className={`w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+              className={`w-0 h-0 border-l-4 border-r-4 border-t-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
                 isActive && !isAsc
                   ? "border-t-[#7210a2] dark:border-t-[#a855f7]"
                   : "border-t-gray-400 dark:border-t-gray-500"
@@ -293,7 +306,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
   if (staffMembers.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="mx-auto w-24 h-24 bg-gray-100 dark:!bg-gray-800 rounded-full flex items-center justify-center mb-4">
+        <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-800! rounded-full flex items-center justify-center mb-4">
           <Phone className="h-8 w-8 text-purple-400 dark:text-purple-400" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
@@ -311,7 +324,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
       <div className="w-full rounded-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gradient-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium tracking-wider">
+            <TableRow className="bg-linear-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium tracking-wider">
               <SortableHeader field="name" className="w-[200px] px-3 py-4">
                 STAFF MEMBER
               </SortableHeader>
@@ -359,7 +372,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                       name={staff.name}
                       src={staff.image}
                       size="md"
-                      className="h-9 w-9 flex-shrink-0"
+                      className="h-9 w-9 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium truncate text-sm">
@@ -375,7 +388,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                     style={
                       { color: "#374151 !important" } as React.CSSProperties
                     }
-                    className={`text-xs whitespace-nowrap border-0 ${
+                    className={`text-xs whitespace-nowrap border-0 pointer-events-none ${
                       roleColors[
                         staff.organizationRole as keyof typeof roleColors
                       ] || "bg-gray-300"
@@ -388,7 +401,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 <TableCell className="w-[140px]">
                   <div className="flex flex-wrap gap-1">
                     {staff.propertyAssignments.length === 0 ? (
-                      <span className="text-xs !text-gray-600 dark:text-gray-400 italic">
+                      <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                         No roles
                       </span>
                     ) : (
@@ -403,7 +416,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                               color: "#374151 !important"
                             } as React.CSSProperties
                           }
-                          className={`text-xs whitespace-nowrap border-0 ${
+                          className={`text-xs whitespace-nowrap border-0 pointer-events-none ${
                             roleColors[role as keyof typeof roleColors] ||
                             "bg-gray-300"
                           }`}
@@ -416,22 +429,44 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 </TableCell>
 
                 <TableCell className="w-[280px]">
-                  <div className="space-y-2">
-                    {staff.propertyAssignments.length === 0 ? (
-                      <span className="text-xs !text-gray-600 dark:text-gray-400 italic">
-                        No assignments
-                      </span>
-                    ) : (
-                      staff.propertyAssignments.map((assignment, index) => (
-                        <div key={index} className="flex items-start space-x-2">
-                          <MapPin className="h-3.5 w-3.5 text-purple-300 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm font-medium dark:text-gray-200 leading-tight">
-                            {assignment.propertyName}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <TooltipProvider>
+                    <div className="space-y-2">
+                      {staff.propertyAssignments.length === 0 ? (
+                        <span className="text-xs text-gray-600! dark:text-gray-400 italic">
+                          No assignments
+                        </span>
+                      ) : (
+                        staff.propertyAssignments.map((assignment, index) => {
+                          const icon =
+                            propertyTypeIcons[assignment.propertyType || ""] ||
+                            propertyTypeIcons.Other;
+                          const displayName =
+                            assignment.propertyShortName ||
+                            assignment.propertyName;
+
+                          return (
+                            <Tooltip key={index}>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center space-x-2 cursor-default">
+                                  <span className="text-base shrink-0">
+                                    {icon}
+                                  </span>
+                                  <span className="text-sm font-medium dark:text-gray-200 leading-tight truncate max-w-[200px]">
+                                    {displayName}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-sm">
+                                  {assignment.propertyName}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })
+                      )}
+                    </div>
+                  </TooltipProvider>
                 </TableCell>
 
                 <TableCell className="w-[140px]">
@@ -439,7 +474,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                     {staff.propertyAssignments.length === 0 ? (
                       <div className="flex items-center space-x-1.5">
                         <Clock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                        <span className="text-xs !text-gray-600 dark:text-gray-400 italic">
+                        <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                           No shift
                         </span>
                       </div>
@@ -454,14 +489,14 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                                   color: "#374151 !important"
                                 } as React.CSSProperties
                               }
-                              className={`text-xs inline-flex items-center space-x-1 whitespace-nowrap border-0 ${
+                              className={`text-xs inline-flex items-center space-x-1 whitespace-nowrap border-0 pointer-events-none ${
                                 shiftColors[
                                   assignment.shift as keyof typeof shiftColors
                                 ] || "bg-gray-300"
                               }`}
                             >
                               <Clock className="h-3 w-3" data-badge="true" />
-                              <span data-badge="true">
+                              <span data-badge="true" className="uppercase">
                                 {shiftLabels[
                                   assignment.shift as keyof typeof shiftLabels
                                 ] || assignment.shift}
@@ -470,7 +505,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                           ) : (
                             <div className="flex items-center space-x-1.5">
                               <Clock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                              <span className="text-xs !text-gray-600 dark:text-gray-400 italic">
+                              <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                                 No shift
                               </span>
                             </div>
@@ -484,14 +519,14 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                 <TableCell className="w-[220px]">
                   <div className="space-y-1.5">
                     <div className="flex items-center space-x-2">
-                      <Mail className="h-3 w-3 text-purple-300 flex-shrink-0" />
+                      <Mail className="h-3 w-3 text-purple-300 shrink-0" />
                       <span className="text-xs dark:text-gray-300 truncate">
                         {staff.email}
                       </span>
                     </div>
                     {staff.phone && (
                       <div className="flex items-center space-x-2">
-                        <Phone className="h-3 w-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                        <Phone className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
                         <span className="text-xs dark:text-gray-300">
                           {staff.phone}
                         </span>
@@ -519,16 +554,16 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                         {canEditThisStaff(staff) && (
                           <DropdownMenuItem
                             onClick={() => setEditingStaff(staff)}
-                            className="hover:!bg-purple-200 dark:hover:bg-purple-400 hover:text-white dark:hover:text-white transition-colors cursor-pointer"
+                            className="hover:bg-[#7210a2]! hover:text-[#f0f8ff]! transition-colors cursor-pointer"
                           >
-                            <Edit className="mr-2 h-4 w-4 hover:text-white" />
+                            <Edit className="mr-2 h-4 w-4" />
                             Edit Staff
                           </DropdownMenuItem>
                         )}
                         {canDeleteThisStaff(staff) && (
                           <DropdownMenuItem
                             onClick={() => setDeletingStaff(staff)}
-                            className="text-red-600 dark:text-red-400 hover:!bg-red-600 dark:hover:!bg-red-600 hover:!text-white dark:hover:!text-white transition-colors cursor-pointer [&:hover_svg]:!text-white"
+                            className="text-red-600 dark:text-red-400 hover:bg-red-600! dark:hover:bg-red-600! hover:text-white! dark:hover:text-white! transition-colors cursor-pointer [&:hover_svg]:text-white!"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Remove Staff

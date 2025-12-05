@@ -45,7 +45,7 @@ export default function StaffManagementPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Staff Management</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-gray-600 dark:text-gray-400! mt-1">
           Manage your team members, invite new staff, and assign roles and properties.
         </p>
       </div>

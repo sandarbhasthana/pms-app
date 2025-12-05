@@ -11,6 +11,7 @@ const GeneralSettingsSchema = z
     propertyId: z.string().optional(),
     propertyType: z.string(),
     propertyName: z.string(),
+    shortName: z.string().optional(), // Short display name for Property model
     propertyPhone: z.string(),
     propertyEmail: z.string().email(),
     propertyWebsite: z.string().optional(),
@@ -89,6 +90,12 @@ export async function POST(req: NextRequest) {
         create: propertyRecord,
         update: propertyRecord
       });
+
+      // Also update the Property.shortName field
+      await prisma.property.update({
+        where: { id: data.propertyId },
+        data: { shortName: data.shortName || null }
+      });
     } else if (data.orgId) {
       // Organization-level settings - create record without propertyId
       const orgRecord = {
@@ -158,9 +165,21 @@ export async function GET(req: NextRequest) {
     // 3. Fetch the settings based on what's provided
     let settings;
     if (propertyId) {
-      settings = await prisma.propertySettings.findUnique({
-        where: { propertyId }
+      // Get settings with property shortName
+      const settingsWithProperty = await prisma.propertySettings.findUnique({
+        where: { propertyId },
+        include: {
+          property: {
+            select: { shortName: true }
+          }
+        }
       });
+
+      if (settingsWithProperty) {
+        // Merge shortName from Property into settings response
+        const { property, ...rest } = settingsWithProperty;
+        settings = { ...rest, shortName: property?.shortName || "" };
+      }
 
       // If no property settings exist, create defaults from Property table
       if (!settings) {
@@ -186,6 +205,7 @@ export async function GET(req: NextRequest) {
           propertyId,
           propertyType: "Hotel", // Default type
           propertyName: property.name || "",
+          shortName: property.shortName || "", // Include shortName from Property
           propertyPhone: property.phone || "",
           propertyEmail: property.email || "",
           propertyWebsite: "", // Not in Property table

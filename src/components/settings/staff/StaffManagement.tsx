@@ -219,14 +219,14 @@ export function StaffManagement() {
               <Button
                 onClick={() => setShowCreateUserModal(true)}
                 variant="outline"
-                className="border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white"
+                className="text-[#7210a2] hover:bg-[#7210a2]! hover:text-white cursor-pointer"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Create User
               </Button>
               <Button
                 onClick={() => setShowInviteModal(true)}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-[#7210a2] hover:bg-[#7210a2]/90 text-[#f0f8ff] dark:hover:bg-[#7210a2]/50 cursor-pointer"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Send Invitation
@@ -281,7 +281,7 @@ export function StaffManagement() {
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Recent Activity
             </CardTitle>
-            <div className="p-2 bg-green-100 dark:!bg-green-900/30 rounded-lg">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30! rounded-lg">
               <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
@@ -308,16 +308,16 @@ export function StaffManagement() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="bg-gray-100 dark:!bg-transparent">
+        <TabsList className="bg-gray-100 dark:bg-transparent! border border-purple-600 dark:border-purple-500 rounded-lg">
           <TabsTrigger
             value="staff"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:!text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:!text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white! dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white! text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
           >
             Staff Members
           </TabsTrigger>
           <TabsTrigger
             value="invitations"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:!text-white dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:!text-white text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white! dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white! text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
           >
             Invitations (
             {invitations.filter((inv) => inv.status === "pending").length})

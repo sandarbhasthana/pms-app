@@ -14,7 +14,7 @@ import DescriptionTiptap from "@/components/settings/general/DescriptionTiptap";
 import { useGeneralSettings } from "@/lib/hooks/useGeneralSettings";
 import { getCookie } from "cookies-next";
 import { toast } from "sonner";
-import { Building2, ArrowLeft } from "lucide-react";
+import { Building2, ArrowLeft, X } from "lucide-react";
 
 // Type definition for react-phone-input-2 country object
 interface PhoneInputCountry {
@@ -26,6 +26,7 @@ interface PhoneInputCountry {
 type FormValues = {
   propertyType: string;
   propertyName: string;
+  shortName: string;
   phoneCode: string;
   propertyPhone: string;
   propertyEmail: string;
@@ -242,6 +243,7 @@ export default function GeneralSettingsFormFixed({
         reset({
           propertyType: "",
           propertyName: "",
+          shortName: "",
           propertyPhone: "",
           propertyEmail: "",
           propertyWebsite: "",
@@ -786,6 +788,23 @@ export default function GeneralSettingsFormFixed({
               )}
             </div>
             <div>
+              <Label>
+                Short Name{" "}
+                <span className="text-gray-500 text-xs font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                {...register("shortName")}
+                placeholder="e.g., Main, Beach"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                A compact display name for lists and tables (e.g.,
+                &quot;Main&quot; instead of &quot;Grand Palace Hotel Main
+                Property&quot;)
+              </p>
+            </div>
+            <div>
               <Label>Property Phone</Label>
               <div className="phone-input-wrapper">
                 <PhoneInput
@@ -999,7 +1018,7 @@ export default function GeneralSettingsFormFixed({
                 </p>
               )}
             </div>
-            <div className="md:col-span-2">
+            <div>
               <Label>Property Website</Label>
               <Input {...register("propertyWebsite")} />
             </div>
@@ -1206,69 +1225,121 @@ export default function GeneralSettingsFormFixed({
 
           <div>
             <Label>Property Images</Label>
-            <Input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                const previews = files.map((file) => URL.createObjectURL(file));
-                setPhotoPreview(previews);
-                setValue("photos", e.target.files);
-              }}
-            />
+            <div className="inline-flex mt-1 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
+              <label className="flex items-center px-4 py-1.5 bg-[#7210a2] text-white text-sm font-medium cursor-pointer hover:bg-[#5a0d82] transition-colors mb-0!">
+                Choose Files
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    const previews = files.map((file) =>
+                      URL.createObjectURL(file)
+                    );
+                    setPhotoPreview(previews);
+                    setValue("photos", e.target.files);
+                  }}
+                />
+              </label>
+              <span className="flex items-center px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1e1e1e] mb-0!">
+                {photoPreview.length > 0
+                  ? `${photoPreview.length} file(s) selected`
+                  : "No files chosen"}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {photoPreview.map((src, i) => (
-                <Image
-                  key={i}
-                  src={src}
-                  alt="Property Image"
-                  width={128}
-                  height={96}
-                  className="rounded border object-cover w-32 h-24"
-                />
+                <div key={i} className="relative group">
+                  <Image
+                    src={src}
+                    alt="Property Image"
+                    width={128}
+                    height={96}
+                    className="rounded border object-cover w-32 h-24"
+                  />
+                  <button
+                    type="button"
+                    title="Remove image"
+                    onClick={() => {
+                      const newPreviews = photoPreview.filter(
+                        (_, index) => index !== i
+                      );
+                      setPhotoPreview(newPreviews);
+                      setValue("photos", null);
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full grid place-items-center shadow-sm transition-colors"
+                  >
+                    <X className="w-2.5 h-2.5" strokeWidth={3} />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
 
           <div>
             <Label>Print Header Image</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setValue("printHeaderImage", file);
-                  setPrintHeaderPreview(URL.createObjectURL(file));
-                }
-              }}
-            />
-            {printHeaderPreview && (
-              <div className="mt-2">
-                <Image
-                  src={printHeaderPreview}
-                  alt="Print Header"
-                  width={512}
-                  height={96}
-                  className="w-full max-w-md h-24 object-contain border rounded"
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Recommended: 1200 x 400 pixels (3:1 aspect ratio) for best results
+            </p>
+            <div className="inline-flex mt-1 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
+              <label className="flex items-center px-4 py-1.5 bg-[#7210a2] text-white text-sm font-medium cursor-pointer hover:bg-[#5a0d82] transition-colors mb-0!">
+                Choose File
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setValue("printHeaderImage", file);
+                      setPrintHeaderPreview(URL.createObjectURL(file));
+                    }
+                  }}
                 />
+              </label>
+              <span className="flex items-center px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1e1e1e]">
+                {printHeaderPreview ? "1 file selected" : "No file chosen"}
+              </span>
+            </div>
+            {printHeaderPreview && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <div className="relative">
+                  <Image
+                    src={printHeaderPreview}
+                    alt="Print Header"
+                    width={384}
+                    height={96}
+                    className="rounded border object-cover h-24 w-auto"
+                  />
+                  <button
+                    type="button"
+                    title="Remove image"
+                    onClick={() => {
+                      setPrintHeaderPreview("");
+                      setValue("printHeaderImage", null);
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full grid place-items-center shadow-sm transition-colors"
+                  >
+                    <X className="w-2.5 h-2.5" strokeWidth={3} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          <div>
-            <Label>Description</Label>
+          <div className="pt-4">
             <DescriptionTiptap control={control} errors={errors} />
           </div>
         </section>
 
         {/* Submit */}
-        <div className="pt-2">
+        <div>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full md:w-fit bg-purple-700 hover:bg-purple-600 rounded-sm"
+            className="w-full md:w-fit bg-[#7210a2] hover:bg-[#5a0d82] dark:bg-[#7210a2] dark:hover:bg-[#7210a2]/50 text-[#f0f8ff] rounded-sm cursor-pointer"
           >
             {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>

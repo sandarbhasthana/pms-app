@@ -3,11 +3,13 @@ import PDFDocument from "pdfkit";
 import path from "path";
 import { withTenantContext } from "@/lib/tenant";
 import { calculatePaymentStatus } from "@/lib/payments/utils";
+import { addPrintHeader, HeaderConfig } from "@/lib/reports/utils/pdf-header";
 
 type ReservationData = {
   id: string;
   guestName: string | null;
   roomId: string;
+  propertyId: string;
   checkIn: Date;
   checkOut: Date;
   adults: number;
@@ -16,6 +18,18 @@ type ReservationData = {
   phone: string | null;
   email: string | null;
   status: string;
+};
+
+type PropertySettingsData = {
+  propertyName: string;
+  printHeaderImage: string | null;
+  propertyPhone: string;
+  propertyEmail: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
 };
 
 export const runtime = "nodejs";
@@ -44,6 +58,7 @@ export async function GET(
             id: true,
             guestName: true,
             roomId: true,
+            propertyId: true,
             checkIn: true,
             checkOut: true,
             adults: true,
@@ -61,6 +76,36 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Fetch property settings for print header
+    const propertySettings: PropertySettingsData | null =
+      await withTenantContext(orgId, (tx) =>
+        tx.propertySettings.findUnique({
+          where: { propertyId: reservation.propertyId },
+          select: {
+            propertyName: true,
+            printHeaderImage: true,
+            propertyPhone: true,
+            propertyEmail: true,
+            street: true,
+            city: true,
+            state: true,
+            zip: true,
+            country: true
+          }
+        })
+      );
+
+    // Build header config
+    const headerConfig: HeaderConfig = {
+      printHeaderImageUrl: propertySettings?.printHeaderImage,
+      propertyName: propertySettings?.propertyName || "Property",
+      propertyAddress: propertySettings
+        ? `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`
+        : undefined,
+      propertyPhone: propertySettings?.propertyPhone,
+      propertyEmail: propertySettings?.propertyEmail
+    };
 
     // Calculate payment status
     const paymentStatus = await calculatePaymentStatus(params.id, orgId);
@@ -88,17 +133,20 @@ export async function GET(
       doc.on("end", () => resolve(Buffer.concat(buffers)));
     });
 
-    // Header
-    doc.fontSize(20).text("Reservation Invoice", { align: "center" });
-    doc.moveDown();
+    // Add print header (image or fallback text)
+    const contentStartY = await addPrintHeader(doc, headerConfig);
+
+    // Document title
+    doc.fontSize(18).text("INVOICE", 50, contentStartY, { align: "center" });
+    doc.moveDown(1.5);
 
     // Body
     doc.fontSize(12);
     doc.text(`Reservation ID: ${reservation.id}`);
     doc.text(`Guest Name: ${reservation.guestName}`);
     doc.text(`Room ID: ${reservation.roomId}`);
-    doc.text(`Check-In: ${reservation.checkIn.toString()}`);
-    doc.text(`Check-Out: ${reservation.checkOut.toString()}`);
+    doc.text(`Check-In: ${reservation.checkIn.toDateString()}`);
+    doc.text(`Check-Out: ${reservation.checkOut.toDateString()}`);
     doc.moveDown();
 
     // Example line-items (customize to your pricing model)

@@ -82,7 +82,6 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
     );
 
     setGroupedRooms(reorderedGroups);
-    toast.success("Room type order updated");
   };
 
   const getAbbreviation = (type: string) =>
@@ -264,42 +263,42 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
           type="button"
           title="Add Room Type"
           variant="outline"
-          className="!border-[#ab2aea] cursor-pointer !text-[#ab2aea] hover:!bg-[#ab2aea] hover:!text-white !transition-all !duration-200"
+          className="border-[#ab2aea]! cursor-pointer text-[#ab2aea]! hover:bg-[#ab2aea]! hover:text-white! transition-all! duration-200!"
         >
           <PlusIcon className="h-4 w-4 mr-2 text-[#121212] dark:text-[#f0f8ff]" />
           Add Room Type
         </Button>
       </div>
-      <div className="overflow-x-auto border rounded-md text-md">
+      <div className="overflow-x-auto border rounded-md text-sm">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
           <table className="min-w-full table-fixed divide-y border-0">
-            <thead className="bg-gray-50 dark:bg-gray-700 text-center">
+            <thead className="bg-linear-to-r from-[#7210a2] to-[#9333ea] text-white text-center shadow-md">
               <tr className="h-14">
-                <th className="w-[2%] px-1.5 py-3 dark:bg-gray-700"></th>
+                <th className="w-[2%] px-1.5 py-3"></th>
                 <th
-                  className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
+                  className="w-[16%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase border-r border-purple-400/30"
                   title="Type of room available"
                 >
-                  ROOM TYPES
+                  Room Types
                 </th>
-                <th className="w-[12%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
-                  CALL SIGN
+                <th className="w-[12%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase border-r border-purple-400/30">
+                  Call Sign
                 </th>
-                <th className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
-                  ON-PREM/OFF-PREM
+                <th className="w-[16%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase border-r border-purple-400/30">
+                  On-Prem/Off-Prem
                 </th>
-                <th className="w-[12%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
-                  COUNT
+                <th className="w-[12%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase border-r border-purple-400/30">
+                  Count
                 </th>
-                <th className="w-[16%] px-4 py-3 text-center border-r border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
-                  TOTAL COUNT
+                <th className="w-[16%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase border-r border-purple-400/30">
+                  Total Count
                 </th>
-                <th className="w-[5%] px-4 py-3 text-center last:border-r-0 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700">
-                  ACTIONS
+                <th className="w-[5%] px-3 py-4 text-center text-sm font-medium tracking-wider uppercase">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -308,32 +307,30 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
               items={groupIds}
               strategy={verticalListSortingStrategy}
             >
-              <tbody>
+              <tbody className="text-sm">
                 {groupedRooms.map((group, index) => (
                   <SortableItem key={groupIds[index]} id={groupIds[index]}>
                     <td
-                      className="w-[16%] px-4 py-3 text-center text-purple-600 dark:text-purple-400 font-bold hover:underline hover:text-purple-900 dark:hover:text-purple-200 cursor-pointer text-lg"
+                      className="w-[16%] px-4 py-3 text-center text-purple-600 dark:text-purple-400 font-semibold hover:underline hover:text-purple-900 dark:hover:text-purple-200 cursor-pointer"
                       onClick={() => handleTypeClick(group)}
                     >
                       {group.type}
                     </td>
-                    <td className="w-[12%] px-4 py-3 text-center text-lg">
+                    <td className="w-[12%] px-4 py-3 text-center">
                       {group.abbreviation ?? getAbbreviation(group.type)}
                     </td>
-                    <td className="w-[16%] px-4 py-3 text-center text-lg">
-                      Physical
-                    </td>
-                    <td className="w-[12%] px-4 py-3 text-center text-lg">
+                    <td className="w-[16%] px-4 py-3 text-center">Physical</td>
+                    <td className="w-[12%] px-4 py-3 text-center">
                       {group.rooms.length}
                     </td>
-                    <td className="w-[16%] px-4 py-3 text-center text-lg">
+                    <td className="w-[16%] px-4 py-3 text-center">
                       {group.rooms.length}
                     </td>
-                    <td className="w-[5%] px-4 py-3 text-center text-lg">
+                    <td className="w-[5%] px-4 py-3 text-center">
                       <button
                         type="button"
                         onClick={() => onDelete(group.rooms[0].id)}
-                        className="p-1.5 rounded border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
+                        className="p-1.5 rounded border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200 cursor-pointer"
                         title="Delete"
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -342,20 +339,20 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
                   </SortableItem>
                 ))}
 
-                <tr className="font-semibold border-t bg-gray-100 border-gray-300 dark:border-gray-600 dark:bg-gray-700 h-12">
-                  <td className="w-[2%] px-0.5 py-3 dark:bg-gray-700"></td>
-                  <td className="w-[16%] px-4 py-3 text-center dark:bg-gray-700">
-                    TOTAL
+                <tr className="font-semibold border-t-2 border-purple-400/30 bg-linear-to-r from-[#7210a2] to-[#9333ea] text-white h-12 shadow-md">
+                  <td className="w-[2%] px-0.5 py-3"></td>
+                  <td className="w-[16%] px-4 py-3 text-center text-sm font-medium tracking-wider uppercase">
+                    Total
                   </td>
-                  <td className="w-[12%] px-4 py-3 dark:bg-gray-700"></td>
-                  <td className="w-[16%] px-4 py-3 dark:bg-gray-700"></td>
-                  <td className="w-[12%] px-4 py-3 text-center dark:bg-gray-700">
+                  <td className="w-[12%] px-4 py-3"></td>
+                  <td className="w-[16%] px-4 py-3"></td>
+                  <td className="w-[12%] px-4 py-3 text-center font-bold">
                     {totalRooms}
                   </td>
-                  <td className="w-[16%] px-4 py-3 text-center dark:bg-gray-700">
+                  <td className="w-[16%] px-4 py-3 text-center font-bold">
                     {totalRooms}
                   </td>
-                  <td className="w-[5%] px-4 py-3 dark:bg-gray-700"></td>
+                  <td className="w-[5%] px-4 py-3"></td>
                 </tr>
               </tbody>
             </SortableContext>
@@ -367,7 +364,7 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
         <SheetClose asChild>
           <div />
         </SheetClose>
-        <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base">
+        <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto bg-gray-100! dark:bg-[#121212]! text-gray-900! dark:text-[#f0f8ff]! [&_label]:text-base [&_input]:text-base [&_textarea]:text-base **:data-[slot=select-trigger]:text-base **:data-[slot=select-item]:text-base">
           <SheetHeader className="relative">
             {/* Close button in top right corner */}
             <button
@@ -388,7 +385,7 @@ const AccommodationsTable: FC<AccommodationsTableProps> = ({
               <ChevronLeftIcon className="h-6 w-6" /> Back
             </button>
             <SheetTitle className="text-3xl">Accommodation Details</SheetTitle>
-            <SheetDescription className="text-md">
+            <SheetDescription className="text-sm">
               Edit settings for room type “{selectedGroup?.type}” and its rooms.
             </SheetDescription>
           </SheetHeader>

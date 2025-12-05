@@ -7,6 +7,7 @@
 import PDFDocument from "pdfkit";
 import path from "path";
 import { ReportData } from "../types";
+import { addPrintHeader, HeaderConfig } from "../utils/pdf-header";
 
 export async function generatePDF(data: ReportData): Promise<Buffer> {
   try {
@@ -44,17 +45,29 @@ export async function generatePDF(data: ReportData): Promise<Buffer> {
     const textColor = "#1f2937"; // Dark gray
     const borderColor = "#d1d5db"; // Border gray
 
-    // Header - Title with purple text (no background)
+    // Build header config from ReportData
+    const headerConfig: HeaderConfig = {
+      printHeaderImageUrl: data.printHeader?.imageUrl,
+      propertyName: data.propertyName || data.organizationName,
+      propertyAddress: data.printHeader?.propertyAddress,
+      propertyPhone: data.printHeader?.propertyPhone,
+      propertyEmail: data.printHeader?.propertyEmail
+    };
+
+    // Add print header (image or fallback text)
+    const contentStartY = await addPrintHeader(doc, headerConfig);
+
+    // Title with purple text
     doc
       .strokeColor(primaryColor)
-      .fontSize(22)
+      .fontSize(20)
       .font(fontPath)
-      .text(data.title, 50, doc.y, {
+      .text(data.title, 50, contentStartY, {
         width: doc.page.width - 100,
         align: "center"
       });
 
-    doc.moveDown(2);
+    doc.moveDown(1.5);
     doc.fillColor(textColor);
 
     // Subtitle if exists

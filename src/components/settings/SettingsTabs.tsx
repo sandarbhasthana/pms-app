@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const tabs = [
   { label: "Property Settings", href: "/settings/general" },
@@ -103,7 +102,7 @@ export default function SettingsTabs() {
       {/* Left scroll arrow */}
       {canScrollLeft && (
         <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center">
-          <div className="bg-gradient-to-r from-white dark:from-gray-900 to-transparent w-12 h-full flex items-center">
+          <div className="bg-linear-to-r from-white dark:from-gray-900 to-transparent w-12 h-full flex items-center">
             <Button
               variant="ghost"
               size="sm"
@@ -119,7 +118,7 @@ export default function SettingsTabs() {
       {/* Right scroll arrow */}
       {canScrollRight && (
         <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center">
-          <div className="bg-gradient-to-l from-white dark:from-gray-900 to-transparent w-12 h-full flex items-center justify-end">
+          <div className="bg-linear-to-l from-white dark:from-gray-900 to-transparent w-12 h-full flex items-center justify-end">
             <Button
               variant="ghost"
               size="sm"
@@ -145,13 +144,11 @@ export default function SettingsTabs() {
               <Link
                 key={tab.label}
                 href={tab.href}
-                className={cn(
-                  "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
+                className={
                   isActive
-                    ? "bg-purple-600 shadow-md"
-                    : "bg-muted hover:bg-muted/80",
-                  isActive ? "text-white" : "text-foreground/70"
-                )}
+                    ? "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-[#7210a2] border-transparent shadow-md text-white"
+                    : "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-transparent border-[#7210a2] dark:border-[#9333ea] hover:bg-[#7210a2]/10 dark:hover:bg-[#9333ea]/20 text-[#7210a2] dark:text-[#a855f7]"
+                }
               >
                 {tab.label}
               </Link>

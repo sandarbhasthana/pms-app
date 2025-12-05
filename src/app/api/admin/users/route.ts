@@ -99,7 +99,13 @@ export async function GET(req: NextRequest) {
         property: {
           select: {
             id: true,
-            name: true
+            name: true,
+            shortName: true,
+            settings: {
+              select: {
+                propertyType: true
+              }
+            }
           }
         }
       }
@@ -109,6 +115,8 @@ export async function GET(req: NextRequest) {
     interface PropertyAssignment {
       propertyId: string;
       propertyName: string;
+      propertyShortName: string | null;
+      propertyType: string | null;
       role: PropertyRole;
       shift: string | null;
       createdAt: Date;
@@ -122,6 +130,8 @@ export async function GET(req: NextRequest) {
         acc[assignment.userId].push({
           propertyId: assignment.propertyId,
           propertyName: assignment.property.name,
+          propertyShortName: assignment.property.shortName,
+          propertyType: assignment.property.settings?.propertyType || null,
           role: assignment.role,
           shift: assignment.shift,
           createdAt: assignment.createdAt

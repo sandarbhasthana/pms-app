@@ -112,6 +112,21 @@ export class NightAuditReportService extends ReportService {
       throw new Error("Property not found");
     }
 
+    // Fetch property settings for print header
+    const propertySettings = await prisma.propertySettings.findUnique({
+      where: { propertyId: request.propertyId! },
+      select: {
+        printHeaderImage: true,
+        propertyPhone: true,
+        propertyEmail: true,
+        street: true,
+        city: true,
+        state: true,
+        zip: true,
+        country: true
+      }
+    });
+
     // Fetch organization details
     const organization = await prisma.organization.findUnique({
       where: { id: request.organizationId },
@@ -253,7 +268,16 @@ export class NightAuditReportService extends ReportService {
         end: nightEnd
       },
       data: [...activityData, ...inHouseData],
-      summary: summaryObject
+      summary: summaryObject,
+      // Print header configuration
+      printHeader: propertySettings
+        ? {
+            imageUrl: propertySettings.printHeaderImage,
+            propertyAddress: `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`,
+            propertyPhone: propertySettings.propertyPhone,
+            propertyEmail: propertySettings.propertyEmail
+          }
+        : undefined
     };
 
     return reportData;
