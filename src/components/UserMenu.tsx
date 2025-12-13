@@ -112,9 +112,9 @@ export function UserMenu() {
           {/* Logout */}
           <DropdownMenuItem
             onClick={handleSignOut}
-            className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+            className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-700! hover:text-[#f0f8f9]! dark:hover:bg-red-700! dark:hover:text-[#f0f8f9]!"
           >
-            <LogOut className="mr-3 h-4 w-4" />
+            <LogOut className="mr-3 h-4 w-4 hover:text-[#f0f8f9]! dark:hover:text-[#f0f8f9]!" />
             Logout
           </DropdownMenuItem>
         </DropdownMenuContent>

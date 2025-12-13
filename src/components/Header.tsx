@@ -96,7 +96,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={() => router.push("/dashboard/reports")}
-            className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#ab2aea] transition-colors cursor-pointer"
+            className="relative p-3 rounded-full hover:bg-purple-300 dark:hover:bg-[#8b5cf6] transition-colors cursor-pointer"
             title="Reports"
           >
             <BarChart3 className="h-6 w-6 text-gray-800! dark:text-[#f0f8f9]! cursor-pointer" />
@@ -104,12 +104,12 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
         )}
         {/* Unified notification bell - for PROPERTY_MGR and above */}
         {role && PM_OR_ABOVE.has(role) && (
-          <UnifiedNotificationBell className="cursor-pointer" />
+          <UnifiedNotificationBell className="cursor-pointer dark:hover:bg-[#8b5cf6]" />
         )}
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}
-        <ThemeToggle />
+        <ThemeToggle/>
       </div>
     </header>
   );

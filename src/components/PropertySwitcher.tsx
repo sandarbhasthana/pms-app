@@ -198,10 +198,10 @@ export function PropertySwitcher({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 px-3 justify-between min-w-[160px] max-w-[200px] border-dashed border-2 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer"
+            className="h-9 px-3 justify-between min-w-40 max-w-[200px] border-dashed border-2 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer"
           >
             <div className="flex items-center space-x-2 truncate">
-              <Plus className="h-4 w-4 flex-shrink-0 text-purple-600" />
+              <Plus className="h-4 w-4 shrink-0 text-purple-600" />
               <span className="truncate text-purple-600 font-medium">
                 Add First Property
               </span>
@@ -250,8 +250,8 @@ export function PropertySwitcher({
           </span>
         )}
 
-        <div className="h-9 px-3 flex items-center space-x-2 min-w-[160px] max-w-[200px] bg-gray-50 dark:bg-gray-800 rounded-md border">
-          <Building2 className="h-4 w-4 flex-shrink-0 text-gray-500" />
+        <div className="h-9 px-3 flex items-center space-x-2 min-w-40 max-w-[200px] bg-gray-50 dark:bg-gray-800 rounded-md border">
+          <Building2 className="h-4 w-4 shrink-0 text-gray-500" />
           <span className="truncate text-sm font-medium">
             {singleProperty?.name || "Loading..."}
           </span>
@@ -280,16 +280,16 @@ export function PropertySwitcher({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 px-3 justify-between min-w-[160px] max-w-[200px]"
+            className="h-9 px-3 justify-between min-w-40 max-w-[200px]"
             disabled={isLoading}
           >
             <div className="flex items-center space-x-2 truncate">
-              <Building2 className="h-4 w-4 flex-shrink-0" />
+              <Building2 className="h-4 w-4 shrink-0" />
               <span className="truncate">
                 {currentProperty?.name || "Select Property"}
               </span>
             </div>
-            <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" />
+            <ChevronDown className="h-4 w-4 shrink-0 ml-2" />
           </Button>
         </DropdownMenuTrigger>
 
@@ -303,12 +303,12 @@ export function PropertySwitcher({
             <DropdownMenuItem
               key={property.id}
               onClick={() => handlePropertySwitch(property.id)}
-              className="cursor-pointer p-3 min-h-[60px]"
+              className="cursor-pointer p-3 min-h-[60px] group"
               disabled={isLoading}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <Building2 className="h-4 w-4 text-[#c3a2ff] group-hover:text-[#7210a2] shrink-0 transition-colors" />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="font-medium text-sm truncate">
                       {property.name}
@@ -318,14 +318,14 @@ export function PropertySwitcher({
                         <RoleTag
                           role={property.role as OrganizationRole}
                           variant="compact"
-                          className="text-xs flex-shrink-0"
+                          className="text-xs shrink-0"
                         />
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
+                <div className="flex items-center space-x-2 shrink-0 ml-3">
                   {property.isDefault && (
                     <PropertyStatusTag
                       status="DEFAULT"

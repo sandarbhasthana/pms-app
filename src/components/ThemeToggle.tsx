@@ -16,8 +16,16 @@ export function ThemeToggle() {
 
   // Map Next-Theme values to icon and label
   const items = [
-    { value: "light", label: "Light", icon: <Sun className="mr-2 h-4 w-4" /> },
-    { value: "dark", label: "Dark", icon: <Moon className="mr-2 h-4 w-4" /> },
+    {
+      value: "light",
+      label: "Light",
+      icon: <Sun className="mr-2 h-4 w-4 text-amber-500 dark:text-yellow-400" />
+    },
+    {
+      value: "dark",
+      label: "Dark",
+      icon: <Moon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+    },
     {
       value: "system",
       label: "Auto",
@@ -34,14 +42,18 @@ export function ThemeToggle() {
           variant="ghost"
           size="icon"
           title="Toggle theme"
-          className="pl-2 cursor-pointer"
+          className="pl-2 cursor-pointer dark:hover:bg-[#7155b1]"
         >
           {current.icon}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {items.map((i) => (
-          <DropdownMenuItem key={i.value} onSelect={() => setTheme(i.value)}>
+          <DropdownMenuItem
+            key={i.value}
+            onSelect={() => setTheme(i.value)}
+            className="dark:hover:bg-[#8b5cf6]!"
+          >
             {i.icon}
             {i.label}
           </DropdownMenuItem>

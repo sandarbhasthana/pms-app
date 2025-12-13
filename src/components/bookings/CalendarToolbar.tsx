@@ -30,10 +30,10 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   return (
     <div className="flex items-center gap-4" role="toolbar">
       <div className="flex items-center justify-center rounded-bl-sm rounded-tl-sm">
-        <div className="bg-[#7210a2] dark:bg-[#8b4aff] flex items-center justify-center rounded-bl-sm rounded-tl-sm border-r border-purple-600">
+        <div className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 flex items-center justify-center rounded-bl-sm rounded-tl-sm border-r border-purple-600">
           <button
             onClick={handlePrev}
-            className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"
+            className="h-[50px] w-[30px] ml-[5px] flex items-center text-[#f0f8ff] cursor-pointer"
             aria-label="Go to previous week"
             title="Go to previous week"
           >
@@ -45,14 +45,14 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         </div>
         <button
           onClick={handleToday}
-          className="px-2 py-1 rounded-0 bg-[#7210a2] dark:bg-[#8b4aff] hover:bg-purple-600 dark:hover:bg-[#a876ff] h-[50px] text-[#f0f8ff] hover:text-gray-900 cursor-pointer"
+          className="px-2 py-1 rounded-0 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 h-[50px] text-[#f0f8ff] cursor-pointer"
         >
           Today
         </button>
-        <div className="bg-[#7210a2] dark:bg-[#8b4aff] flex items-center justify-center rounded-br-sm rounded-tr-sm border-l border-purple-600">
+        <div className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 flex items-center justify-center rounded-br-sm rounded-tr-sm border-l border-purple-600">
           <button
             onClick={handleNext}
-            className="h-[50px] w-[30px] ml-[5px] flex items-center text-white hover:text-gray-900 cursor-pointer"
+            className="h-[50px] w-[30px] ml-[5px] flex items-center text-[#f0f8f9] cursor-pointer"
             aria-label="Go to next week"
             title="Go to next week"
           >
@@ -76,10 +76,10 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             }
           }}
           dateFormat="yyyy-MM-dd"
-          className="border-purple-600 border-2 p-2 rounded-sm h-[50px] z-[100] w-[120px]"
+          className="border-purple-600 border-2 p-2 rounded-sm h-[50px] z-100 w-[120px]"
           popperPlacement="bottom-end"
           customInput={
-            <div className="flex items-center cursor-pointer border-purple-600 border-2 p-2 rounded-sm h-[50px] w-[120px]">
+            <div className="flex items-center cursor-pointer border-purple-600 dark:border-[#8b5cf6] border-2 p-2 rounded-sm h-[50px] w-[120px]">
               <input
                 className="outline-none w-full bg-transparent text-sm"
                 readOnly
@@ -91,7 +91,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               />
               <CalendarIcon
                 vectorEffect="non-scaling-stroke"
-                className="text-purple-600 h-4 w-4 mr-1 font-bold flex-shrink-0"
+                className="text-purple-600 dark:text-[#8b5cf6] h-4 w-4 mr-1 font-bold shrink-0"
                 strokeWidth={2}
               />
             </div>

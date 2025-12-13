@@ -1693,7 +1693,7 @@ export default function BookingsRowStylePage() {
             className={`h-[50px] w-[50px] rounded-lg transition-colors flex items-center justify-center ${
               isRefetching
                 ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
-                : "text-slate-600 dark:text-slate-300 hover:text-white hover:bg-[#7210a2] dark:hover:bg-[#8b4aff]"
+                : "text-[#f0f8f9] dark:text-slate-300 hover:text-[#f0f8f9] bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 cursor-pointer"
             }`}
           >
             <RefreshCw
@@ -1715,7 +1715,7 @@ export default function BookingsRowStylePage() {
               });
             }}
             aria-label="Add new reservation or block dates"
-            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white w-[50px] h-[50px] rounded-lg flex items-center justify-center transition-colors"
+            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white w-[50px] h-[50px] rounded-lg flex items-center justify-center transition-colors cursor-pointer"
           >
             <Plus className="h-6 w-6" />
           </button>

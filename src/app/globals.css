@@ -70,8 +70,8 @@
   --secondary-foreground: 0 0% 15.7%;
   --muted: 240 100% 95%; /* Slightly muted background based on #f0f8ff */
   --muted-foreground: 0 0% 33.7%; /* #565656 - Medium Gray */
-  --accent: 280 78% 35%; /* Same as primary - Deep Purple */
-  --accent-foreground: 0 0% 100%;
+  --accent: 280 78% 95%; /* Light purple for hover states */
+  --accent-foreground: 280 78% 35%; /* Deep purple text on light accent */
   --destructive: 0 84.2% 60.2%; /* Keep existing red */
   --border: 240 100% 90%; /* Subtle border based on #f0f8ff */
   --input: 240 100% 95%; /* Input background based on #f0f8ff */
@@ -317,7 +317,7 @@
 
   /* Force dark mode text colors with your exact hex values */
   .dark h1,
-  .dark h2,
+  .dark h2:not(.react-datepicker__current-month),
   .dark h3,
   .dark h4,
   .dark h5,
@@ -765,7 +765,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dark .react-datepicker__day-name,
 .dark .react-datepicker__day,
 .dark .react-datepicker__time-name {
-  color: #f3f4f6;
+  color: #f0f8f9;
 }
 
 .dark .react-datepicker__day:hover,
@@ -773,7 +773,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dark .react-datepicker__quarter-text:hover,
 .dark .react-datepicker__year-text:hover {
   background-color: #455264;
-  color: #9333ea;
+  color: #f0f8f9;
 }
 
 .dark .react-datepicker__day--selected,
@@ -782,13 +782,61 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: white;
 }
 
-.dark .react-datepicker__day--weekend {
-  color: #fbcfe8;
+/* Sunday only styling - first column (nth-child(1)) */
+.react-datepicker__week > .react-datepicker__day:nth-child(1) {
+  background-color: rgba(
+    254,
+    202,
+    202,
+    0.4
+  ) !important; /* Light pink for Sunday */
+}
+
+.dark .react-datepicker__week > .react-datepicker__day:nth-child(1) {
+  background-color: rgba(
+    220,
+    38,
+    38,
+    0.25
+  ) !important; /* Dark red for Sunday */
+}
+
+/* Sunday header styling */
+.react-datepicker__day-names > .react-datepicker__day-name:nth-child(1) {
+  background-color: rgba(254, 202, 202, 0.4) !important;
+  color: #dc2626 !important;
+  font-weight: 600 !important;
+  border-radius: 4px;
+}
+
+.dark .react-datepicker__day-names > .react-datepicker__day-name:nth-child(1) {
+  background-color: rgba(220, 38, 38, 0.25) !important;
+  color: #fca5a5 !important;
+  font-weight: 600 !important;
+  border-radius: 4px;
+}
+
+/* Triangle/Arrow styling */
+.react-datepicker__triangle::before,
+.react-datepicker__triangle::after {
+  border-bottom-color: #f3f4f6 !important;
+  border-top-color: #f3f4f6 !important;
+}
+
+.react-datepicker__triangle::before {
+  border-bottom-color: #e5e7eb !important;
+  border-top-color: #e5e7eb !important;
 }
 
 .dark .react-datepicker__triangle::before,
 .dark .react-datepicker__triangle::after {
   border-bottom-color: #111827 !important;
+  border-top-color: #111827 !important;
+}
+
+.dark .react-datepicker__triangle::before {
+  border-bottom-color: #374151 !important;
+  border-top-color: #374151 !important;
 }
 /* DatePicker dark mode styling */
 
@@ -833,7 +881,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: #1f2937;
   border-color: #374151;
   color: white;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f0f8f9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .dark .react-datepicker__month-select option,
@@ -848,19 +896,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .dark .react-datepicker__month-dropdown-container--scroll,
 .dark .react-datepicker__year-dropdown-container--scroll {
-  color: #fff;
+  color: #f0f8f9;
 }
 
 /* Header styling */
 .react-datepicker__header {
-  background-color: #f3f4f6;
+  background-color: #dcc9ff !important;
   border-bottom: 1px solid #e5e7eb;
   padding-top: 10px;
 }
 
 .dark .react-datepicker__header {
-  background-color: #111827;
+  background-color: #8b5cf6 !important;
   border-bottom-color: #374151;
+}
+
+.dark .react-datepicker__current-month {
+  color: #f0f8f9 !important;
 }
 
 .react-datepicker__current-month {
@@ -889,11 +941,69 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .react-datepicker__day:hover {
-  background-color: #e5e7eb;
+  background-color: #dcc9ff !important;
 }
 
 .dark .react-datepicker__day:hover {
-  background-color: #374151;
+  background-color: #374151 !important;
+  color: #f0f8f9 !important;
+}
+
+/* Today date styling */
+.react-datepicker .react-datepicker__day--today {
+  background-color: #dcc9ff !important;
+  color: #7210a2 !important;
+  font-weight: 600;
+  border: 2px solid #7210a2;
+}
+
+.dark .react-datepicker__day--today {
+  background-color: #7210a2 !important;
+  color: #f0f8f9 !important;
+  font-weight: 600;
+  border: none;
+  /* border: 2px solid #8b4aff; */
+}
+
+/* Navigation Buttons */
+
+/* Navigation Icons */
+.react-datepicker__navigation-icon--previous::before,
+.react-datepicker__navigation-icon--next::before {
+  margin-top: 6px;
+  border-color: #7210a2 !important;
+}
+
+.dark .react-datepicker__navigation-icon--previous::before,
+.dark .react-datepicker__navigation-icon--next::before {
+  margin-top: 6px;
+  border-color: #f0f8f9 !important;
+}
+
+.react-datepicker__navigation-icon--previous:hover::before,
+.react-datepicker__navigation-icon--next:hover::before {
+  border-color: #8b5cf6 !important;
+}
+
+.dark .react-datepicker__navigation-icon--previous:hover::before,
+.dark .react-datepicker__navigation-icon--next:hover::before {
+  border-color: #7210a2 !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #7210a2 !important;
+}
+
+/* Today date hover */
+.react-datepicker .react-datepicker__day--today:hover {
+  background-color: #7210a2 !important;
+  color: #f0f8f9 !important;
+}
+
+.dark .react-datepicker__day--today:hover {
+  background-color: #8b4aff !important;
+  border: none;
+  color: #f0f8f9 !important;
 }
 
 .react-datepicker__day--selected {
@@ -911,6 +1021,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: rgba(139, 92, 246, 0.3);
 }
 
+/* Outside month days (previous/next month) */
+.react-datepicker__day--outside-month {
+  color: #9ca3af !important;
+  opacity: 0.5 !important;
+}
+
+.dark .react-datepicker__day--outside-month {
+  color: #6b7280 !important;
+  opacity: 0.4 !important;
+}
+
+/* Outside month days hover */
+.react-datepicker__day--outside-month:hover {
+  background-color: transparent !important;
+  color: #9ca3af !important;
+  opacity: 0.6 !important;
+}
+
+.dark .react-datepicker__day--outside-month:hover {
+  background-color: transparent !important;
+  color: #6b7280 !important;
+  opacity: 0.5 !important;
+}
+
 /* .text-muted-foreground{
   color: #9333ea !important;
 } */
@@ -925,7 +1059,7 @@ select {
 }
 
 .dark select {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f0f8f9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 /* Ensure select elements match input field backgrounds in dark mode */
@@ -980,7 +1114,7 @@ select option {
 
 select option:hover,
 select option:focus {
-  background-color: #f3f4f6 !important; /* gray-100 like stepper buttons */
+  background-color: #f0f8f9 !important; /* gray-100 like stepper buttons */
   color: #0a0a0a !important;
 }
 

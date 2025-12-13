@@ -17,6 +17,7 @@ import {
   getOperationalDayStart,
   getOperationalDayEnd
 } from "@/lib/timezone/day-boundaries";
+import { HolidayTooltip } from "@/components/ui/HolidayTooltip";
 
 interface CalendarResource {
   id: string;
@@ -488,7 +489,7 @@ export default function CalendarViewRowStyle({
             // Show pricing for room types that have rates data
             return (
               <div className="h-full w-full absolute top-0 left-0 pointer-events-none z-0">
-                <div className="h-full w-full !bg-white dark:!bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 flex">
+                <div className="h-full w-full bg-white! dark:bg-gray-800! border-b-2 border-purple-200 dark:border-purple-700 flex">
                   {/* Create 14 day columns with pricing values */}
                   {Array.from({ length: 14 }, (_, i) => {
                     let displayPrice;
@@ -598,7 +599,7 @@ export default function CalendarViewRowStyle({
                 })}
               </div>
               {name && (
-                <div title={name} className="cursor-help">
+                <HolidayTooltip holidayName={name}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 512 512"
@@ -680,7 +681,7 @@ export default function CalendarViewRowStyle({
                       d="M132.868 157.672c2.259-6.773 7.14-11.929 13.135-14.73a25.352 25.352 0 0 0-2.672-1.07c-13.092-4.366-27.245 2.708-31.61 15.8-4.366 13.092 2.708 27.244 15.8 31.61 6.319 2.107 12.882 1.543 18.475-1.07-11.357-5.29-17.187-18.37-13.128-30.54z"
                     />
                   </svg>
-                </div>
+                </HolidayTooltip>
               )}
             </div>
           );
