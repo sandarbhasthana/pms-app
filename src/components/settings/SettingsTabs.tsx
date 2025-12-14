@@ -146,8 +146,8 @@ export default function SettingsTabs() {
                 href={tab.href}
                 className={
                   isActive
-                    ? "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-[#7210a2] border-transparent shadow-md text-white"
-                    : "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-transparent border-[#7210a2] dark:border-[#9333ea] hover:bg-[#7210a2]/10 dark:hover:bg-[#9333ea]/20 text-[#7210a2] dark:text-[#a855f7]"
+                    ? "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 border-transparent shadow-md text-white"
+                    : "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border-2 bg-transparent border-purple-600 dark:border-purple-600 hover:bg-purple-600/10 dark:hover:bg-purple-600/20 text-purple-600 dark:text-purple-400"
                 }
               >
                 {tab.label}

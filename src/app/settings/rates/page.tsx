@@ -153,13 +153,13 @@ const RatesPage = () => {
         <h2 className="text-2xl font-semibold mb-4">Availability Matrix</h2>
 
         {/* Inner tabs */}
-        <div className="flex space-x-8 border-b mb-6">
+        <div className="flex space-x-8 border-b border-purple-600 dark:border-purple-600 mb-6">
           <button
             type="button"
-            className={`pb-2 ${
+            className={`pb-2 px-4 transition-all duration-200 ${
               innerTab === "rates"
-                ? "border-b-2 border-purple-400 text-purple-400"
-                : "text-purple-200"
+                ? "border-b-2 border-purple-600 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white rounded-t-lg"
+                : "text-purple-600 dark:text-purple-400 hover:bg-purple-600/10 dark:hover:bg-purple-600/20"
             }`}
             onClick={() => setInnerTab("rates")}
           >
@@ -167,10 +167,10 @@ const RatesPage = () => {
           </button>
           <button
             type="button"
-            className={`pb-2 ${
+            className={`pb-2 px-4 transition-all duration-200 ${
               innerTab === "logs"
-                ? "border-b-2 border-purple-400 text-purple-400"
-                : "text-purple-200"
+                ? "border-b-2 border-purple-600 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white rounded-t-lg"
+                : "text-purple-600 dark:text-purple-400 hover:bg-purple-600/10 dark:hover:bg-purple-600/20"
             }`}
             onClick={() => setInnerTab("logs")}
           >
@@ -252,7 +252,7 @@ const RatesPage = () => {
             {/* Interval controls */}
             <div className="border rounded-lg p-4 mb-8">
               <div className="flex items-center flex-wrap gap-4">
-                <label className="flex-shrink-0">Start date</label>
+                <label className="shrink-0">Start date</label>
                 <Input
                   type="date"
                   value={format(startDate, "yyyy-MM-dd")}
@@ -260,7 +260,7 @@ const RatesPage = () => {
                   className="max-w-xs"
                 />
 
-                <label className="flex-shrink-0">Days</label>
+                <label className="shrink-0">Days</label>
                 <Select
                   value={days.toString()}
                   onValueChange={(value) => setDays(parseInt(value))}

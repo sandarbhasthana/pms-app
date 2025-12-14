@@ -27,16 +27,16 @@ export default function PropertySettingsTabs({
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-transparent p-0 h-auto gap-3 mb-6">
+        <TabsList className="grid w-full grid-cols-2 bg-transparent! p-0 h-auto gap-3 mb-6">
           <TabsTrigger
             value="general"
-            className="cursor-pointer border-2 data-[state=active]:bg-[#7210a2]! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent data-[state=inactive]:border-[#7210a2] dark:data-[state=inactive]:border-[#9333ea] data-[state=inactive]:text-[#7210a2] dark:data-[state=inactive]:text-[#a855f7] data-[state=inactive]:hover:bg-[#7210a2]/10 dark:data-[state=inactive]:hover:bg-[#9333ea]/20 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200"
+            className="cursor-pointer border-2 data-[state=active]:bg-purple-800! data-[state=active]:hover:bg-purple-700! dark:data-[state=active]:bg-purple-800! dark:data-[state=active]:hover:bg-purple-700! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent! data-[state=inactive]:border-purple-600 dark:data-[state=inactive]:border-purple-600 data-[state=inactive]:text-purple-600 dark:data-[state=inactive]:text-purple-400 data-[state=inactive]:hover:bg-purple-600/10! dark:data-[state=inactive]:hover:bg-purple-600/20! px-6 py-3 rounded-full text-sm font-medium transition-all duration-200"
           >
             General
           </TabsTrigger>
           <TabsTrigger
             value="fees"
-            className="cursor-pointer border-2 data-[state=active]:bg-[#7210a2]! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent data-[state=inactive]:border-[#7210a2] dark:data-[state=inactive]:border-[#9333ea] data-[state=inactive]:text-[#7210a2] dark:data-[state=inactive]:text-[#a855f7] data-[state=inactive]:hover:bg-[#7210a2]/10 dark:data-[state=inactive]:hover:bg-[#9333ea]/20 px-6 py-3 rounded-full text-sm font-medium transition-all duration-200"
+            className="cursor-pointer border-2 data-[state=active]:bg-purple-600! data-[state=active]:hover:bg-purple-700! dark:data-[state=active]:bg-purple-600! dark:data-[state=active]:hover:bg-purple-700! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent! data-[state=inactive]:border-purple-600 dark:data-[state=inactive]:border-purple-600 data-[state=inactive]:text-purple-600 dark:data-[state=inactive]:text-purple-400 data-[state=inactive]:hover:bg-purple-600/10! dark:data-[state=inactive]:hover:bg-purple-600/20! px-6 py-3 rounded-full text-sm font-medium transition-all duration-200"
           >
             Fees & Charges
           </TabsTrigger>
