@@ -446,8 +446,8 @@ export function PropertyDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg">
-                  <Building2 className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                <div className="p-2 rounded-lg">
+                  <Building2 className="h-6 w-6 text-purple-500 dark:text-purple-400" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -495,12 +495,12 @@ export function PropertyDashboard() {
                 disabled={isRefreshing}
                 className={`p-2 rounded-lg ${
                   isRefreshing
-                    ? "text-slate-600 dark:text-slate-400 cursor-not-allowed"
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    ? "text-slate-600 dark:text-slate-400 cursor-not-allowed bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors"
                 }`}
               >
                 <RefreshCw
-                  className={`h-5 w-5 ${
+                  className={`h-6 w-6 ${
                     isRefreshing ? "refresh-spinning" : ""
                   }`}
                 />
@@ -508,9 +508,9 @@ export function PropertyDashboard() {
               <button
                 type="button"
                 title="Settings"
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors"
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-6 w-6" />
               </button>
               <button
                 type="button"
