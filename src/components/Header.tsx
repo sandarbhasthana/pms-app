@@ -76,11 +76,21 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             height={40}
             className="h-8 w-auto"
             priority
+            unoptimized
+            onError={(e) => {
+              // Fallback to text if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+              const parent = target.parentElement;
+              if (parent && !parent.querySelector(".logo-fallback")) {
+                const fallback = document.createElement("span");
+                fallback.className =
+                  "logo-fallback text-heading-md font-semibold text-gray-800 dark:text-gray-100";
+                fallback.textContent = "PMS App";
+                parent.appendChild(fallback);
+              }
+            }}
           />
-          {/* Text logo fallback - commented out */}
-          {/* <span className="text-heading-md font-semibold text-gray-800 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-            PMS App
-          </span> */}
         </Link>
       </div>
 
@@ -109,7 +119,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
         {/* User menu with avatar and account options */}
         <UserMenu />
         {/* Theme toggle */}
-        <ThemeToggle/>
+        <ThemeToggle />
       </div>
     </header>
   );
