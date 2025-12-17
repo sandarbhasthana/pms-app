@@ -113,6 +113,7 @@ export interface QueueConfig {
       type: "exponential";
       delay: number;
     };
+    timeout?: number; // Optional timeout in milliseconds for job execution
   };
 }
 

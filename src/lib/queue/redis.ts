@@ -42,7 +42,7 @@ const getRedisConfig = () => {
           password: url.password,
           username: url.username || "default",
           tls: {}, // Upstash requires TLS
-          maxRetriesPerRequest: null, // Required by BullMQ
+          maxRetriesPerRequest: null, // Required by BullMQ for blocking operations
           retryDelayOnFailover: 100,
           enableReadyCheck: false,
           lazyConnect: true,
@@ -51,8 +51,7 @@ const getRedisConfig = () => {
           keepAlive: 30000,
           family: 4,
           // Additional Upstash-specific optimizations
-          enableAutoPipelining: true, // Improve performance with automatic command batching
-          maxRetriesPerRequest: null // Required for BullMQ blocking operations
+          enableAutoPipelining: true // Improve performance with automatic command batching
         };
       } catch (error) {
         console.error("❌ Failed to parse UPSTASH_REDIS_URL:", error);

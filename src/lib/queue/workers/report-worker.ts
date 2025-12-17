@@ -43,11 +43,7 @@ export const reportWorker = new Worker(
     },
     // Increased timeout settings for long-running report generation
     lockDuration: 180000, // 3 minutes - how long a job can run before being considered stalled
-    lockRenewTime: 30000, // 30 seconds - renew lock every 30s to prevent premature timeout
-    settings: {
-      stalledInterval: 60000, // Check for stalled jobs every 60 seconds
-      maxStalledCount: 2 // Retry stalled jobs up to 2 times
-    }
+    lockRenewTime: 30000 // 30 seconds - renew lock every 30s to prevent premature timeout
   }
 );
 
