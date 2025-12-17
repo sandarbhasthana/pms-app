@@ -15,19 +15,21 @@ All loaders use **ScaleLoader** from `react-spinners` and are **theme-aware** (a
 ## 1. Route Transition Loader (Automatic)
 
 ### What it does:
+
 - Shows a thin progress bar at the top of the screen during page navigation
 - Automatically triggered on route changes
 - Theme-aware colors (purple-600 in light mode, purple-400 in dark mode)
 
 ### Usage:
+
 **No code needed!** It works automatically when you navigate between pages.
 
 ```tsx
 // Just use Next.js Link or router.push()
-<Link href="/dashboard">Go to Dashboard</Link>
+<Link href="/dashboard">Go to Dashboard</Link>;
 
 // Or programmatically
-router.push('/settings');
+router.push("/settings");
 ```
 
 ---
@@ -35,6 +37,7 @@ router.push('/settings');
 ## 2. Global Loading Overlay
 
 ### What it does:
+
 - Shows a full-screen overlay with ScaleLoader
 - Blocks user interaction during critical operations
 - Customizable loading text
@@ -94,24 +97,35 @@ if (isLoading) {
 ```tsx
 import { LoadingSpinner } from "@/components/ui/spinner";
 
-// Full-screen loader
+// ✅ RECOMMENDED: Full-screen loader for page-level loading
+// This centers the loader with a blurred background
 if (loading) {
   return <LoadingSpinner text="Loading data..." fullScreen />;
 }
 
-// Centered loader (default)
+// ⚠️ Centered loader without fullScreen (use only for sections, not pages)
 if (loading) {
   return <LoadingSpinner text="Loading..." />;
 }
 
 // Custom size and variant
-<LoadingSpinner 
-  text="Processing..." 
-  size="xl" 
-  variant="primary" 
+<LoadingSpinner
+  text="Processing..."
+  size="xl"
+  variant="primary"
   center={true}
-/>
+  fullScreen={true} // Always use fullScreen for page loads
+/>;
 ```
+
+**Important:** Always use `fullScreen={true}` for page-level loading states to ensure:
+
+- ✅ Loader is centered on the screen
+- ✅ Background is blurred (backdrop-blur-sm)
+- ✅ Semi-transparent overlay (bg-background/80)
+- ✅ Consistent user experience across all pages
+- ✅ Purple loader color (variant="primary" is default)
+- ✅ Visible text color (text-foreground, not muted)
 
 ### B. Inline Spinner
 
@@ -140,6 +154,7 @@ import { Spinner } from "@/components/ui/spinner";
 ### Props:
 
 #### LoadingSpinner
+
 - `text?: string` - Loading message (default: "Loading...")
 - `size?: "sm" | "default" | "lg" | "xl"` - Spinner size (default: "lg")
 - `variant?: "default" | "primary" | "secondary" | "destructive"` - Color variant (default: "primary")
@@ -148,6 +163,7 @@ import { Spinner } from "@/components/ui/spinner";
 - `className?: string` - Additional CSS classes
 
 #### Spinner
+
 - `size?: "sm" | "default" | "lg" | "xl"` - Spinner size (default: "default")
 - `variant?: "default" | "primary" | "secondary" | "destructive"` - Color variant (default: "primary")
 - `className?: string` - Additional CSS classes
@@ -156,18 +172,19 @@ import { Spinner } from "@/components/ui/spinner";
 
 ## Color Variants (Theme-Aware)
 
-| Variant | Light Mode | Dark Mode |
-|---------|-----------|-----------|
-| `primary` | Purple-600 (#7c3aed) | Purple-400 (#a78bfa) |
-| `secondary` | Slate-600 (#64748b) | Slate-400 (#94a3b8) |
-| `destructive` | Red-600 (#dc2626) | Red-400 (#f87171) |
-| `default` | Gray-600 (#6b7280) | Gray-400 (#9ca3af) |
+| Variant       | Light Mode           | Dark Mode            |
+| ------------- | -------------------- | -------------------- |
+| `primary`     | Purple-600 (#7c3aed) | Purple-400 (#a78bfa) |
+| `secondary`   | Slate-600 (#64748b)  | Slate-400 (#94a3b8)  |
+| `destructive` | Red-600 (#dc2626)    | Red-400 (#f87171)    |
+| `default`     | Gray-600 (#6b7280)   | Gray-400 (#9ca3af)   |
 
 ---
 
 ## Examples
 
 ### Example 1: Page Loading State
+
 ```tsx
 "use client";
 
@@ -179,7 +196,9 @@ export default function MyPage() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    fetchData().then(setData).finally(() => setLoading(false));
+    fetchData()
+      .then(setData)
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -191,6 +210,7 @@ export default function MyPage() {
 ```
 
 ### Example 2: Form Submission
+
 ```tsx
 "use client";
 
@@ -202,7 +222,7 @@ export function MyForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     showLoader("Saving changes...");
     try {
       await saveData();
@@ -224,16 +244,44 @@ export function MyForm() {
 
 1. **Use Route Loader for navigation** - It's automatic, no code needed
 2. **Use Global Loader for critical operations** - Payment processing, file uploads, etc.
-3. **Use LoadingSpinner for page-level loading** - Initial data fetching
+3. **Use LoadingSpinner with fullScreen for page-level loading** - Initial data fetching, always use `fullScreen={true}` to center the loader with blurred background
 4. **Use Spinner for inline loading** - Buttons, dropdowns, small components
 5. **Always hide the global loader** - Use try/finally to ensure hideLoader() is called
 6. **Provide meaningful text** - Tell users what's happening
+7. **Always use fullScreen for initial page loads** - This ensures the loader is centered with a blurred background, providing a consistent UX
+8. **Keep default variant="primary"** - Don't override with secondary or custom colors unless absolutely necessary for consistency
+
+---
+
+## Color Consistency
+
+All loaders use **theme-aware purple colors** by default:
+
+### Light Mode:
+
+- **Loader**: `#7c3aed` (purple-600)
+- **Text**: `text-foreground` (dark text)
+
+### Dark Mode:
+
+- **Loader**: `#a78bfa` (purple-400)
+- **Text**: `text-foreground` (light text)
+
+### Variants Available:
+
+- `primary` (default) - Purple theme colors ✅ **Recommended**
+- `secondary` - Gray/slate colors (use sparingly)
+- `destructive` - Red colors (for errors only)
+- `default` - Gray colors (neutral)
+
+**⚠️ Important:** Always use the default `variant="primary"` for page-level loaders to maintain brand consistency. Only use other variants for specific use cases (e.g., destructive for error states).
 
 ---
 
 ## Migration from Old Loaders
 
 ### Before:
+
 ```tsx
 // Old custom spinner
 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -243,6 +291,7 @@ export function MyForm() {
 ```
 
 ### After:
+
 ```tsx
 // New ScaleLoader-based spinner
 <Spinner size="lg" variant="primary" />
@@ -256,15 +305,18 @@ export function MyForm() {
 ## Troubleshooting
 
 ### Loader not showing?
+
 - Make sure you're using `"use client"` directive
 - Check that LoadingProvider is in your providers tree
 - Verify you're calling `showLoader()` before async operations
 
 ### Theme colors not working?
+
 - Ensure ThemeProvider is wrapping LoadingProvider
 - Check that `next-themes` is properly configured
 
 ### Hydration mismatch?
+
 - The spinners have built-in hydration protection
 - They return a placeholder during SSR to prevent mismatches
 
@@ -276,4 +328,3 @@ export function MyForm() {
 - **Route Progress**: `nprogress` with custom theme-aware styling
 - **Theme Detection**: `next-themes` (useTheme hook)
 - **Z-Index**: Global loader uses z-index 9999, Route progress uses 99999
-

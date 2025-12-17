@@ -26,7 +26,7 @@ import {
   ChevronRight,
   RefreshCw
 } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner, LoadingSpinner } from "@/components/ui/spinner";
 
 interface Reservation {
   id: string;
@@ -518,10 +518,7 @@ const ReservationsPage = () => {
         </div>
       )}
       {isValidating && !data && (
-        <div className="flex items-center space-x-2">
-          <Spinner size="sm" />
-          <span>Loading reservations…</span>
-        </div>
+        <LoadingSpinner text="Loading reservations..." fullScreen />
       )}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

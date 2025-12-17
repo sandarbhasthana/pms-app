@@ -189,18 +189,7 @@ export default function AccommodationsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold mb-6">Accommodations</h1>
-        <LoadingSpinner
-          text="Loading Accommodations..."
-          size="lg"
-          variant={"secondary"}
-          fullScreen={true}
-          className="text-purple-600"
-        />
-      </div>
-    );
+    return <LoadingSpinner text="Loading Accommodations..." fullScreen />;
   }
 
   return (
@@ -218,7 +207,7 @@ export default function AccommodationsPage() {
         <SheetClose asChild>
           <div />
         </SheetClose>
-        <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base">
+        <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto bg-gray-100! dark:bg-[#121212]! text-gray-900! dark:text-[#f0f8ff]! [&_label]:text-base [&_input]:text-base [&_textarea]:text-base **:data-[slot=select-trigger]:text-base **:data-[slot=select-item]:text-base">
           <SheetHeader className="relative">
             {/* Close button in top right corner */}
             <button

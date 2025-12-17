@@ -106,7 +106,7 @@ function LoadingSpinner({
     <div className={containerClasses}>
       <Spinner size={size} variant={variant} />
       {text && (
-        <span className="text-sm font-medium text-muted-foreground animate-pulse">
+        <span className="text-sm font-medium text-foreground animate-pulse">
           {text}
         </span>
       )}

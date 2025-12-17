@@ -1665,18 +1665,7 @@ export default function BookingsRowStylePage() {
   );
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold mb-6">Bookings Calendar</h1>
-        <LoadingSpinner
-          text="Loading Calendar..."
-          size="lg"
-          variant={"secondary"}
-          fullScreen={true}
-          className="text-purple-600"
-        />
-      </div>
-    );
+    return <LoadingSpinner text="Loading Calendar..." fullScreen />;
   }
 
   return (

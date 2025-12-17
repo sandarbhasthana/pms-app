@@ -120,16 +120,30 @@ export function UnifiedNotificationBell({
         <DropdownMenuSeparator />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="approvals" className="relative">
+          <TabsList className="grid w-full grid-cols-2 bg-transparent p-0 h-auto gap-2">
+            <TabsTrigger
+              value="approvals"
+              className="cursor-pointer border-2 data-[state=active]:bg-[#7210a2]! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent data-[state=inactive]:border-[#7210a2] dark:data-[state=inactive]:border-[#9333ea] data-[state=inactive]:text-[#7210a2] dark:data-[state=inactive]:text-[#a855f7] data-[state=inactive]:hover:bg-[#7210a2]/10 dark:data-[state=inactive]:hover:bg-[#9333ea]/20 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            >
               Approvals
+              {pendingApprovalsCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs bg-green-600 text-white hover:bg-green-700"
+                >
+                  {pendingApprovalsCount > 9 ? "9+" : pendingApprovalsCount}
+                </Badge>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="messages" className="relative">
+            <TabsTrigger
+              value="messages"
+              className="cursor-pointer border-2 data-[state=active]:bg-[#7210a2]! data-[state=active]:border-transparent! data-[state=active]:text-white! data-[state=active]:shadow-md data-[state=inactive]:bg-transparent data-[state=inactive]:border-[#7210a2] dark:data-[state=inactive]:border-[#9333ea] data-[state=inactive]:text-[#7210a2] dark:data-[state=inactive]:text-[#a855f7] data-[state=inactive]:hover:bg-[#7210a2]/10 dark:data-[state=inactive]:hover:bg-[#9333ea]/20 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            >
               Messages
               {chatUnreadCount > 0 && (
                 <Badge
                   variant="destructive"
-                  className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-600"
+                  className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-600 hover:bg-red-700"
                 >
                   {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
                 </Badge>

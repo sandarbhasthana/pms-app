@@ -3,7 +3,8 @@
 
 import { useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Plus, Download, Settings, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Download, Settings, RefreshCw } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -301,10 +302,7 @@ const RatesPage = () => {
 
             {/* Loading State */}
             {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mr-2" />
-                <span>Loading rates data...</span>
-              </div>
+              <LoadingSpinner text="Loading rates data..." fullScreen />
             )}
 
             {/* Error State */}

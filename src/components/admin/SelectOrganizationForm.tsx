@@ -77,11 +77,7 @@ export default function SelectOrganizationForm() {
   };
 
   if (status === "loading" || loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner text="Loading organizations..." fullScreen />;
   }
 
   if (status !== "authenticated") {
