@@ -112,27 +112,26 @@ export async function deleteReportFromS3(s3Key: string): Promise<void> {
 }
 
 /**
- * Delete expired reports from S3
+ * Delete expired reports from S3 and database
  * This should be called by a cron job
  */
 export async function deleteExpiredReports(): Promise<number> {
   try {
     const prisma = (await import("@/lib/prisma")).default;
 
-    // Find expired reports
+    // Find expired reports (older than 7 days)
     const expiredReports = await prisma.reportHistory.findMany({
       where: {
         expiresAt: {
           lte: new Date()
         },
-        status: "COMPLETED",
-        s3Key: {
-          not: null
-        }
+        status: "COMPLETED"
       },
       select: {
         id: true,
-        s3Key: true
+        s3Key: true,
+        name: true,
+        expiresAt: true
       }
     });
 
@@ -140,33 +139,43 @@ export async function deleteExpiredReports(): Promise<number> {
 
     let deletedCount = 0;
 
-    // Delete each report from S3 and update database
+    // Delete each report from S3 and database
     for (const report of expiredReports) {
-      if (report.s3Key) {
-        try {
-          await deleteReportFromS3(report.s3Key);
-
-          // Update database to mark as deleted
-          await prisma.reportHistory.update({
-            where: { id: report.id },
-            data: {
-              fileUrl: null,
-              s3Key: null,
-              status: "CANCELLED" // Mark as cancelled/deleted
-            }
-          });
-
-          deletedCount++;
-        } catch (error) {
-          console.error(`Failed to delete report ${report.id}:`, error);
+      try {
+        // Delete from S3 if file exists
+        if (report.s3Key) {
+          try {
+            await deleteReportFromS3(report.s3Key);
+            console.log(`✅ Deleted S3 file: ${report.s3Key}`);
+          } catch (s3Error) {
+            console.error(
+              `⚠️ Failed to delete S3 file ${report.s3Key}:`,
+              s3Error
+            );
+            // Continue with database deletion even if S3 deletion fails
+          }
         }
+
+        // Delete from database
+        await prisma.reportHistory.delete({
+          where: { id: report.id }
+        });
+
+        console.log(
+          `✅ Deleted report from database: ${report.name} (expired: ${report.expiresAt})`
+        );
+        deletedCount++;
+      } catch (error) {
+        console.error(`❌ Failed to delete report ${report.id}:`, error);
       }
     }
 
-    console.log(`✅ Deleted ${deletedCount} expired reports`);
+    console.log(
+      `✅ Cleanup completed: Deleted ${deletedCount} expired reports`
+    );
     return deletedCount;
   } catch (error) {
-    console.error("Error deleting expired reports:", error);
+    console.error("❌ Error deleting expired reports:", error);
     throw error;
   }
 }

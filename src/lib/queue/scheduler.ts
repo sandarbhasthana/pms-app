@@ -1,10 +1,14 @@
 /**
  * Job Scheduler
  *
- * Manages recurring jobs for reservation automation
+ * Manages recurring jobs for reservation automation and report cleanup
  */
 
-import { reservationAutomationQueue, getCronSchedule } from "./queues";
+import {
+  reservationAutomationQueue,
+  reportsQueue,
+  getCronSchedule
+} from "./queues";
 import { prisma } from "@/lib/prisma";
 import {
   NoShowDetectionJobData,
@@ -29,6 +33,12 @@ export const initializeScheduledJobs = async () => {
       await reservationAutomationQueue.removeRepeatableByKey(job.key);
     }
 
+    // Clear existing report cleanup jobs
+    const reportRepeatableJobs = await reportsQueue.getRepeatableJobs();
+    for (const job of reportRepeatableJobs) {
+      await reportsQueue.removeRepeatableByKey(job.key);
+    }
+
     // Get all active properties
     const activeProperties = await prisma.property.findMany({
       where: { isActive: true },
@@ -41,6 +51,9 @@ export const initializeScheduledJobs = async () => {
     for (const property of activeProperties) {
       await schedulePropertyJobs(property.id);
     }
+
+    // Schedule global report cleanup job (runs daily)
+    await scheduleReportCleanupJob();
 
     console.log("✅ All scheduled jobs initialized successfully");
   } catch (error) {
@@ -172,6 +185,33 @@ export const getScheduledJobsStatus = async () => {
 };
 
 /**
+ * Schedule global report cleanup job (runs daily)
+ */
+export const scheduleReportCleanupJob = async () => {
+  console.log("📅 Scheduling report cleanup job...");
+
+  try {
+    await reportsQueue.add(
+      "cleanup-expired-reports",
+      {
+        timestamp: new Date()
+      },
+      {
+        repeat: {
+          pattern: getCronSchedule("report-cleanup")
+        },
+        jobId: "report-cleanup-global" // Unique ID to prevent duplicates
+      }
+    );
+
+    console.log("✅ Report cleanup job scheduled");
+  } catch (error) {
+    console.error("❌ Failed to schedule report cleanup job:", error);
+    throw error;
+  }
+};
+
+/**
  * Manually trigger a job for testing
  */
 export const triggerManualJob = async (
@@ -217,6 +257,31 @@ export const triggerManualJob = async (
     return job;
   } catch (error) {
     console.error(`❌ Failed to trigger manual job:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Manually trigger report cleanup job for testing
+ */
+export const triggerReportCleanup = async () => {
+  console.log("🔧 Manually triggering report cleanup job...");
+
+  try {
+    const job = await reportsQueue.add(
+      "cleanup-expired-reports",
+      {
+        timestamp: new Date()
+      },
+      {
+        priority: 1 // High priority for manual jobs
+      }
+    );
+
+    console.log(`✅ Report cleanup job triggered: ${job.id}`);
+    return job;
+  } catch (error) {
+    console.error("❌ Failed to trigger report cleanup job:", error);
     throw error;
   }
 };
