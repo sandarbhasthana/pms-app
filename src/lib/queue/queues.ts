@@ -51,11 +51,12 @@ const queueConfigs: Record<string, QueueConfig> = {
     defaultJobOptions: {
       removeOnComplete: 100,
       removeOnFail: 50,
-      attempts: 2,
+      attempts: 3, // Increased from 2 to 3 attempts
       backoff: {
         type: "exponential",
-        delay: 3000
-      }
+        delay: 5000 // Increased from 3s to 5s
+      },
+      timeout: 180000 // 3 minutes timeout for report generation jobs
     }
   }
 };

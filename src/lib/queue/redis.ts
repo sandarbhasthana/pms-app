@@ -46,10 +46,13 @@ const getRedisConfig = () => {
           retryDelayOnFailover: 100,
           enableReadyCheck: false,
           lazyConnect: true,
-          connectTimeout: 20000,
-          commandTimeout: 30000,
+          connectTimeout: 30000, // Increased from 20s to 30s
+          commandTimeout: 120000, // Increased from 30s to 120s (2 minutes) for long-running report jobs
           keepAlive: 30000,
-          family: 4
+          family: 4,
+          // Additional Upstash-specific optimizations
+          enableAutoPipelining: true, // Improve performance with automatic command batching
+          maxRetriesPerRequest: null // Required for BullMQ blocking operations
         };
       } catch (error) {
         console.error("❌ Failed to parse UPSTASH_REDIS_URL:", error);

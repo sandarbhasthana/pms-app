@@ -93,194 +93,218 @@ export class NightAuditReportService extends ReportService {
       `📊 Generating Night Audit Report for: ${nightStart.toISOString()} to ${nightEnd.toISOString()}`
     );
 
-    // Fetch property details
-    const property = await prisma.property.findUnique({
-      where: { id: request.propertyId! },
-      select: {
-        id: true,
-        name: true,
-        suite: true,
-        street: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        country: true
+    try {
+      // Fetch property details
+      console.log(`🔍 Fetching property details for: ${request.propertyId}`);
+      const property = await prisma.property.findUnique({
+        where: { id: request.propertyId! },
+        select: {
+          id: true,
+          name: true,
+          suite: true,
+          street: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          country: true
+        }
+      });
+
+      if (!property) {
+        throw new Error("Property not found");
       }
-    });
 
-    if (!property) {
-      throw new Error("Property not found");
-    }
+      console.log(`✅ Property found: ${property.name}`);
 
-    // Fetch property settings for print header
-    const propertySettings = await prisma.propertySettings.findUnique({
-      where: { propertyId: request.propertyId! },
-      select: {
-        printHeaderImage: true,
-        propertyPhone: true,
-        propertyEmail: true,
-        street: true,
-        city: true,
-        state: true,
-        zip: true,
-        country: true
-      }
-    });
+      // Fetch property settings, organization, and user details in parallel
+      console.log(
+        `🔍 Fetching property settings, organization, and user details...`
+      );
+      const [propertySettings, organization, user] = await Promise.all([
+        prisma.propertySettings.findUnique({
+          where: { propertyId: request.propertyId! },
+          select: {
+            printHeaderImage: true,
+            propertyPhone: true,
+            propertyEmail: true,
+            street: true,
+            city: true,
+            state: true,
+            zip: true,
+            country: true
+          }
+        }),
+        prisma.organization.findUnique({
+          where: { id: request.organizationId },
+          select: { name: true }
+        }),
+        prisma.user.findUnique({
+          where: { id: request.userId },
+          select: { name: true, email: true }
+        })
+      ]);
 
-    // Fetch organization details
-    const organization = await prisma.organization.findUnique({
-      where: { id: request.organizationId },
-      select: { name: true }
-    });
+      console.log(`✅ Metadata fetched successfully`);
 
-    // Fetch user details
-    const user = await prisma.user.findUnique({
-      where: { id: request.userId },
-      select: { name: true, email: true }
-    });
+      // Fetch all reservations for the night
+      console.log(`🔍 Fetching reservation data...`);
+      const startTime = Date.now();
 
-    // Fetch all reservations for the night
-    const [
-      checkIns,
-      checkOuts,
-      cancellations,
-      noShows,
-      inHouseGuests,
-      totalRooms
-    ] = await Promise.all([
-      this.fetchCheckIns(nightStart, nightEnd, request.propertyId!),
-      this.fetchCheckOuts(nightStart, nightEnd, request.propertyId!),
-      this.fetchCancellations(nightStart, nightEnd, request.propertyId!),
-      this.fetchNoShows(nightStart, nightEnd, request.propertyId!),
-      this.fetchInHouseGuests(nightStart, request.propertyId!),
-      this.getTotalRooms(request.propertyId!)
-    ]);
+      const [
+        checkIns,
+        checkOuts,
+        cancellations,
+        noShows,
+        inHouseGuests,
+        totalRooms
+      ] = await Promise.all([
+        this.fetchCheckIns(nightStart, nightEnd, request.propertyId!),
+        this.fetchCheckOuts(nightStart, nightEnd, request.propertyId!),
+        this.fetchCancellations(nightStart, nightEnd, request.propertyId!),
+        this.fetchNoShows(nightStart, nightEnd, request.propertyId!),
+        this.fetchInHouseGuests(nightStart, request.propertyId!),
+        this.getTotalRooms(request.propertyId!)
+      ]);
 
-    // Calculate summary metrics
-    const summary = this.calculateSummary(
-      checkIns,
-      checkOuts,
-      cancellations,
-      noShows,
-      inHouseGuests,
-      totalRooms
-    );
-
-    // Build activity data array
-    const activityData = [
-      ...checkIns.map((ci) => ({
-        type: "Check-In",
-        reservationId: ci.reservationId.substring(0, 8),
-        guestName: ci.guestName,
-        roomNumber: ci.roomNumber,
-        time: ci.checkInTime.toLocaleTimeString(),
-        nights: ci.nights,
-        amount: `$${ci.totalAmount.toFixed(2)}`,
-        paymentStatus: ci.paymentStatus
-      })),
-      ...checkOuts.map((co) => ({
-        type: "Check-Out",
-        reservationId: co.reservationId.substring(0, 8),
-        guestName: co.guestName,
-        roomNumber: co.roomNumber,
-        time: co.checkOutTime.toLocaleTimeString(),
-        nights: "-",
-        amount: `$${co.totalAmount.toFixed(2)}`,
-        paymentStatus: co.balanceDue > 0 ? "Balance Due" : "Paid"
-      })),
-      ...cancellations.map((cancel) => ({
-        type: "Cancellation",
-        reservationId: cancel.reservationId.substring(0, 8),
-        guestName: cancel.guestName,
-        roomNumber: cancel.roomType,
-        time: cancel.cancelledAt.toLocaleTimeString(),
-        nights: "-",
-        amount: `$${cancel.refundAmount.toFixed(2)}`,
-        paymentStatus: "Refunded"
-      })),
-      ...noShows.map((ns) => ({
-        type: "No-Show",
-        reservationId: ns.reservationId.substring(0, 8),
-        guestName: ns.guestName,
-        roomNumber: ns.roomType,
-        time: ns.expectedCheckIn.toLocaleTimeString(),
-        nights: "-",
-        amount: `$${ns.chargeAmount.toFixed(2)}`,
-        paymentStatus: "Charged"
-      }))
-    ];
-
-    // Add in-house guests to the data
-    const inHouseData = inHouseGuests.map((guest) => {
-      // Calculate remaining nights from nightStart to checkout
-      const remainingNights = Math.ceil(
-        (guest.checkOutDate.getTime() - nightStart.getTime()) /
-          (1000 * 60 * 60 * 24)
+      const fetchDuration = Date.now() - startTime;
+      console.log(`✅ Reservation data fetched in ${fetchDuration}ms`);
+      console.log(
+        `📊 Data summary: ${checkIns.length} check-ins, ${checkOuts.length} check-outs, ${cancellations.length} cancellations, ${noShows.length} no-shows, ${inHouseGuests.length} in-house guests`
       );
 
-      return {
-        type: "In-House",
-        reservationId: guest.reservationId.substring(0, 8),
-        guestName: guest.guestName,
-        roomNumber: guest.roomNumber,
-        time: "-",
-        nights: remainingNights,
-        amount: "-",
-        paymentStatus: "Staying"
+      // Calculate summary metrics
+      console.log(`🔍 Calculating summary metrics...`);
+      const summary = this.calculateSummary(
+        checkIns,
+        checkOuts,
+        cancellations,
+        noShows,
+        inHouseGuests,
+        totalRooms
+      );
+
+      // Build activity data array
+      console.log(`🔍 Building activity data...`);
+      const activityData = [
+        ...checkIns.map((ci) => ({
+          type: "Check-In",
+          reservationId: ci.reservationId.substring(0, 8),
+          guestName: ci.guestName,
+          roomNumber: ci.roomNumber,
+          time: ci.checkInTime.toLocaleTimeString(),
+          nights: ci.nights,
+          amount: `$${ci.totalAmount.toFixed(2)}`,
+          paymentStatus: ci.paymentStatus
+        })),
+        ...checkOuts.map((co) => ({
+          type: "Check-Out",
+          reservationId: co.reservationId.substring(0, 8),
+          guestName: co.guestName,
+          roomNumber: co.roomNumber,
+          time: co.checkOutTime.toLocaleTimeString(),
+          nights: "-",
+          amount: `$${co.totalAmount.toFixed(2)}`,
+          paymentStatus: co.balanceDue > 0 ? "Balance Due" : "Paid"
+        })),
+        ...cancellations.map((cancel) => ({
+          type: "Cancellation",
+          reservationId: cancel.reservationId.substring(0, 8),
+          guestName: cancel.guestName,
+          roomNumber: cancel.roomType,
+          time: cancel.cancelledAt.toLocaleTimeString(),
+          nights: "-",
+          amount: `$${cancel.refundAmount.toFixed(2)}`,
+          paymentStatus: "Refunded"
+        })),
+        ...noShows.map((ns) => ({
+          type: "No-Show",
+          reservationId: ns.reservationId.substring(0, 8),
+          guestName: ns.guestName,
+          roomNumber: ns.roomType,
+          time: ns.expectedCheckIn.toLocaleTimeString(),
+          nights: "-",
+          amount: `$${ns.chargeAmount.toFixed(2)}`,
+          paymentStatus: "Charged"
+        }))
+      ];
+
+      // Add in-house guests to the data
+      const inHouseData = inHouseGuests.map((guest) => {
+        // Calculate remaining nights from nightStart to checkout
+        const remainingNights = Math.ceil(
+          (guest.checkOutDate.getTime() - nightStart.getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          type: "In-House",
+          reservationId: guest.reservationId.substring(0, 8),
+          guestName: guest.guestName,
+          roomNumber: guest.roomNumber,
+          time: "-",
+          nights: remainingNights,
+          amount: "-",
+          paymentStatus: "Staying"
+        };
+      });
+
+      // Check if there's any activity
+      const hasActivity = activityData.length > 0 || inHouseData.length > 0;
+
+      // Build summary object
+      const summaryObject: Record<string, string | number> = {
+        totalRevenue: `$${summary.totalRevenue.toFixed(2)}`,
+        roomRevenue: `$${summary.roomRevenue.toFixed(2)}`,
+        addonRevenue: `$${summary.addonRevenue.toFixed(2)}`,
+        totalBookings: summary.totalBookings,
+        checkIns: summary.checkIns,
+        checkOuts: summary.checkOuts,
+        cancellations: summary.cancellations,
+        noShows: summary.noShows,
+        inHouseGuests: inHouseGuests.length,
+        occupancyRate: `${summary.occupancyRate.toFixed(1)}%`,
+        adr: `$${summary.adr.toFixed(2)}`,
+        revpar: `$${summary.revpar.toFixed(2)}`
       };
-    });
 
-    // Check if there's any activity
-    const hasActivity = activityData.length > 0 || inHouseData.length > 0;
+      // Add empty message if no activity
+      if (!hasActivity) {
+        summaryObject.emptyMessage =
+          "No activity during this period. No check-ins, check-outs, cancellations, or in-house guests.";
+      }
 
-    // Build summary object
-    const summaryObject: Record<string, string | number> = {
-      totalRevenue: `$${summary.totalRevenue.toFixed(2)}`,
-      roomRevenue: `$${summary.roomRevenue.toFixed(2)}`,
-      addonRevenue: `$${summary.addonRevenue.toFixed(2)}`,
-      totalBookings: summary.totalBookings,
-      checkIns: summary.checkIns,
-      checkOuts: summary.checkOuts,
-      cancellations: summary.cancellations,
-      noShows: summary.noShows,
-      inHouseGuests: inHouseGuests.length,
-      occupancyRate: `${summary.occupancyRate.toFixed(1)}%`,
-      adr: `$${summary.adr.toFixed(2)}`,
-      revpar: `$${summary.revpar.toFixed(2)}`
-    };
+      // Build report data
+      console.log(`🔍 Building final report data...`);
+      const reportData: ReportData = {
+        title: "Night Audit Report",
+        subtitle: property.name, // Just property name, no date
+        generatedAt: new Date(),
+        generatedBy: user?.name || user?.email || "System",
+        organizationName: organization?.name || "Unknown",
+        propertyName: property.name,
+        dateRange: {
+          start: nightStart,
+          end: nightEnd
+        },
+        data: [...activityData, ...inHouseData],
+        summary: summaryObject,
+        // Print header configuration
+        printHeader: propertySettings
+          ? {
+              imageUrl: propertySettings.printHeaderImage,
+              propertyAddress: `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`,
+              propertyPhone: propertySettings.propertyPhone,
+              propertyEmail: propertySettings.propertyEmail
+            }
+          : undefined
+      };
 
-    // Add empty message if no activity
-    if (!hasActivity) {
-      summaryObject.emptyMessage =
-        "No activity during this period. No check-ins, check-outs, cancellations, or in-house guests.";
+      console.log(`✅ Night Audit Report generated successfully`);
+      return reportData;
+    } catch (error) {
+      console.error(`❌ Error generating Night Audit Report:`, error);
+      throw error;
     }
-
-    // Build report data
-    const reportData: ReportData = {
-      title: "Night Audit Report",
-      subtitle: property.name, // Just property name, no date
-      generatedAt: new Date(),
-      generatedBy: user?.name || user?.email || "System",
-      organizationName: organization?.name || "Unknown",
-      propertyName: property.name,
-      dateRange: {
-        start: nightStart,
-        end: nightEnd
-      },
-      data: [...activityData, ...inHouseData],
-      summary: summaryObject,
-      // Print header configuration
-      printHeader: propertySettings
-        ? {
-            imageUrl: propertySettings.printHeaderImage,
-            propertyAddress: `${propertySettings.street}, ${propertySettings.city}, ${propertySettings.state} ${propertySettings.zip}, ${propertySettings.country}`,
-            propertyPhone: propertySettings.propertyPhone,
-            propertyEmail: propertySettings.propertyEmail
-          }
-        : undefined
-    };
-
-    return reportData;
   }
 
   private async fetchCheckIns(
