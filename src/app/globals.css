@@ -4,6 +4,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "react-phone-input-2/lib/style.css";
+@import "nprogress/nprogress.css";
 
 /* Color System */
 @import "../styles/colors.css";

@@ -1,78 +1,117 @@
-import * as React from "react"
-import { Loader2 } from "lucide-react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+"use client";
 
-const spinnerVariants = cva(
-  "animate-spin",
-  {
-    variants: {
-      size: {
-        sm: "h-4 w-4",
-        default: "h-6 w-6",
-        lg: "h-8 w-8",
-        xl: "h-12 w-12"
-      },
-      variant: {
-        default: "text-muted-foreground",
-        primary: "text-primary",
-        secondary: "text-secondary-foreground",
-        destructive: "text-destructive"
-      }
-    },
-    defaultVariants: {
-      size: "default",
-      variant: "default"
-    }
-  }
-)
+import * as React from "react";
+import { ScaleLoader } from "react-spinners";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 
-interface SpinnerProps extends VariantProps<typeof spinnerVariants> {
-  className?: string
+interface SpinnerProps {
+  size?: "sm" | "default" | "lg" | "xl";
+  variant?: "default" | "primary" | "secondary" | "destructive";
+  className?: string;
 }
 
-function Spinner({ size, variant, className }: SpinnerProps) {
+function Spinner({
+  size = "default",
+  variant = "primary",
+  className
+}: SpinnerProps) {
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Prevent hydration mismatch
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Return a placeholder with same dimensions to prevent layout shift
+    return (
+      <div
+        className={cn("inline-block", className)}
+        style={{ width: 35, height: 35 }}
+      />
+    );
+  }
+
+  // Determine the current theme
+  const currentTheme = theme === "system" ? resolvedTheme : theme;
+  const isDark = currentTheme === "dark";
+
+  // Size mapping for ScaleLoader
+  const sizeMap = {
+    sm: { height: 20, width: 3 },
+    default: { height: 30, width: 4 },
+    lg: { height: 35, width: 4 },
+    xl: { height: 45, width: 5 }
+  };
+
+  // Variant color mapping (theme-aware)
+  const getColor = () => {
+    switch (variant) {
+      case "primary":
+        return isDark ? "#a78bfa" : "#7c3aed"; // purple-400 / purple-600
+      case "secondary":
+        return isDark ? "#94a3b8" : "#64748b"; // slate-400 / slate-600
+      case "destructive":
+        return isDark ? "#f87171" : "#dc2626"; // red-400 / red-600
+      case "default":
+      default:
+        return isDark ? "#9ca3af" : "#6b7280"; // gray-400 / gray-600
+    }
+  };
+
+  const { height, width } = sizeMap[size];
+
   return (
-    <Loader2 
-      className={cn(spinnerVariants({ size, variant }), className)} 
-    />
-  )
+    <div className={cn("inline-flex items-center justify-center", className)}>
+      <ScaleLoader
+        color={getColor()}
+        height={height}
+        width={width}
+        radius={2}
+        margin={2}
+        loading={true}
+      />
+    </div>
+  );
 }
 
 interface LoadingSpinnerProps extends SpinnerProps {
-  text?: string
-  center?: boolean
-  fullScreen?: boolean
+  text?: string;
+  center?: boolean;
+  fullScreen?: boolean;
 }
 
-function LoadingSpinner({ 
-  text = "Loading...", 
-  center = true, 
+function LoadingSpinner({
+  text = "Loading...",
+  center = true,
   fullScreen = false,
   size = "lg",
   variant = "primary",
-  className 
+  className
 }: LoadingSpinnerProps) {
   const containerClasses = cn(
-    "flex items-center gap-3",
+    "flex flex-col items-center gap-3",
     {
       "justify-center": center,
       "min-h-[200px]": !fullScreen && center,
-      "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 justify-center": fullScreen
+      "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 justify-center":
+        fullScreen
     },
     className
-  )
+  );
 
   return (
     <div className={containerClasses}>
       <Spinner size={size} variant={variant} />
       {text && (
-        <span className="text-sm font-medium text-muted-foreground">
+        <span className="text-sm font-medium text-muted-foreground animate-pulse">
           {text}
         </span>
       )}
     </div>
-  )
+  );
 }
 
 // Enterprise-level skeleton loader for tables/lists
@@ -80,7 +119,10 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
+        <div
+          key={i}
+          className="flex items-center space-x-4 p-4 border rounded-lg"
+        >
           <div className="h-10 w-10 bg-muted rounded-full animate-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
@@ -90,7 +132,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // Card skeleton for grid layouts
@@ -111,13 +153,7 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
-export { 
-  Spinner, 
-  LoadingSpinner, 
-  TableSkeleton, 
-  CardSkeleton,
-  spinnerVariants 
-}
+export { Spinner, LoadingSpinner, TableSkeleton, CardSkeleton };

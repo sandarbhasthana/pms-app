@@ -24,9 +24,9 @@ import {
   ChevronsRight,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   RefreshCw
 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface Reservation {
   id: string;
@@ -379,7 +379,7 @@ const ReservationsPage = () => {
       <th
         className={`${className} cursor-pointer select-none ${
           isActive
-            ? "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30"
+            ? "bg-linear-to-b from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30"
             : ""
         }`}
         onClick={() => handleSort(field)}
@@ -397,7 +397,7 @@ const ReservationsPage = () => {
             <div className="flex flex-col items-center gap-0.5">
               {/* Filled Up Triangle */}
               <div
-                className={`w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+                className={`w-0 h-0 border-l-4 border-r-4 border-b-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
                   isActive && isAsc
                     ? "border-b-[#7210a2] dark:border-b-[#a855f7]"
                     : "border-b-gray-400 dark:border-b-gray-500"
@@ -405,7 +405,7 @@ const ReservationsPage = () => {
               />
               {/* Filled Down Triangle */}
               <div
-                className={`w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
+                className={`w-0 h-0 border-l-4 border-r-4 border-t-[6px] border-l-transparent border-r-transparent transition-colors duration-300 ${
                   isActive && !isAsc
                     ? "border-t-[#7210a2] dark:border-t-[#a855f7]"
                     : "border-t-gray-400 dark:border-t-gray-500"
@@ -519,7 +519,7 @@ const ReservationsPage = () => {
       )}
       {isValidating && !data && (
         <div className="flex items-center space-x-2">
-          <Loader2 className="animate-spin w-4 h-4" />
+          <Spinner size="sm" />
           <span>Loading reservations…</span>
         </div>
       )}
@@ -534,7 +534,7 @@ const ReservationsPage = () => {
       <div className="overflow-auto">
         <table className="min-w-full">
           <thead>
-            <tr className="bg-gradient-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-sm font-medium tracking-wider">
+            <tr className="bg-linear-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-sm font-medium tracking-wider">
               <SortableHeader
                 field="guestName"
                 className="px-3 py-4 text-center min-w-[140px] rounded-tl-sm rounded-bl-sm"
@@ -561,13 +561,13 @@ const ReservationsPage = () => {
               </SortableHeader>
               <SortableHeader
                 field="adults"
-                className="px-3 py-4 text-center min-w-[80px]"
+                className="px-3 py-4 text-center min-w-20"
               >
                 Adults
               </SortableHeader>
               <SortableHeader
                 field="children"
-                className="px-3 py-4 text-center min-w-[80px]"
+                className="px-3 py-4 text-center min-w-20"
               >
                 Children
               </SortableHeader>
@@ -583,7 +583,7 @@ const ReservationsPage = () => {
               >
                 Payment
               </SortableHeader>
-              <th className="px-3 py-4 text-center min-w-[90px] text-gray-700 dark:!text-[#f0f8ff] rounded-tr-sm rounded-br-sm">
+              <th className="px-3 py-4 text-center min-w-[90px] text-gray-700 dark:text-[#f0f8ff]! rounded-tr-sm rounded-br-sm">
                 Actions
               </th>
             </tr>
@@ -621,8 +621,8 @@ const ReservationsPage = () => {
                         disabled={loadingActionId === r.id}
                       >
                         {loadingActionId === r.id ? (
-                          <span className="flex items-center">
-                            <Loader2 className="animate-spin w-4 h-4 mr-1" />
+                          <span className="flex items-center gap-2">
+                            <Spinner size="sm" />
                             Generating…
                           </span>
                         ) : (
@@ -635,8 +635,8 @@ const ReservationsPage = () => {
                         disabled={loadingActionId === r.id}
                       >
                         {loadingActionId === r.id ? (
-                          <span className="flex items-center">
-                            <Loader2 className="animate-spin w-4 h-4 mr-1" />
+                          <span className="flex items-center gap-2">
+                            <Spinner size="sm" />
                             Invoicing…
                           </span>
                         ) : (
@@ -650,8 +650,8 @@ const ReservationsPage = () => {
                         disabled={loadingActionId === r.id}
                       >
                         {loadingActionId === r.id ? (
-                          <span className="flex items-center">
-                            <Loader2 className="animate-spin w-4 h-4 mr-1" />
+                          <span className="flex items-center gap-2">
+                            <Spinner size="sm" variant="destructive" />
                             Deleting…
                           </span>
                         ) : (

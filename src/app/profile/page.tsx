@@ -12,7 +12,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const userRole = session.user.role;
-      
+
       // Redirect admin users to admin settings
       if (userRole === "ORG_ADMIN" || userRole === "SUPER_ADMIN") {
         router.replace("/admin/settings/profile");
@@ -24,11 +24,7 @@ export default function ProfilePage() {
   }, [session, status, router]);
 
   if (status === "loading") {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner text="Loading profile..." fullScreen />;
   }
 
   if (status !== "authenticated") {
@@ -36,15 +32,13 @@ export default function ProfilePage() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-gray-600">You must be logged in to view this page.</p>
+          <p className="text-gray-600">
+            You must be logged in to view this page.
+          </p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex justify-center items-center min-h-screen">
-      <LoadingSpinner />
-    </div>
-  );
+  return <LoadingSpinner text="Redirecting..." fullScreen />;
 }
