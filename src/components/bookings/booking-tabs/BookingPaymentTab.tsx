@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { BookingTabProps, BookingFormData } from "./types";
-import { PaymentProvider } from "@/components/payments/PaymentProvider";
-import { PaymentForm } from "@/components/payments/PaymentForm";
 import { toast } from "sonner";
 import { PaymentResult } from "@/lib/payments/types";
+
+// ⚡ LAZY LOAD: Stripe components are heavy (~200KB+), only load when needed
+const PaymentProvider = lazy(() =>
+  import("@/components/payments/PaymentProvider").then((mod) => ({
+    default: mod.PaymentProvider
+  }))
+);
+const PaymentForm = lazy(() =>
+  import("@/components/payments/PaymentForm").then((mod) => ({
+    default: mod.PaymentForm
+  }))
+);
 
 interface BookingPaymentTabProps extends BookingTabProps {
   handleCreate: (formData: BookingFormData) => void;
@@ -443,7 +453,7 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
 
         {/* Stripe Payment Form - Show when card payment is selected */}
         {formData.payment.paymentMethod === "card" && (
-          <div className="mt-6 p-4 bg-gray-50 dark:!bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50! rounded-lg border border-gray-200 dark:border-gray-700">
             <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">
               Complete Your Payment
             </h4>
@@ -458,19 +468,30 @@ export const BookingPaymentTab: React.FC<BookingPaymentTabProps> = ({
                 </span>
               </div>
             ) : (
-              <PaymentProvider clientSecret={clientSecret}>
-                <PaymentForm
-                  amount={totals.subtotal}
-                  currency="INR"
-                  clientSecret={clientSecret}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  loading={paymentStatus === "processing"}
-                  showAmount={true}
-                  title="Complete Payment"
-                  description={`Payment for ${selectedSlot.roomName}`}
-                />
-              </PaymentProvider>
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <span className="ml-3 text-gray-600 dark:text-gray-400">
+                      Loading payment form...
+                    </span>
+                  </div>
+                }
+              >
+                <PaymentProvider clientSecret={clientSecret}>
+                  <PaymentForm
+                    amount={totals.subtotal}
+                    currency="INR"
+                    clientSecret={clientSecret}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    loading={paymentStatus === "processing"}
+                    showAmount={true}
+                    title="Complete Payment"
+                    description={`Payment for ${selectedSlot.roomName}`}
+                  />
+                </PaymentProvider>
+              </Suspense>
             )}
           </div>
         )}

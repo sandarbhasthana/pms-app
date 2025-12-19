@@ -1,7 +1,7 @@
 // File: src/components/dashboard/StatusOverviewCards.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { ReservationStatus } from "@prisma/client";
 import {
   Calendar,
@@ -73,20 +73,39 @@ interface StatusOverviewCardsProps {
   propertyId: string;
   refreshInterval?: number;
   showRecentActivity?: boolean;
+  // ✅ PERFORMANCE OPTIMIZATION: Accept data as prop to avoid redundant API calls
+  data?: StatusOverviewData | null;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export default function StatusOverviewCards({
+// ✅ PERFORMANCE: Memoized component to prevent unnecessary re-renders
+const StatusOverviewCards = memo(function StatusOverviewCards({
   propertyId,
   refreshInterval = 30000, // 30 seconds
-  showRecentActivity = true
+  showRecentActivity = true,
+  data: externalData,
+  isLoading: externalIsLoading,
+  error: externalError
 }: StatusOverviewCardsProps) {
-  const [data, setData] = useState<StatusOverviewData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [internalData, setInternalData] = useState<StatusOverviewData | null>(
+    null
+  );
+  const [internalIsLoading, setInternalIsLoading] = useState(true);
+  const [internalError, setInternalError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Fetch status overview data with deduplication
+  // Use external data if provided, otherwise use internal state
+  const data = externalData !== undefined ? externalData : internalData;
+  const isLoading =
+    externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
+  const error = externalError !== undefined ? externalError : internalError;
+
+  // Fetch status overview data with deduplication (only if external data not provided)
   const fetchStatusData = useCallback(async () => {
+    // Skip fetching if external data is provided
+    if (externalData !== undefined) return;
+
     try {
       const dedupeKey = createStatusSummaryKey(propertyId, showRecentActivity);
 
@@ -106,18 +125,23 @@ export default function StatusOverviewCards({
         return response.json();
       });
 
-      setData(result);
+      setInternalData(result);
       setLastUpdated(new Date());
-      setError(null);
+      setInternalError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setInternalError(
+        err instanceof Error ? err.message : "An error occurred"
+      );
     } finally {
-      setIsLoading(false);
+      setInternalIsLoading(false);
     }
-  }, [propertyId, showRecentActivity]);
+  }, [propertyId, showRecentActivity, externalData]);
 
-  // Initial load and refresh interval with debouncing
+  // Initial load and refresh interval with debouncing (only if external data not provided)
   useEffect(() => {
+    // Skip fetching if external data is provided
+    if (externalData !== undefined) return;
+
     // Debounce the initial fetch to prevent rapid successive calls
     const timeoutId = setTimeout(() => {
       fetchStatusData();
@@ -128,7 +152,7 @@ export default function StatusOverviewCards({
       clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [propertyId, refreshInterval, showRecentActivity, fetchStatusData]);
+  }, [propertyId, refreshInterval, showRecentActivity, fetchStatusData, externalData]);
 
   // Calculate status metrics
   const statusMetrics = useMemo(() => {
@@ -341,7 +365,7 @@ export default function StatusOverviewCards({
                 return (
                   <div
                     key={status}
-                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700/50"
+                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700/50"
                   >
                     <div
                       className="p-2.5 rounded-lg mb-3"
@@ -375,4 +399,8 @@ export default function StatusOverviewCards({
       )}
     </div>
   );
-}
+});
+
+StatusOverviewCards.displayName = "StatusOverviewCards";
+
+export default StatusOverviewCards;

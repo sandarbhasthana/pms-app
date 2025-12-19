@@ -35,7 +35,7 @@ export function MessageItem({ message, showAvatar }: MessageItemProps) {
       )}
     >
       {/* Avatar */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {showAvatar ? (
           <Avatar email={senderEmail} name={senderName} size="lg" />
         ) : (
@@ -71,8 +71,8 @@ export function MessageItem({ message, showAvatar }: MessageItemProps) {
           <div
             className={
               isOwnMessage
-                ? "px-4 py-2 rounded-2xl text-sm break-words bg-purple-600 text-white rounded-tr-sm"
-                : "px-4 py-2 rounded-2xl text-sm break-words bg-purple-100 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100 rounded-tl-sm"
+                ? "px-4 py-2 rounded-2xl text-sm wrap-break-word bg-purple-600 text-white rounded-tr-sm"
+                : "px-4 py-2 rounded-2xl text-sm wrap-break-word bg-purple-100 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100 rounded-tl-sm"
             }
           >
             {message.content}
@@ -93,7 +93,7 @@ export function MessageItem({ message, showAvatar }: MessageItemProps) {
               width={384}
               height={384}
               className="max-w-sm"
-              unoptimized
+              // ✅ OPTIMIZED: S3 images configured in next.config.ts remotePatterns
             />
             {message.content && (
               <div

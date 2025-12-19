@@ -103,7 +103,10 @@ function LoadingSpinner({
   );
 
   return (
-    <div className={containerClasses}>
+    <div
+      className={containerClasses}
+      style={fullScreen ? { overflow: "hidden" } : undefined}
+    >
       <Spinner size={size} variant={variant} />
       {text && (
         <span className="text-sm font-medium text-foreground animate-pulse">

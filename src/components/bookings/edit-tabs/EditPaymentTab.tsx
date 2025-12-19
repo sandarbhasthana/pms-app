@@ -1,15 +1,32 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense
+} from "react";
 import { EditTabProps, Payment } from "./types";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { PaymentProvider } from "@/components/payments/PaymentProvider";
-import { PaymentForm } from "@/components/payments/PaymentForm";
 import { toast } from "sonner";
 import { PaymentResult } from "@/lib/payments/types";
 import { Textarea } from "@/components/ui/textarea";
+
+// ⚡ LAZY LOAD: Stripe components are heavy (~200KB+), only load when needed
+const PaymentProvider = lazy(() =>
+  import("@/components/payments/PaymentProvider").then((mod) => ({
+    default: mod.PaymentProvider
+  }))
+);
+const PaymentForm = lazy(() =>
+  import("@/components/payments/PaymentForm").then((mod) => ({
+    default: mod.PaymentForm
+  }))
+);
 
 export const EditPaymentTab: React.FC<EditTabProps> = ({
   reservationData,
@@ -817,7 +834,7 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
 
           {/* Stripe Payment Form - Show when card payment is selected */}
           {formData.payment.paymentMethod === "card" && (
-            <div className="mt-6 p-4 bg-gray-50 dark:!bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50! rounded-lg border border-gray-200 dark:border-gray-700">
               <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">
                 Complete Your Payment
               </h4>
@@ -832,30 +849,43 @@ export const EditPaymentTab: React.FC<EditTabProps> = ({
                   </span>
                 </div>
               ) : (
-                <PaymentProvider clientSecret={clientSecret}>
-                  <PaymentForm
-                    amount={totals.remainingBalance}
-                    currency="INR"
-                    clientSecret={clientSecret}
-                    reservationId={reservationData.id}
-                    onSuccess={handlePaymentSuccess}
-                    onError={(error: string) => {
-                      setPaymentStatus("failed");
-                      toast.error(`Payment failed: ${error}`);
-                    }}
-                    onCardSave={(cardDetails) => {
-                      console.log("✅ Card saved:", cardDetails);
-                      toast.success("Card saved successfully for future use!");
-                    }}
-                    loading={paymentStatus === "processing"}
-                    showAmount={true}
-                    title="Complete Payment"
-                    description={`Payment for ${
-                      availableRooms?.find((r) => r.id === formData.roomId)
-                        ?.name
-                    }`}
-                  />
-                </PaymentProvider>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                      <span className="ml-3 text-gray-600 dark:text-gray-400">
+                        Loading payment form...
+                      </span>
+                    </div>
+                  }
+                >
+                  <PaymentProvider clientSecret={clientSecret}>
+                    <PaymentForm
+                      amount={totals.remainingBalance}
+                      currency="INR"
+                      clientSecret={clientSecret}
+                      reservationId={reservationData.id}
+                      onSuccess={handlePaymentSuccess}
+                      onError={(error: string) => {
+                        setPaymentStatus("failed");
+                        toast.error(`Payment failed: ${error}`);
+                      }}
+                      onCardSave={(cardDetails) => {
+                        console.log("✅ Card saved:", cardDetails);
+                        toast.success(
+                          "Card saved successfully for future use!"
+                        );
+                      }}
+                      loading={paymentStatus === "processing"}
+                      showAmount={true}
+                      title="Complete Payment"
+                      description={`Payment for ${
+                        availableRooms?.find((r) => r.id === formData.roomId)
+                          ?.name
+                      }`}
+                    />
+                  </PaymentProvider>
+                </Suspense>
               )}
             </div>
           )}

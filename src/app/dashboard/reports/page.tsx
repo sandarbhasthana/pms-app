@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { BarChart3, FileText, Clock, AlertTriangle } from "lucide-react";
-import { ReportGenerationForm } from "@/components/reports/ReportGenerationForm";
-import { ReportHistoryList } from "@/components/reports/ReportHistoryList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { LoadingSpinner } from "@/components/ui/spinner";
+
+// ✅ PERFORMANCE: Lazy load heavy report components
+// These are only needed when user navigates to reports page
+const ReportGenerationForm = lazy(() =>
+  import("@/components/reports/ReportGenerationForm").then((mod) => ({
+    default: mod.ReportGenerationForm
+  }))
+);
+const ReportHistoryList = lazy(() =>
+  import("@/components/reports/ReportHistoryList").then((mod) => ({
+    default: mod.ReportHistoryList
+  }))
+);
 
 export default function ReportsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -33,8 +45,8 @@ export default function ReportsPage() {
           </AlertTitle>
           <AlertDescription className="text-orange-800 dark:text-orange-300">
             Background report generation requires persistent server connections
-            which are not supported on Vercel&apos;s serverless platform. Please use
-            the Railway deployment to access report features.
+            which are not supported on Vercel&apos;s serverless platform. Please
+            use the Railway deployment to access report features.
           </AlertDescription>
         </Alert>
       )}
@@ -136,7 +148,11 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="p-6">
-              <ReportGenerationForm onReportGenerated={handleReportGenerated} />
+              <Suspense fallback={<LoadingSpinner />}>
+                <ReportGenerationForm
+                  onReportGenerated={handleReportGenerated}
+                />
+              </Suspense>
             </div>
           </div>
         </TabsContent>
@@ -154,7 +170,9 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="p-6">
-              <ReportHistoryList key={refreshKey} />
+              <Suspense fallback={<LoadingSpinner />}>
+                <ReportHistoryList key={refreshKey} />
+              </Suspense>
             </div>
           </div>
         </TabsContent>

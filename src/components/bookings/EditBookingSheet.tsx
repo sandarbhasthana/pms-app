@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  lazy,
+  Suspense
+} from "react";
 import {
   Sheet,
   SheetContent,
@@ -44,7 +51,12 @@ import { formatDateRange as formatDateRangeUtil } from "@/lib/utils/dateFormatte
 
 import { EditDetailsTab } from "./edit-tabs/EditDetailsTab";
 import { EditAddonsTab } from "./edit-tabs/EditAddonsTab";
-import { EditPaymentTab } from "./edit-tabs/EditPaymentTab";
+// ⚡ LAZY LOAD: Payment tab imports Stripe (~50MB), only load when tab is opened
+const EditPaymentTab = lazy(() =>
+  import("./edit-tabs/EditPaymentTab").then((mod) => ({
+    default: mod.EditPaymentTab
+  }))
+);
 import EditFolioTab from "./edit-tabs/EditFolioTab";
 import EditCardsTab from "./edit-tabs/EditCardsTab";
 import EditDocumentsTab from "./edit-tabs/EditDocumentsTab";
@@ -691,7 +703,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
       <SheetClose asChild>
         <div />
       </SheetClose>
-      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base [&_[data-slot=select-content]]:z-[99999] z-[9999]">
+      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto bg-gray-100! dark:bg-[#121212]! text-gray-900! dark:text-[#f0f8ff]! [&_label]:text-base [&_input]:text-base [&_textarea]:text-base **:data-[slot=select-trigger]:text-base **:data-[slot=select-item]:text-base **:data-[slot=select-content]:z-99999 z-9999">
         <SheetDescription className="sr-only">
           Edit booking details including guest information, dates, and status
         </SheetDescription>
@@ -751,7 +763,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="z-[99999]"
+                  className="z-99999"
                   sideOffset={5}
                 >
                   <DropdownMenuItem
@@ -832,7 +844,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="z-[99999]"
+                  className="z-99999"
                   sideOffset={5}
                 >
                   <DropdownMenuItem
@@ -901,10 +913,10 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="p-2 rounded-md bg-gray-200 hover:!bg-gray-300 dark:!bg-gray-700 dark:hover:bg-gray-900 transition-colors cursor-pointer"
+              className="p-2 rounded-md bg-gray-200 hover:bg-gray-300! dark:bg-gray-700! dark:hover:bg-gray-900 transition-colors cursor-pointer"
               title="Close"
             >
-              <XMarkIcon className="h-6 w-6 dark:!text-[#f0f8f9]" />
+              <XMarkIcon className="h-6 w-6 dark:text-[#f0f8f9]!" />
             </button>
           </div>
 
@@ -1050,18 +1062,29 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
             </TabsContent>
 
             <TabsContent value="payment" className="mt-0">
-              <EditPaymentTab
-                reservationData={editingReservation}
-                formData={formData}
-                updateFormData={updateFormData}
-                availableRooms={availableRooms}
-                onPrevious={handlePrevious}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onUpdate={onUpdate}
-                setEditingReservation={setEditingReservation}
-                onStatusUpdate={handleStatusUpdate}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <span className="ml-3 text-gray-600 dark:text-gray-400">
+                      Loading payment tab...
+                    </span>
+                  </div>
+                }
+              >
+                <EditPaymentTab
+                  reservationData={editingReservation}
+                  formData={formData}
+                  updateFormData={updateFormData}
+                  availableRooms={availableRooms}
+                  onPrevious={handlePrevious}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onUpdate={onUpdate}
+                  setEditingReservation={setEditingReservation}
+                  onStatusUpdate={handleStatusUpdate}
+                />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </div>
@@ -1125,7 +1148,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
       {/* Cancel Booking Confirmation Dialog */}
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Confirm Cancellation
@@ -1159,7 +1182,7 @@ const EditBookingSheetComponent: React.FC<EditBookingSheetProps> = ({
 
       {/* Check-Out Confirmation Dialog */}
       {showCheckOutConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Confirm Check-Out

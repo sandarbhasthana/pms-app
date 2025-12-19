@@ -1,7 +1,7 @@
 // File: src/components/dashboard/StatusPerformanceMetrics.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -55,7 +55,8 @@ interface StatusPerformanceMetricsProps {
   comparisonPeriod?: "week" | "month" | "quarter";
 }
 
-export default function StatusPerformanceMetrics({
+// ✅ PERFORMANCE: Memoized component to prevent unnecessary re-renders
+const StatusPerformanceMetrics = memo(function StatusPerformanceMetrics({
   propertyId,
   refreshInterval = 300000, // 5 minutes
   comparisonPeriod = "month"
@@ -412,4 +413,8 @@ export default function StatusPerformanceMetrics({
       </CardContent>
     </Card>
   );
-}
+});
+
+StatusPerformanceMetrics.displayName = "StatusPerformanceMetrics";
+
+export default StatusPerformanceMetrics;

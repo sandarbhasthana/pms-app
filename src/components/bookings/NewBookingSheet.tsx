@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,12 @@ import { ChevronLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { BookingTabNavigation } from "./booking-tabs/BookingTabNavigation";
 import { BookingDetailsTab } from "./booking-tabs/BookingDetailsTab";
 import { BookingAddonsTab } from "./booking-tabs/BookingAddonsTab";
-import { BookingPaymentTab } from "./booking-tabs/BookingPaymentTab";
+// ⚡ LAZY LOAD: Payment tab imports Stripe (~50MB), only load when tab is opened
+const BookingPaymentTab = lazy(() =>
+  import("./booking-tabs/BookingPaymentTab").then((mod) => ({
+    default: mod.BookingPaymentTab
+  }))
+);
 import {
   NewBookingSheetProps,
   BookingFormData,
@@ -57,8 +62,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
   setShowScanner,
   setOcrEnabled,
   handleScanComplete,
-  handleScanError,
-  setLastScannedSlot
+  handleScanError
 }) => {
   const [activeTab, setActiveTab] = useState<BookingTab>("details");
   const [completedTabs, setCompletedTabs] = useState<Set<BookingTab>>(
@@ -447,7 +451,7 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
       <SheetClose asChild>
         <div />
       </SheetClose>
-      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto !bg-gray-100 dark:!bg-[#121212] !text-gray-900 dark:!text-[#f0f8ff] [&_label]:text-base [&_input]:text-base [&_textarea]:text-base [&_[data-slot=select-trigger]]:text-base [&_[data-slot=select-item]]:text-base z-[9999]">
+      <SheetContent className="fixed top-16 text-lg bottom-0 left-0 right-0 w-full h-[calc(100vh-4rem)] overflow-y-auto bg-gray-100! dark:bg-[#121212]! text-gray-900! dark:text-[#f0f8ff]! [&_label]:text-base [&_input]:text-base [&_textarea]:text-base **:data-[slot=select-trigger]:text-base **:data-[slot=select-item]:text-base z-9999">
         <SheetHeader className="relative">
           {/* Close button in top right corner */}
           <button
@@ -501,7 +505,6 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
                 setOcrEnabled={setOcrEnabled}
                 handleScanComplete={handleScanComplete}
                 handleScanError={handleScanError}
-                setLastScannedSlot={setLastScannedSlot}
                 // Props for empty mode
                 isEmptyMode={isEmptyMode}
                 fetchedRooms={fetchedRooms}
@@ -522,18 +525,29 @@ const NewBookingSheet: React.FC<NewBookingSheetProps> = ({
             </TabsContent>
 
             <TabsContent value="payment" className="mt-0">
-              <BookingPaymentTab
-                formData={formData}
-                updateFormData={updateFormData}
-                selectedSlot={selectedSlot}
-                onPrevious={() => handlePrevious("payment")}
-                handleCreate={handleCreate}
-                checkInDate={checkInDate}
-                checkOutDate={checkOutDate}
-                actualRoomPrice={actualRoomPrice}
-                ratesLoading={ratesLoading}
-                calculateRoomPriceForStay={calculateRoomPriceForStay}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <span className="ml-3 text-gray-600 dark:text-gray-400">
+                      Loading payment tab...
+                    </span>
+                  </div>
+                }
+              >
+                <BookingPaymentTab
+                  formData={formData}
+                  updateFormData={updateFormData}
+                  selectedSlot={selectedSlot}
+                  onPrevious={() => handlePrevious("payment")}
+                  handleCreate={handleCreate}
+                  checkInDate={checkInDate}
+                  checkOutDate={checkOutDate}
+                  actualRoomPrice={actualRoomPrice}
+                  ratesLoading={ratesLoading}
+                  calculateRoomPriceForStay={calculateRoomPriceForStay}
+                />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </div>

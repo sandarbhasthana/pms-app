@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const { propertyId } = validation;
 
     // Query all rooms for the property with their reservations
+    // ✅ OPTIMIZED: Use select instead of include (Task 1.4)
     const availableRooms = await withPropertyContext(
       propertyId!,
       async (tx) => {
@@ -39,7 +40,15 @@ export async function GET(request: NextRequest) {
           where: {
             propertyId: propertyId // Filter by current property
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            capacity: true,
+            imageUrl: true,
+            description: true,
+            doorlockId: true,
+            roomTypeId: true,
             roomType: {
               select: {
                 id: true,

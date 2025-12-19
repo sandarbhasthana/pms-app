@@ -130,7 +130,7 @@ export async function hasPropertyAccess(
     });
 
     if (orgAccess) {
-      return true; // Organization-level access grants access to all properties
+      return true;
     }
 
     // Check property-level access
@@ -142,7 +142,7 @@ export async function hasPropertyAccess(
     });
 
     if (!propertyAccess) {
-      return false; // No access to this property
+      return false;
     }
 
     // If no specific role is required, any access is sufficient

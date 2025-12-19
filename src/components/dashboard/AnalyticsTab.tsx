@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { BarChart3 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAnalyticsData } from "@/lib/hooks/useAnalyticsData";
 
 // Lazy load analytics components for better performance
 const StatusOverviewCards = lazy(() => import("./StatusOverviewCards"));
@@ -41,6 +42,18 @@ export default function AnalyticsTab({
 }: AnalyticsTabProps) {
   const { data: session } = useSession();
 
+  // ✅ PERFORMANCE OPTIMIZATION: Fetch analytics data once and pass to child components
+  // Reduces API calls from 2-4 to 1
+  const {
+    data: analyticsData,
+    isLoading,
+    error
+  } = useAnalyticsData(
+    isActive ? propertyId : null,
+    true,
+    300000 // 5 minutes
+  );
+
   // Only render content when tab is active to improve performance
   if (!isActive) {
     return null;
@@ -75,6 +88,9 @@ export default function AnalyticsTab({
           propertyId={propertyId}
           refreshInterval={300000}
           showRecentActivity={true}
+          data={analyticsData?.statusOverview}
+          isLoading={isLoading}
+          error={error}
         />
       </Suspense>
 
@@ -85,6 +101,9 @@ export default function AnalyticsTab({
           <StatusAnalyticsChart
             propertyId={propertyId}
             refreshInterval={900000}
+            data={analyticsData?.chartData}
+            isLoading={isLoading}
+            error={error}
           />
         </Suspense>
 

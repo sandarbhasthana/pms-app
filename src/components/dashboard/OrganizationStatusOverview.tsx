@@ -1,7 +1,7 @@
 // File: src/components/dashboard/OrganizationStatusOverview.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { ReservationStatus, UserRole } from "@prisma/client";
 import {
   Building2,
@@ -52,7 +52,8 @@ interface OrganizationStatusOverviewProps {
   refreshInterval?: number;
 }
 
-export default function OrganizationStatusOverview({
+// ✅ PERFORMANCE: Memoized component to prevent unnecessary re-renders
+const OrganizationStatusOverview = memo(function OrganizationStatusOverview({
   organizationId,
   userRole,
   refreshInterval = 300000 // 5 minutes
@@ -424,4 +425,8 @@ export default function OrganizationStatusOverview({
       )}
     </div>
   );
-}
+});
+
+OrganizationStatusOverview.displayName = "OrganizationStatusOverview";
+
+export default OrganizationStatusOverview;

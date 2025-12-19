@@ -38,11 +38,23 @@ export async function GET(req: NextRequest) {
       return response;
     }
 
-    // Fetch rooms scoped to this property
+    // ✅ OPTIMIZED: Use select instead of include (Task 1.4)
     const rooms = await withPropertyContext(propertyId!, async (tx) => {
       return await tx.room.findMany({
         where: { propertyId: propertyId },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          capacity: true,
+          imageUrl: true,
+          description: true,
+          doorlockId: true,
+          roomTypeId: true,
+          propertyId: true,
+          organizationId: true,
+          createdAt: true,
+          updatedAt: true,
           roomType: {
             select: { id: true, name: true, basePrice: true }
           }

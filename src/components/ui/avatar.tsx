@@ -75,7 +75,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       <div
         ref={ref}
         className={cn(
-          "relative inline-flex items-center justify-center rounded-full overflow-hidden flex-shrink-0",
+          "relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0",
           sizeClass,
           className
         )}
@@ -101,7 +101,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             )}
             onError={handleImageError}
             onLoad={handleImageLoad}
-            unoptimized
+            // ✅ OPTIMIZED: S3 images configured in next.config.ts remotePatterns
           />
         ) : (
           <div

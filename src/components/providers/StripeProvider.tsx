@@ -5,11 +5,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useTheme } from "next-themes";
 
-// Initialize Stripe
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
-
 interface StripeProviderProps {
   children: React.ReactNode;
   clientSecret?: string;
@@ -20,6 +15,13 @@ export function StripeProvider({
   clientSecret
 }: StripeProviderProps) {
   const { theme } = useTheme();
+
+  // ⚡ OPTIMIZATION: Lazy load Stripe only when StripeProvider is rendered with clientSecret
+  // This prevents loading 50MB+ of Stripe SDK until payment is actually needed
+  const stripePromise = React.useMemo(
+    () => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!),
+    []
+  );
 
   // Memoize appearance configuration to prevent unnecessary re-renders
   const appearance = React.useMemo(

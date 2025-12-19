@@ -1,6 +1,7 @@
 // lib/bookings/handlers.ts
 
 //import { Reservation } from "@/types";
+import { EditBookingFormData } from "@/components/bookings/edit-tabs/types";
 import { toast } from "sonner";
 
 // Utility: convert Date to YYYY-MM-DD
@@ -63,73 +64,26 @@ async function uploadDocumentWithRetry(
   }
 }
 
-export async function handleCreateBooking({
-  selectedSlot,
-  data,
-  reload,
-  onClose
-}: {
-  selectedSlot: { roomId: string };
-  data: {
-    guestName: string;
-    phone: string;
-    email: string;
-    idType: string;
-    idNumber: string;
-    issuingCountry: string;
-    checkIn: string;
-    checkOut: string;
-    adults: number;
-    children: number;
-    guestImageUrl?: string;
-    idDocumentUrl?: string;
-    idExpiryDate?: string;
-    idDocumentExpired?: boolean;
-    payment?: {
-      totalAmount: number;
-      paymentMethod: string;
-      creditCard?: {
-        last4: string;
-        brand: string;
-        expiryMonth: number;
-        expiryYear: number;
-        paymentMethodId: string;
-      };
-    };
-    addons?: {
-      extraBed: boolean;
-      breakfast: boolean;
-      customAddons: Array<{
-        id: string;
-        name: string;
-        price: number;
-        selected: boolean;
-      }>;
-    };
-  };
-  reload: () => Promise<void>;
-  onClose: () => void;
-}) {
+export async function handleCreateBooking(
+  bookingData: Record<string, unknown>,
+  reload: () => Promise<void>
+) {
   try {
-    // Validate dates
-    const checkIn = new Date(data.checkIn);
-    const checkOut = new Date(data.checkOut);
+    // Validate dates if checkIn and checkOut are provided
+    if (bookingData.checkIn && bookingData.checkOut) {
+      const checkIn = new Date(bookingData.checkIn as string);
+      const checkOut = new Date(bookingData.checkOut as string);
 
-    if (checkOut <= checkIn) {
-      toast.error("Check-out date must be after check-in date");
-      return;
+      if (checkOut <= checkIn) {
+        toast.error("Check-out date must be after check-in date");
+        return;
+      }
     }
 
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...data,
-        roomId: selectedSlot.roomId,
-        // Include payment and addon data
-        payment: data.payment,
-        addons: data.addons
-      })
+      body: JSON.stringify(bookingData)
     });
 
     if (!res.ok) {
@@ -153,7 +107,7 @@ export async function handleCreateBooking({
           reservationId,
           pendingDocument.image,
           pendingDocument.documentType,
-          data.guestName,
+          bookingData.guestName as string,
           3 // 3 retries
         );
 
@@ -168,7 +122,6 @@ export async function handleCreateBooking({
       }
     }
 
-    onClose();
     await reload();
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -186,30 +139,11 @@ export async function handleCreateBooking({
   }
 }
 
-export async function handleUpdateBooking({
-  reservationId,
-  data,
-  reload,
-  onClose
-}: {
-  reservationId: string;
-  data: {
-    guestName: string;
-    checkIn: string;
-    checkOut: string;
-    adults: number;
-    children: number;
-    roomId?: string; // ✅ ADD ROOM ID SUPPORT
-    notes?: string; // ✅ ADD NOTES SUPPORT
-    phone?: string;
-    email?: string;
-    idType?: string;
-    idNumber?: string;
-    issuingCountry?: string;
-  };
-  reload: () => Promise<void>;
-  onClose: () => void;
-}) {
+export async function handleUpdateBooking(
+  reservationId: string,
+  data: Partial<EditBookingFormData>,
+  reload: () => Promise<void>
+) {
   try {
     const res = await fetch(`/api/reservations/${reservationId}`, {
       method: "PATCH",
@@ -223,7 +157,6 @@ export async function handleUpdateBooking({
     }
 
     toast.success("Reservation updated successfully!");
-    onClose();
     await reload();
   } catch (err) {
     toast.error(err instanceof Error ? err.message : "Unknown error");

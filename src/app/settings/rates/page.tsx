@@ -1,7 +1,7 @@
 // app/settings/rates/page.tsx
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { Plus, Download, Settings, RefreshCw } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/spinner";
@@ -27,11 +27,20 @@ import {
   RateRestrictions
 } from "@/lib/hooks/useRatesData";
 import RateCell from "@/components/rates/RateCell";
-import BulkUpdateModal from "@/components/rates/BulkUpdateModal";
-import SeasonalRatesManager from "@/components/rates/SeasonalRatesManager";
 import RateLogsViewer from "@/components/rates/RateLogsViewer";
-import AdvancedSettingsModal from "@/components/rates/AdvancedSettingsModal";
 import { toast } from "sonner";
+
+// ✅ PERFORMANCE: Lazy load heavy modal components
+// These modals are only shown on user interaction, not on initial load
+const BulkUpdateModal = lazy(
+  () => import("@/components/rates/BulkUpdateModal")
+);
+const SeasonalRatesManager = lazy(
+  () => import("@/components/rates/SeasonalRatesManager")
+);
+const AdvancedSettingsModal = lazy(
+  () => import("@/components/rates/AdvancedSettingsModal")
+);
 
 const RatesPage = () => {
   const [innerTab, setInnerTab] = useState<"rates" | "logs">("rates");
@@ -417,32 +426,43 @@ const RatesPage = () => {
         )}
       </div>
 
-      {/* Bulk Update Modal */}
-      <BulkUpdateModal
-        isOpen={showBulkModal}
-        onClose={handleCloseBulkModal}
-        roomTypes={roomTypesData}
-        startDate={startDate}
-        days={days}
-        onBulkUpdate={handleBulkUpdate}
-        isUpdating={isUpdating}
-      />
+      {/* ✅ PERFORMANCE: Lazy loaded modals wrapped in Suspense */}
+      {/* Only rendered when opened, reducing initial bundle */}
+      {showBulkModal && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <BulkUpdateModal
+            isOpen={showBulkModal}
+            onClose={handleCloseBulkModal}
+            roomTypes={roomTypesData}
+            startDate={startDate}
+            days={days}
+            onBulkUpdate={handleBulkUpdate}
+            isUpdating={isUpdating}
+          />
+        </Suspense>
+      )}
 
-      {/* Seasonal Rates Manager */}
-      <SeasonalRatesManager
-        isOpen={showSeasonalModal}
-        onClose={handleCloseSeasonalModal}
-        roomTypes={roomTypesData}
-        onSeasonalRateChange={handleSeasonalRateChange}
-      />
+      {showSeasonalModal && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <SeasonalRatesManager
+            isOpen={showSeasonalModal}
+            onClose={handleCloseSeasonalModal}
+            roomTypes={roomTypesData}
+            onSeasonalRateChange={handleSeasonalRateChange}
+          />
+        </Suspense>
+      )}
 
-      {/* Advanced Settings Modal */}
-      <AdvancedSettingsModal
-        isOpen={showAdvancedModal}
-        onClose={handleCloseAdvancedModal}
-        roomTypes={roomTypesData}
-        onSettingsChange={handleSettingsChange}
-      />
+      {showAdvancedModal && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <AdvancedSettingsModal
+            isOpen={showAdvancedModal}
+            onClose={handleCloseAdvancedModal}
+            roomTypes={roomTypesData}
+            onSettingsChange={handleSettingsChange}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

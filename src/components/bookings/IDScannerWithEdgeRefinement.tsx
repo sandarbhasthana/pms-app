@@ -327,6 +327,7 @@ export const IDScannerWithEdgeRefinement: React.FC<
                 style={{
                   transform: `rotate(${rotation}deg) scale(${zoom})`
                 }}
+                // ⚠️ Keep unoptimized: base64 data URLs cannot be optimized by Next.js
                 unoptimized
               />
 

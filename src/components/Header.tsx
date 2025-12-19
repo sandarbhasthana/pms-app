@@ -76,7 +76,7 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             height={40}
             className="h-8 w-auto"
             priority
-            unoptimized
+            // ✅ OPTIMIZED: Local image - Next.js will optimize automatically
             onError={(e) => {
               // Fallback to text if image fails to load
               const target = e.target as HTMLImageElement;

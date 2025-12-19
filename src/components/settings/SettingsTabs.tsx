@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSimpleThrottledCallback } from "@/hooks/use-debounce";
 
 const tabs = [
   { label: "Property Settings", href: "/settings/general" },
@@ -45,7 +46,7 @@ export default function SettingsTabs() {
   const visibleTabs = getVisibleTabs();
 
   // Check scroll position and update arrow visibility
-  const checkScrollPosition = () => {
+  const checkScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } =
         scrollContainerRef.current;
@@ -56,20 +57,32 @@ export default function SettingsTabs() {
         hasOverflow && scrollLeft < scrollWidth - clientWidth - 5
       );
     }
-  };
+  }, []);
+
+  // ✅ PERFORMANCE: Throttle scroll handler to max once per 100ms
+  const throttledCheckScrollPosition = useSimpleThrottledCallback(
+    checkScrollPosition,
+    100
+  );
+
+  // ✅ PERFORMANCE: Throttle resize handler to max once per 150ms
+  const throttledHandleResize = useSimpleThrottledCallback(
+    checkScrollPosition,
+    150
+  );
 
   // Scroll functions
-  const scrollLeft = () => {
+  const scrollLeft = useCallback(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollBy({ left: -200, behavior: "smooth" });
     }
-  };
+  }, []);
 
-  const scrollRight = () => {
+  const scrollRight = useCallback(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollBy({ left: 200, behavior: "smooth" });
     }
-  };
+  }, []);
 
   // Check scroll position on mount and when tabs change
   useEffect(() => {
@@ -77,25 +90,22 @@ export default function SettingsTabs() {
       checkScrollPosition();
     }, 100); // Small delay to ensure DOM is ready
 
-    const handleResize = () => {
-      setTimeout(checkScrollPosition, 100);
-    };
-
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", throttledHandleResize);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", throttledHandleResize);
     };
-  }, [visibleTabs]);
+  }, [visibleTabs, checkScrollPosition, throttledHandleResize]);
 
-  // Also check on scroll
+  // Also check on scroll (throttled)
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
-      container.addEventListener("scroll", checkScrollPosition);
-      return () => container.removeEventListener("scroll", checkScrollPosition);
+      container.addEventListener("scroll", throttledCheckScrollPosition);
+      return () =>
+        container.removeEventListener("scroll", throttledCheckScrollPosition);
     }
-  }, []);
+  }, [throttledCheckScrollPosition]);
 
   return (
     <div className="relative mb-6">

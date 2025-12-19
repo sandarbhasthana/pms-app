@@ -1,7 +1,7 @@
 // File: src/components/dashboard/StatusAnalyticsChart.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { ReservationStatus } from "@prisma/client";
 import {
   BarChart,
@@ -31,19 +31,12 @@ interface StatusAnalyticsData {
   }>;
   dailyTrends: Array<{
     date: string;
-    [ReservationStatus.CONFIRMATION_PENDING]: number;
-    [ReservationStatus.CONFIRMED]: number;
-    [ReservationStatus.CHECKIN_DUE]: number;
-    [ReservationStatus.IN_HOUSE]: number;
-    [ReservationStatus.CHECKOUT_DUE]: number;
-    [ReservationStatus.CHECKED_OUT]: number;
-    [ReservationStatus.NO_SHOW]: number;
-    [ReservationStatus.CANCELLED]: number;
+    [key: string]: number | string;
   }>;
   conversionRates: {
     pendingToConfirmed: number;
-    confirmedToInHouse: number;
-    inHouseToCheckedOut: number;
+    confirmedToCheckedIn: number;
+    checkedInToCheckedOut: number;
     noShowRate: number;
     cancellationRate: number;
   };
@@ -60,9 +53,13 @@ interface StatusAnalyticsChartProps {
     to: Date;
   };
   refreshInterval?: number;
+  // ✅ PERFORMANCE OPTIMIZATION: Accept data as prop to avoid redundant API calls
+  data?: StatusAnalyticsData | null;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-// Status colors for charts
+// Status colors for charts - moved outside component to prevent recreation
 const STATUS_COLORS = {
   [ReservationStatus.CONFIRMATION_PENDING]: "#ec4899", // pink
   [ReservationStatus.CONFIRMED]: "#6c956e", // green
@@ -74,17 +71,32 @@ const STATUS_COLORS = {
   [ReservationStatus.CANCELLED]: "#6b7280" // gray
 };
 
-export default function StatusAnalyticsChart({
+// ✅ PERFORMANCE: Memoized component to prevent unnecessary re-renders
+const StatusAnalyticsChart = memo(function StatusAnalyticsChart({
   propertyId,
   dateRange,
-  refreshInterval = 300000 // 5 minutes
+  refreshInterval = 300000, // 5 minutes
+  data: externalData,
+  isLoading: externalIsLoading,
+  error: externalError
 }: StatusAnalyticsChartProps) {
-  const [data, setData] = useState<StatusAnalyticsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [internalData, setInternalData] = useState<StatusAnalyticsData | null>(
+    null
+  );
+  const [internalIsLoading, setInternalIsLoading] = useState(true);
+  const [internalError, setInternalError] = useState<string | null>(null);
 
-  // Fetch analytics data
+  // Use external data if provided, otherwise use internal state
+  const data = externalData !== undefined ? externalData : internalData;
+  const isLoading =
+    externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
+  const error = externalError !== undefined ? externalError : internalError;
+
+  // Fetch analytics data (only if external data not provided)
   const fetchAnalyticsData = useCallback(async () => {
+    // Skip fetching if external data is provided
+    if (externalData !== undefined) return;
+
     try {
       const params = new URLSearchParams({
         propertyId,
@@ -104,17 +116,22 @@ export default function StatusAnalyticsChart({
       }
 
       const result = await response.json();
-      setData(result);
-      setError(null);
+      setInternalData(result);
+      setInternalError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setInternalError(
+        err instanceof Error ? err.message : "An error occurred"
+      );
     } finally {
-      setIsLoading(false);
+      setInternalIsLoading(false);
     }
-  }, [propertyId, dateRange]);
+  }, [propertyId, dateRange, externalData]);
 
-  // Initial load and refresh interval with debouncing
+  // Initial load and refresh interval with debouncing (only if external data not provided)
   useEffect(() => {
+    // Skip fetching if external data is provided
+    if (externalData !== undefined) return;
+
     // Debounce the initial fetch to prevent rapid successive calls
     const timeoutId = setTimeout(() => {
       fetchAnalyticsData();
@@ -125,7 +142,7 @@ export default function StatusAnalyticsChart({
       clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [fetchAnalyticsData, refreshInterval]);
+  }, [fetchAnalyticsData, refreshInterval, externalData]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -153,12 +170,12 @@ export default function StatusAnalyticsChart({
       },
       {
         stage: "In-House",
-        value: data.conversionRates.confirmedToInHouse,
+        value: data.conversionRates.confirmedToCheckedIn,
         color: STATUS_COLORS[ReservationStatus.IN_HOUSE]
       },
       {
         stage: "Checked Out",
-        value: data.conversionRates.inHouseToCheckedOut,
+        value: data.conversionRates.checkedInToCheckedOut,
         color: STATUS_COLORS[ReservationStatus.CHECKED_OUT]
       }
     ];
@@ -178,76 +195,91 @@ export default function StatusAnalyticsChart({
     };
   }, [data]);
 
-  // Custom tooltip for charts
-  interface CustomTooltipPayload {
-    color?: string;
-    name?: string;
-    value?: number;
-    payload?: Record<string, unknown>;
-  }
-
-  // Custom label props for pie chart
-  interface PieChartLabelProps {
-    name?: string;
-    percentage?: number;
-    value?: number;
-  }
-
-  const CustomTooltip = (props: {
-    active?: boolean;
-    payload?: CustomTooltipPayload[];
-    label?: string;
-  }) => {
-    const { active, payload, label } = props;
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900 dark:text-gray-100">
-            {label}
-          </p>
-          {payload.map((entry, index: number) => {
-            const percentage = entry.payload?.percentage as number | undefined;
-            return (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {entry.name}: {entry.value}
-                {percentage && ` (${percentage.toFixed(1)}%)`}
-              </p>
-            );
-          })}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Custom legend renderer using StatusBadge
-  interface LegendPayload {
-    color?: string;
-  }
-
-  const CustomLegend = (props: { payload?: LegendPayload[] }) => {
-    const { payload } = props;
-    if (!payload) return null;
-
-    return (
-      <div className="flex flex-wrap gap-3 justify-center mt-4">
-        {payload.map((entry, index: number) => {
-          // Find the corresponding status from the status colors
-          const status = Object.entries(STATUS_COLORS).find(
-            ([, color]) => color === entry.color
-          )?.[0] as ReservationStatus | undefined;
-
-          if (!status) return null;
-
+  // ✅ PERFORMANCE: Memoized custom tooltip to prevent re-renders
+  const CustomTooltip = useMemo(
+    () =>
+      function CustomTooltipComponent(props: {
+        active?: boolean;
+        payload?: Array<{
+          color?: string;
+          name?: string;
+          value?: number;
+          payload?: Record<string, unknown>;
+        }>;
+        label?: string;
+      }) {
+        const { active, payload, label } = props;
+        if (active && payload && payload.length) {
           return (
-            <div key={`legend-${index}`} className="flex items-center gap-2">
-              <StatusBadge status={status} size="sm" />
+            <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+              <p className="font-medium text-gray-900 dark:text-gray-100">
+                {label}
+              </p>
+              {payload.map((entry, index: number) => {
+                const percentage = entry.payload?.percentage as
+                  | number
+                  | undefined;
+                return (
+                  <p
+                    key={index}
+                    className="text-sm"
+                    style={{ color: entry.color }}
+                  >
+                    {entry.name}: {entry.value}
+                    {percentage && ` (${percentage.toFixed(1)}%)`}
+                  </p>
+                );
+              })}
             </div>
           );
-        })}
-      </div>
-    );
-  };
+        }
+        return null;
+      },
+    []
+  );
+
+  // ✅ PERFORMANCE: Memoized custom legend to prevent re-renders
+  const CustomLegend = useMemo(
+    () =>
+      function CustomLegendComponent(props: {
+        payload?: Array<{
+          color?: string;
+        }>;
+      }) {
+        const { payload } = props;
+        if (!payload) return null;
+
+        return (
+          <div className="flex flex-wrap gap-3 justify-center mt-4">
+            {payload.map((entry, index: number) => {
+              // Find the corresponding status from the status colors
+              const status = Object.entries(STATUS_COLORS).find(
+                ([, color]) => color === entry.color
+              )?.[0] as ReservationStatus | undefined;
+
+              if (!status) return null;
+
+              return (
+                <div
+                  key={`legend-${index}`}
+                  className="flex items-center gap-2"
+                >
+                  <StatusBadge status={status} size="sm" />
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    []
+  );
+
+  // ✅ PERFORMANCE: Memoized pie chart label function
+  const pieChartLabel = useCallback(
+    (props: { name?: string; percentage?: number; value?: number }) =>
+      `${props.name}: ${(props.percentage ?? 0).toFixed(1)}%`,
+    []
+  );
 
   if (isLoading) {
     return (
@@ -317,9 +349,7 @@ export default function StatusAnalyticsChart({
                     cy="50%"
                     outerRadius={80}
                     dataKey="value"
-                    label={(props: PieChartLabelProps) =>
-                      `${props.name}: ${(props.percentage ?? 0).toFixed(1)}%`
-                    }
+                    label={pieChartLabel}
                   >
                     {chartData.pieData.map((entry, index) => (
                       <Cell
@@ -400,4 +430,9 @@ export default function StatusAnalyticsChart({
       </CardContent>
     </Card>
   );
-}
+});
+
+// ✅ PERFORMANCE: Custom comparison function for memo
+StatusAnalyticsChart.displayName = "StatusAnalyticsChart";
+
+export default StatusAnalyticsChart;

@@ -81,11 +81,12 @@ export function StaffManagement() {
     return cookieOrgId || sessionOrgId || null;
   };
 
-  // Fetch staff members
-  const fetchStaffMembers = async () => {
+  // ✅ PERFORMANCE: Combined fetch for staff members and invitations
+  // Reduces API calls from 2 to 1
+  const fetchStaffOverview = async () => {
     try {
       const orgId = getOrgId();
-      console.log("🔍 Fetching staff members for orgId:", orgId);
+      console.log("🔍 Fetching staff overview for orgId:", orgId);
 
       if (!orgId) {
         console.error("❌ No orgId available from cookie or session");
@@ -97,66 +98,32 @@ export function StaffManagement() {
         "x-organization-id": orgId
       };
 
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch("/api/admin/staff-overview", {
         method: "GET",
         headers,
         credentials: "include"
       });
 
-      console.log("📡 Staff fetch response status:", response.status);
+      console.log("📡 Staff overview response status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Staff data received:", data);
-        console.log("👥 Number of staff members:", data.users?.length || 0);
-        setStaffMembers(data.users || []);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("❌ Failed to fetch staff members:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData.error || "Unknown error"
+        console.log("✅ Staff overview received:", {
+          staffCount: data.users?.length || 0,
+          invitationsCount: data.invitations?.length || 0
         });
-      }
-    } catch (error) {
-      console.error("💥 Error fetching staff members:", error);
-    }
-  };
-
-  // Fetch invitations
-  const fetchInvitations = async () => {
-    try {
-      const orgId = getOrgId();
-
-      if (!orgId) {
-        console.error("❌ No orgId available from cookie or session");
-        return;
-      }
-
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        "x-organization-id": orgId
-      };
-
-      const response = await fetch("/api/admin/users/invite", {
-        method: "GET",
-        headers,
-        credentials: "include"
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+        setStaffMembers(data.users || []);
         setInvitations(data.invitations || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Failed to fetch invitations:", {
+        console.error("❌ Failed to fetch staff overview:", {
           status: response.status,
           statusText: response.statusText,
           error: errorData.error || "Unknown error"
         });
       }
     } catch (error) {
-      console.error("Error fetching invitations:", error);
+      console.error("💥 Error fetching staff overview:", error);
     }
   };
 
@@ -167,7 +134,7 @@ export function StaffManagement() {
 
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchStaffMembers(), fetchInvitations()]);
+      await fetchStaffOverview();
       setLoading(false);
     };
 
@@ -178,24 +145,24 @@ export function StaffManagement() {
   // Handle successful invitation
   const handleInvitationSent = () => {
     setShowInviteModal(false);
-    fetchInvitations(); // Refresh invitations list
+    fetchStaffOverview(); // Refresh both lists
   };
 
   // Handle successful user creation
   const handleUserCreated = () => {
     console.log("🎉 User created successfully, refreshing staff list...");
     setShowCreateUserModal(false);
-    fetchStaffMembers(); // Refresh staff list
+    fetchStaffOverview(); // Refresh both lists
   };
 
   // Handle staff member update
   const handleStaffUpdate = () => {
-    fetchStaffMembers(); // Refresh staff list
+    fetchStaffOverview(); // Refresh both lists
   };
 
   // Handle invitation action (resend, cancel)
   const handleInvitationAction = () => {
-    fetchInvitations(); // Refresh invitations list
+    fetchStaffOverview(); // Refresh both lists
   };
 
   if (loading) {

@@ -64,7 +64,6 @@ export function useAbly() {
 
       // Connection state listeners
       client.connection.on("connected", () => {
-        console.log("✅ Ably connected");
         setState((prev) => ({
           ...prev,
           client,
@@ -75,12 +74,10 @@ export function useAbly() {
       });
 
       client.connection.on("connecting", () => {
-        console.log("🔄 Ably connecting...");
         setState((prev) => ({ ...prev, isConnecting: true }));
       });
 
       client.connection.on("disconnected", () => {
-        console.log("⚠️ Ably disconnected");
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -89,7 +86,6 @@ export function useAbly() {
       });
 
       client.connection.on("suspended", () => {
-        console.log("⏸️ Ably connection suspended");
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -98,7 +94,6 @@ export function useAbly() {
       });
 
       client.connection.on("failed", (stateChange) => {
-        console.error("❌ Ably connection failed:", stateChange.reason);
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -116,12 +111,11 @@ export function useAbly() {
       });
 
       clientRef.current = client;
-    } catch (error) {
-      console.error("Error initializing Ably client:", error);
+    } catch {
       setState((prev) => ({
         ...prev,
         isConnecting: false,
-        error: error instanceof Error ? error.message : "Failed to initialize"
+        error: "Failed to initialize"
       }));
     } finally {
       isInitializing.current = false;

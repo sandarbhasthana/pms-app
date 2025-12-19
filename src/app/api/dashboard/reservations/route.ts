@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
         const startOfDay = getOperationalDayStart(targetDate, timezone);
         const endOfDay = getOperationalDayEnd(targetDate, timezone);
 
-        // Get reservations for the target day
+        // ✅ OPTIMIZED: Use select instead of include (Task 1.4)
         const reservations = await tx.reservation.findMany({
           where: {
             propertyId: propertyId,
@@ -117,7 +117,16 @@ export async function GET(req: NextRequest) {
                 : [])
             ]
           },
-          include: {
+          select: {
+            id: true,
+            guestName: true,
+            email: true,
+            phone: true,
+            checkIn: true,
+            checkOut: true,
+            status: true,
+            paidAmount: true,
+            amountCaptured: true,
             room: {
               select: {
                 name: true,

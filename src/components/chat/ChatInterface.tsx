@@ -17,12 +17,12 @@ export function ChatInterface() {
   const { isConnecting, connectionError, activeRoomId } = useChat();
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-gray-100 dark:!bg-gray-950">
+    <div className="flex h-[calc(100vh-8rem)] bg-gray-100 dark:bg-gray-950!">
       {/* Left Sidebar - Room List */}
-      <div className="w-80 bg-white dark:!bg-gray-900 flex flex-col">
-        <div className="p-4 space-y-3 bg-gray-50 dark:!bg-gray-800/50">
+      <div className="w-80 bg-white dark:bg-gray-900! flex flex-col">
+        <div className="p-4 space-y-3 bg-gray-50 dark:bg-gray-800/50!">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:!text-gray-100">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100!">
               Teams
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -36,7 +36,7 @@ export function ChatInterface() {
       </div>
 
       {/* Right Panel - Chat Window */}
-      <div className="flex-1 flex flex-col bg-[#f0f8f9] dark:!bg-gray-700">
+      <div className="flex-1 flex flex-col bg-[#f0f8f9] dark:bg-gray-700!">
         {isConnecting ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -62,7 +62,7 @@ export function ChatInterface() {
             <div className="text-center max-w-md">
               <div className="w-16 h-16 bg-purple-100 dark:bg-purple-700 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg
-                  className="w-8 h-8 text-purple-primary dark:!text-[#f0f8f9]"
+                  className="w-8 h-8 text-purple-primary dark:text-[#f0f8f9]!"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

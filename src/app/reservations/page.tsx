@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from "react";
 import useSWR, { mutate } from "swr";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +83,8 @@ const ReservationsPage = () => {
 
   // — UI state (unchanged) —
   const [search, setSearch] = useState("");
+  // ✅ PERFORMANCE: Debounce search to prevent excessive filtering on every keystroke
+  const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState<string>("all");
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({
     from: "",
@@ -279,12 +282,13 @@ const ReservationsPage = () => {
   };
 
   // — Filtering & pagination logic with sorting —
+  // ✅ PERFORMANCE: Uses debouncedSearch for filtering to prevent excessive re-computation
   const filtered = useMemo(() => {
     let d = reservations;
 
-    // Apply search filter
-    if (search) {
-      const q = search.toLowerCase();
+    // Apply search filter (using debounced value)
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       d = d.filter(
         (r) =>
           r.guestName.toLowerCase().includes(q) ||
@@ -357,7 +361,14 @@ const ReservationsPage = () => {
     }
 
     return d;
-  }, [reservations, search, filter, customRange, sortField, sortDirection]);
+  }, [
+    reservations,
+    debouncedSearch,
+    filter,
+    customRange,
+    sortField,
+    sortDirection
+  ]);
 
   const pageCount = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);

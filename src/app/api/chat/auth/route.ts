@@ -102,7 +102,14 @@ export async function POST(request: NextRequest) {
         ],
 
         // Typing indicators for all rooms
-        ["room:*:typing"]: ["subscribe", "publish"]
+        ["room:*:typing"]: ["subscribe", "publish"],
+
+        // ========== Real-time Calendar/Dashboard Channels ==========
+        // All property calendar channels (for reservation updates)
+        ["property:*:calendar"]: ["subscribe", "publish"],
+
+        // All property dashboard channels (for stats updates)
+        ["property:*:dashboard"]: ["subscribe", "publish"]
       }
     };
 

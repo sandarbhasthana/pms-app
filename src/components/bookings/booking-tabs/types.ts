@@ -121,7 +121,6 @@ export interface NewBookingSheetProps {
     idDocumentExpired?: boolean;
   }) => void;
   handleScanError: (err: Error) => void;
-  setLastScannedSlot: (slot: SelectedSlot | null) => void;
 }
 
 export type BookingTab = "details" | "addons" | "payment";

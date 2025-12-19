@@ -1,4 +1,22 @@
-// File: src/app/dashboard/bookings/page.tsx
+// File: src/app/dashboard/bookings/page-refactored.tsx
+// 🔄 REFACTORING IN PROGRESS (Option A: Gradual Integration)
+//
+// ✅ Completed Refactorings:
+// - getEventColor() → ./utils/eventColors.ts
+// - isToday() → ./utils/calendarHelpers.ts
+// - addDays() → ./utils/calendarHelpers.ts (used in handlePrev/handleNext)
+// - toISODateString() → ./utils/calendarHelpers.ts (used in handlePrev/handleNext)
+//
+// 📦 Available for future use:
+// - Custom hooks in ./hooks/ (useCalendarData, useCalendarEvents, etc.)
+// - Additional utilities in ./utils/
+// - Type definitions in ./types/
+//
+// 🎯 Next steps:
+// - Gradually replace more inline functions with utilities
+// - Consider using custom hooks for state management
+// - Test thoroughly after each change
+//
 "use client";
 
 import React, {
@@ -6,7 +24,9 @@ import React, {
   useRef,
   useState,
   useCallback,
-  useMemo
+  useMemo,
+  lazy,
+  Suspense
 } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -22,25 +42,43 @@ import { toast } from "sonner";
 import { RefreshCw, Plus } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/app/globals.css";
-import IDScannerWithOCR from "@/components/IDScannerWithOCR";
+// ⚡ EAGER LOAD: Calendar is the main component - always needed on this page
 import CalendarViewRowStyle from "@/components/bookings/CalendarViewRowStyle";
-import NewBookingModalFixed from "@/components/bookings/NewBookingSheet";
-import ViewBookingSheet from "@/components/bookings/ViewBookingSheet";
-import EditBookingSheet from "@/components/bookings/EditBookingSheet";
-import FlyoutMenu from "@/components/bookings/FlyoutMenu";
-import CalendarCellFlyout from "@/components/bookings/CalendarCellFlyout";
-import BlockRoomSheet from "@/components/bookings/BlockRoomSheet";
-import BlockEventFlyout from "@/components/bookings/BlockEventFlyout";
 import AddButtonDropdown from "@/components/bookings/AddButtonDropdown";
 import CalendarToolbar from "@/components/bookings/CalendarToolbar";
 import { formatGuestNameForCalendar } from "@/lib/utils/nameFormatter";
-import LegendModal from "@/components/bookings/LegendModal";
 import { LoadingSpinner } from "@/components/ui/spinner";
 import { apiDeduplicator } from "@/lib/api-deduplication";
 import { EditBookingFormData } from "@/components/bookings/edit-tabs/types";
-import { DayTransitionBlockerModal } from "@/components/bookings/DayTransitionBlockerModal";
 import { DayTransitionIssue } from "@/types/day-transition";
 import LocaleSwitcher from "@/components/dev/LocaleSwitcher";
+
+// Import refactored utilities (Option A: Gradual Integration)
+import { getEventColor } from "./utils/eventColors";
+import { isToday, addDays, toISODateString } from "./utils/calendarHelpers";
+
+// ⚡ EAGER IMPORTS: Small, frequently-used components (keep in main bundle)
+import FlyoutMenu from "@/components/bookings/FlyoutMenu";
+import CalendarCellFlyout from "@/components/bookings/CalendarCellFlyout";
+import BlockEventFlyout from "@/components/bookings/BlockEventFlyout";
+import LegendModal from "@/components/bookings/LegendModal";
+import { DayTransitionBlockerModal } from "@/components/bookings/DayTransitionBlockerModal";
+
+// 🔄 LAZY IMPORTS: Large, rarely-used components (code split for performance)
+// Only lazy load components with heavy dependencies or large bundle size
+// NOTE: IDScannerWithOCR removed - now using IDScannerWithEdgeRefinement (AI-based) inside BookingDetailsTab
+const NewBookingModalFixed = lazy(
+  () => import("@/components/bookings/NewBookingSheet")
+);
+const EditBookingSheet = lazy(
+  () => import("@/components/bookings/EditBookingSheet")
+);
+const BlockRoomSheet = lazy(
+  () => import("@/components/bookings/BlockRoomSheet")
+);
+const ViewBookingSheet = lazy(
+  () => import("@/components/bookings/ViewBookingSheet")
+);
 
 interface Reservation {
   id: string;
@@ -72,47 +110,11 @@ interface Room {
   children?: Array<{ id: string; title: string; basePrice?: number }>;
 }
 
-const getEventColor = (
-  status?: string,
-  isDarkMode: boolean = false
-): { backgroundColor: string; textColor: string } => {
-  const lightColorMap: Record<string, { bg: string; text: string }> = {
-    CONFIRMED: { bg: "#6c956e", text: "#1f2937" }, // Green with gray-900 text
-    CONFIRMATION_PENDING: { bg: "#ec4899", text: "#f0f8f9" }, // Pink with alice blue text
-    CHECKIN_DUE: { bg: "#0ea5e9", text: "#1f2937" }, // Sky blue with gray-900 text
-    IN_HOUSE: { bg: "#22c55e", text: "#f0f8f9" }, // Green with alice blue text
-    CHECKOUT_DUE: { bg: "#f59e0b", text: "#1f2937" }, // Amber with gray-900 text
-    CANCELLED: { bg: "#6b7280", text: "#f0f8f9" }, // Gray with alice blue text
-    CHECKED_OUT: { bg: "#8b5cf6", text: "#f0f8f9" }, // Purple with alice blue text
-    NO_SHOW: { bg: "#b91c1c", text: "#f0f8f9" } // Brick red with alice blue text
-  };
-
-  const darkColorMap: Record<string, { bg: string; text: string }> = {
-    CONFIRMED: { bg: "#3b513b", text: "#f0f8f9" }, // Sage Green (dark) with alice blue text
-    CONFIRMATION_PENDING: { bg: "#db2777", text: "#f0f8f9" }, // Pink-600 with alice blue text
-    CHECKIN_DUE: { bg: "#0284c7", text: "#f0f8f9" }, // Sky-600 with alice blue text
-    IN_HOUSE: { bg: "#10b981", text: "#f0f8f9" }, // Emerald-500 with alice blue text
-    CHECKOUT_DUE: { bg: "#b45309", text: "#f0f8f9" }, // Amber-800 with alice blue text
-    CANCELLED: { bg: "#4b5563", text: "#f0f8f9" }, // Gray-700 with alice blue text
-    CHECKED_OUT: { bg: "#7c3aed", text: "#f0f8f9" }, // Violet-600 with alice blue text
-    NO_SHOW: { bg: "#991b1b", text: "#f0f8f9" } // Brick red (dark) with alice blue text
-  };
-
-  const colorMap = isDarkMode ? darkColorMap : lightColorMap;
-  const colors =
-    colorMap[status || "CONFIRMED"] ||
-    (isDarkMode
-      ? { bg: "#047857", text: "#f0f8f9" }
-      : { bg: "#6c956e", text: "#1f2937" });
-
-  return {
-    backgroundColor: colors.bg,
-    textColor: colors.text
-  };
-};
+// ✅ REFACTORED: getEventColor moved to ./utils/eventColors.ts
+// Now imported at the top of the file
 
 export default function BookingsRowStylePage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const calendarRef = useRef<FullCalendar | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
@@ -135,11 +137,6 @@ export default function BookingsRowStylePage() {
   const [loading, setLoading] = useState(true);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [ocrEnabled, setOcrEnabled] = useState(false);
-  const [lastScannedSlot, setLastScannedSlot] = useState<{
-    roomId: string;
-    roomName: string;
-    date: string;
-  } | null>(null);
 
   // Create‐booking dialog state
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -233,21 +230,26 @@ export default function BookingsRowStylePage() {
   const [pendingDateNavigation, setPendingDateNavigation] =
     useState<Date | null>(null);
 
-  // Get property timezone from session for operational day boundaries (6 AM start)
-  const propertyTimezone = useMemo(() => {
+  // Get current property ID from session/cookies
+  const currentPropertyId = useMemo(() => {
     const propertyIdCookie = document.cookie
       .split("; ")
       .find((row) => row.startsWith("propertyId="));
-    const propertyId = propertyIdCookie
-      ? propertyIdCookie.split("=")[1]
-      : session?.user?.currentPropertyId ||
-        session?.user?.availableProperties?.[0]?.id;
+    return (
+      propertyIdCookie?.split("=")[1] ||
+      session?.user?.currentPropertyId ||
+      session?.user?.availableProperties?.[0]?.id ||
+      ""
+    );
+  }, [session?.user?.currentPropertyId, session?.user?.availableProperties]);
 
+  // Get property timezone from session for operational day boundaries (6 AM start)
+  const propertyTimezone = useMemo(() => {
     const currentProperty = session?.user?.availableProperties?.find(
-      (p) => p.id === propertyId
+      (p) => p.id === currentPropertyId
     );
     return currentProperty?.timezone || "UTC";
-  }, [session?.user?.availableProperties, session?.user?.currentPropertyId]);
+  }, [session?.user?.availableProperties, currentPropertyId]);
 
   // Day Transition Blocker Modal handlers - MUST be defined before any conditional returns
   const handleDayTransitionProceed = useCallback(() => {
@@ -275,14 +277,8 @@ export default function BookingsRowStylePage() {
     toast.info("Staying on current day");
   }, []);
 
-  const isToday = (date: Date) => {
-    const now = new Date();
-    return (
-      date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()
-    );
-  };
+  // ✅ REFACTORED: isToday moved to ./utils/calendarHelpers.ts
+  // Now imported at the top of the file
 
   // Debounced refetch function to prevent rapid successive calls
   const debouncedRefetch = useCallback(() => {
@@ -300,7 +296,7 @@ export default function BookingsRowStylePage() {
     }, 100);
   }, [lastRefetch, isRefetching]);
 
-  // Optimized eventSources without caching to ensure fresh payment status
+  // Optimized eventSources - faster initial load
   const eventSources = useMemo(() => {
     return [
       async (
@@ -325,25 +321,22 @@ export default function BookingsRowStylePage() {
             .find((row) => row.startsWith("orgId="))
             ?.split("=")[1];
 
-          const params = new URLSearchParams({
-            start: fetchInfo.startStr,
-            end: fetchInfo.endStr,
-            t: Date.now().toString(), // Add timestamp to force cache bust
-            r: Math.random().toString() // Add random value for extra cache busting
+          const cacheKey = `reservations-${fetchInfo.startStr}-${fetchInfo.endStr}`;
+
+          // ⚡ OPTIMIZATION: Use request deduplication to prevent multiple concurrent calls
+          const data = await apiDeduplicator.deduplicate(cacheKey, async () => {
+            const params = new URLSearchParams({
+              start: fetchInfo.startStr,
+              end: fetchInfo.endStr
+            });
+            const res = await fetch(`/api/reservations?${params}`, {
+              credentials: "include",
+              headers: orgId ? { "x-organization-id": orgId } : {}
+            });
+            return await res.json();
           });
-          const res = await fetch(`/api/reservations?${params}`, {
-            credentials: "include",
-            // Ensure fresh data for payment status updates
-            cache: "no-store",
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-              // Include organization context
-              ...(orgId && { "x-organization-id": orgId })
-            }
-          });
-          const { reservations } = await res.json();
+
+          const { reservations } = data;
 
           // No need to filter - backend now excludes soft-deleted reservations (deletedAt != null)
           success(
@@ -441,7 +434,6 @@ export default function BookingsRowStylePage() {
           }[]
         ) => void
       ) => {
-        console.log(`🔒 Rendering ${blocks.length} blocks in calendar`);
         const blockEvents = blocks.map((block) => {
           // Blocks should render like reservations: from start date to end date
           // Use allDay: true with isPartialDay: true to match reservation rendering
@@ -542,41 +534,51 @@ export default function BookingsRowStylePage() {
       const flattenedResources = Object.values(groupedResources);
       setResources(flattenedResources);
     } catch (e) {
-      console.error("Failed to load rooms:", e);
       toast.error(e instanceof Error ? e.message : "Failed to load room data");
     }
   }, []);
 
   // ------------------------
-  // Load reservations function
+  // Load reservations function with date range filtering
+  // ⚡ OPTIMIZATION: Only load visible date range to reduce memory usage
   // ------------------------
-  const loadReservations = useCallback(async (showToast = false) => {
-    try {
-      // OPTIMIZATION: Use request deduplication to prevent duplicate requests
-      const { reservations, count } = await apiDeduplicator.deduplicate(
-        "bookings-reservations",
-        async () => {
-          const res = await fetch("/api/reservations", {
-            credentials: "include"
-          });
-          if (!res.ok) throw new Error("Failed to fetch reservations");
-          return (await res.json()) as {
-            reservations: Reservation[];
-            count: number;
-          };
+  const loadReservations = useCallback(
+    async (showToast = false, startDate?: string, endDate?: string) => {
+      try {
+        // Build query params with date range if provided
+        const params = new URLSearchParams();
+        if (startDate) params.append("startDate", startDate);
+        if (endDate) params.append("endDate", endDate);
+
+        const queryString = params.toString();
+        const url = `/api/reservations${queryString ? `?${queryString}` : ""}`;
+
+        // OPTIMIZATION: Use request deduplication to prevent duplicate requests
+        const { reservations, count } = await apiDeduplicator.deduplicate(
+          `bookings-reservations-${queryString}`,
+          async () => {
+            const res = await fetch(url, {
+              credentials: "include"
+            });
+            if (!res.ok) throw new Error("Failed to fetch reservations");
+            return (await res.json()) as {
+              reservations: Reservation[];
+              count: number;
+            };
+          }
+        );
+        setEvents(reservations);
+        if (showToast) {
+          toast.success(`Loaded ${count} reservation(s)`);
         }
-      );
-      setEvents(reservations);
-      if (showToast) {
-        toast.success(`Loaded ${count} reservation(s)`);
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Failed to load reservation data"
+        );
       }
-    } catch (e) {
-      console.error("Failed to load reservations:", e);
-      toast.error(
-        e instanceof Error ? e.message : "Failed to load reservation data"
-      );
-    }
-  }, []);
+    },
+    []
+  );
 
   // Load blocks function
   const loadBlocks = useCallback(async () => {
@@ -599,27 +601,32 @@ export default function BookingsRowStylePage() {
 
       if (blocksRes.ok) {
         const blocksData = await blocksRes.json();
-        console.log(`🔒 Loaded ${blocksData.length} blocks`);
         setBlocks(blocksData);
       }
-    } catch (e) {
-      console.error("Failed to load blocks:", e);
+    } catch {
+      // Silently fail - blocks are not critical
     }
   }, [session?.user?.availableProperties]);
 
   // ------------------------
-  // Initial load: rooms + reservations + blocks
+  // Initial load: ONLY rooms (required for calendar structure)
+  // ------------------------
+  // Initial load: rooms + blocks
   // ------------------------
   useEffect(() => {
     async function loadAll() {
       try {
-        await Promise.all([loadRooms(), loadReservations(false), loadBlocks()]); // Don't show toast on initial load
+        await Promise.all([loadRooms(), loadBlocks()]);
       } finally {
         setLoading(false);
       }
     }
     loadAll();
-  }, [loadRooms, loadReservations, loadBlocks]);
+  }, [loadRooms, loadBlocks]);
+
+  // NOTE: Reservations are NOT loaded here anymore!
+  // FullCalendar's eventSources handles fetching reservations when the calendar renders
+  // This prevents double-fetching and speeds up initial load
 
   // ------------------------
   // TEMPORARY: Load Eruda for mobile debugging
@@ -632,9 +639,6 @@ export default function BookingsRowStylePage() {
       script.onload = () => {
         // @ts-expect-error - Eruda is loaded dynamically
         window.eruda?.init();
-        console.log(
-          "🔍 Eruda mobile console loaded! Look for the floating button."
-        );
       };
     }
   }, []);
@@ -655,8 +659,8 @@ export default function BookingsRowStylePage() {
           if (!event.orgId || !orgId || event.orgId === orgId) {
             loadRooms();
           }
-        } catch (error) {
-          console.error("Failed to parse calendar refresh event:", error);
+        } catch {
+          // Silently fail
         }
       }
     };
@@ -768,12 +772,9 @@ export default function BookingsRowStylePage() {
         if (cached) {
           try {
             setHolidays(JSON.parse(cached));
-            if (process.env.NODE_ENV === "development") {
-              console.log(`📦 Cache hit for holidays: ${cacheKey}`);
-            }
             return;
-          } catch (error) {
-            console.warn("Failed to parse cached holidays:", error);
+          } catch {
+            // Cached data invalid, fetch fresh
           }
         }
 
@@ -796,8 +797,7 @@ export default function BookingsRowStylePage() {
         // OPTIMIZATION: Cache for entire year
         localStorage.setItem(cacheKey, JSON.stringify(map));
         setHolidays(map);
-      } catch (e) {
-        console.error("Failed to fetch holidays:", e);
+      } catch {
         setHolidays({}); // Fallback to empty object
       }
     };
@@ -813,22 +813,23 @@ export default function BookingsRowStylePage() {
   // Memoized toolbar handlers
   // ------------------------
   // Button handlers: Move 7 days at a time
+  // ✅ REFACTORED: Using addDays and toISODateString from calendarHelpers
   const handlePrev = useCallback(() => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() - 7); // Move 1 week backward
-    api.gotoDate(d);
-    setSelectedDate(d.toISOString().slice(0, 10));
+    const newDate = addDays(d, -7); // Move 1 week backward
+    api.gotoDate(newDate);
+    setSelectedDate(toISODateString(newDate));
   }, []);
 
   const handleNext = useCallback(() => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     const d = api.getDate();
-    d.setDate(d.getDate() + 7); // Move 1 week forward
-    api.gotoDate(d);
-    setSelectedDate(d.toISOString().slice(0, 10));
+    const newDate = addDays(d, 7); // Move 1 week forward
+    api.gotoDate(newDate);
+    setSelectedDate(toISODateString(newDate));
   }, []);
 
   const handleToday = useCallback(async () => {
@@ -896,8 +897,7 @@ export default function BookingsRowStylePage() {
         setPendingDateNavigation(now);
         setDayTransitionBlockerOpen(true);
       }
-    } catch (error) {
-      console.error("Error validating day transition:", error);
+    } catch {
       // On error, allow navigation anyway
       api.gotoDate(now);
       setSelectedDate(now.toISOString().slice(0, 10));
@@ -1016,11 +1016,26 @@ export default function BookingsRowStylePage() {
   );
 
   const handleRoomInfoFromMenu = useCallback(
-    (roomId: string, roomName: string) => {
+    (_roomId: string, roomName: string) => {
       // TODO: Open RoomInfoModal (Phase 3)
       toast.info(`Room Information feature coming soon: ${roomName}`);
     },
     []
+  );
+
+  // ------------------------
+  // Handle calendar date range changes (for windowed loading)
+  // ⚡ OPTIMIZATION: Load data only for visible date range when user scrolls
+  // ------------------------
+  const handleDatesSet = useCallback(
+    (start: Date, end: Date) => {
+      const startDateStr = start.toISOString().split("T")[0];
+      const endDateStr = end.toISOString().split("T")[0];
+
+      // Load reservations for the new visible range
+      loadReservations(false, startDateStr, endDateStr);
+    },
+    [loadReservations]
   );
 
   // ------------------------
@@ -1065,7 +1080,6 @@ export default function BookingsRowStylePage() {
         );
 
         if (!response.ok) {
-          console.error("Failed to fetch available rooms");
           return [];
         }
 
@@ -1084,8 +1098,7 @@ export default function BookingsRowStylePage() {
             roomType: room.roomType
           })
         );
-      } catch (error) {
-        console.error("Error fetching available rooms:", error);
+      } catch {
         return [];
       }
     },
@@ -1146,8 +1159,7 @@ export default function BookingsRowStylePage() {
             showDetails: false
           });
         }
-      } catch (error) {
-        console.error("Failed to fetch fresh reservation data:", error);
+      } catch {
         // Fallback to cached data if fetch fails
         const rect = arg.el.getBoundingClientRect();
         setFlyout({
@@ -1264,15 +1276,6 @@ export default function BookingsRowStylePage() {
         toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
       } catch (error) {
         // Only log to console if it's not a validation error (those are expected and already shown as toast)
-        const isValidationError =
-          error instanceof Error &&
-          Object.getOwnPropertyDescriptor(error, "isValidationError")?.value ===
-            true;
-
-        if (!isValidationError) {
-          console.error("Failed to update status:", error);
-        }
-
         toast.error(
           error instanceof Error ? error.message : "Failed to update status"
         );
@@ -1323,8 +1326,6 @@ export default function BookingsRowStylePage() {
       // If data is empty, just refresh the calendar (e.g., after status change or payment)
       if (Object.keys(data).length === 0) {
         try {
-          console.log(`🔄 Refreshing calendar after payment/status change...`);
-          console.log(`📍 Using orgId: ${orgId}`);
           const timestamp = Date.now();
           const res = await fetch(
             `/api/reservations?orgId=${orgId}&t=${timestamp}`,
@@ -1333,14 +1334,8 @@ export default function BookingsRowStylePage() {
             }
           );
 
-          console.log(`📊 API Response Status: ${res.status}`);
           if (res.ok) {
             const responseData = await res.json();
-            console.log(
-              `📦 Received ${
-                responseData.reservations?.length || 0
-              } reservations`
-            );
 
             // Update state with fresh data
             setEvents(responseData.reservations || []);
@@ -1349,16 +1344,9 @@ export default function BookingsRowStylePage() {
             // Force calendar refresh by removing all events and re-adding them
             const api = calendarRef.current?.getApi();
             if (api) {
-              console.log(`🔄 Starting calendar refresh sequence...`);
-
-              // Remove all existing events
               api.removeAllEvents();
-              console.log(`✓ All events removed`);
-
-              // Wait a bit for removal to complete
               await new Promise((resolve) => setTimeout(resolve, 100));
 
-              // Convert reservations to calendar events and add them directly
               const calendarEvents = (responseData.reservations || []).map(
                 (r: Reservation) => {
                   const colors = getEventColor(r.status, isDarkMode);
@@ -1381,29 +1369,18 @@ export default function BookingsRowStylePage() {
                 }
               );
 
-              // Add events directly to calendar
               api.addEventSource(calendarEvents);
-              console.log(
-                `✅ ${calendarEvents.length} events added to calendar`
-              );
-            } else {
-              console.warn("⚠️ Calendar API not available");
             }
-          } else {
-            console.error(`❌ API returned status ${res.status}`);
-            const errorData = await res.json();
-            console.error("Error response:", errorData);
           }
-        } catch (error) {
-          console.error("Failed to refresh calendar:", error);
+        } catch {
           toast.error("Failed to refresh calendar data");
         }
         return;
       }
 
-      await handleUpdateBooking({
+      await handleUpdateBooking(
         reservationId,
-        data: {
+        {
           guestName: data.guestName || "",
           checkIn: data.checkIn || "",
           checkOut: data.checkOut || "",
@@ -1412,10 +1389,9 @@ export default function BookingsRowStylePage() {
           roomId: data.roomId,
           notes: data.notes || ""
         },
-        reload: async () => {
+        async () => {
           // Inline reload logic to avoid dependency on reload function
           try {
-            console.log(`🔄 Reloading reservations...`);
             const timestamp = Date.now();
             const res = await fetch(
               `/api/reservations?orgId=${orgId}&t=${timestamp}`,
@@ -1426,7 +1402,6 @@ export default function BookingsRowStylePage() {
 
             if (res.ok) {
               const data = await res.json();
-              // Filter out CANCELLED and NO_SHOW reservations from calendar view
               const activeReservations = (data.reservations || []).filter(
                 (r: Reservation) =>
                   r.status !== "CANCELLED" && r.status !== "NO_SHOW"
@@ -1434,22 +1409,19 @@ export default function BookingsRowStylePage() {
               setEvents(activeReservations);
               setResources(data.rooms || []);
 
-              // Force calendar refresh
               const api = calendarRef.current?.getApi();
               if (api) {
                 api.removeAllEvents();
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 api.refetchEvents();
-                console.log(`✅ Calendar refetch triggered`);
               }
             }
-          } catch (error) {
-            console.error("Failed to reload reservations:", error);
+          } catch {
             toast.error("Failed to refresh calendar data");
           }
-        },
-        onClose: () => setEditingReservation(null)
-      });
+        }
+      );
+      setEditingReservation(null);
     },
     [isDarkMode]
   );
@@ -1463,7 +1435,6 @@ export default function BookingsRowStylePage() {
 
     await handleDeleteBooking(reservationId, async () => {
       try {
-        console.log(`🔄 Reloading reservations...`);
         const timestamp = Date.now();
         const res = await fetch(
           `/api/reservations?orgId=${orgId}&t=${timestamp}`,
@@ -1474,7 +1445,6 @@ export default function BookingsRowStylePage() {
 
         if (res.ok) {
           const data = await res.json();
-          // Filter out CANCELLED and NO_SHOW reservations from calendar view
           const activeReservations = (data.reservations || []).filter(
             (r: Reservation) =>
               r.status !== "CANCELLED" && r.status !== "NO_SHOW"
@@ -1482,17 +1452,14 @@ export default function BookingsRowStylePage() {
           setEvents(activeReservations);
           setResources(data.rooms || []);
 
-          // Force calendar refresh
           const api = calendarRef.current?.getApi();
           if (api) {
             api.removeAllEvents();
             await new Promise((resolve) => setTimeout(resolve, 50));
             api.refetchEvents();
-            console.log(`✅ Calendar refetch triggered`);
           }
         }
-      } catch (error) {
-        console.error("Failed to reload reservations:", error);
+      } catch {
         toast.error("Failed to refresh calendar data");
       }
     });
@@ -1533,8 +1500,7 @@ export default function BookingsRowStylePage() {
         }
         toast.success("Calendar refreshed");
       }
-    } catch (error) {
-      console.error("Failed to refresh calendar:", error);
+    } catch {
       toast.error("Failed to refresh calendar");
     } finally {
       setIsRefetching(false);
@@ -1556,57 +1522,35 @@ export default function BookingsRowStylePage() {
   // FIXED: Optimized reload function with forced calendar refresh
   const reload = useCallback(async () => {
     try {
-      console.log(`🔄 Reloading reservations...`);
-      // Get orgId from cookies for API calls
       const orgId = document.cookie
         .split("; ")
         .find((row) => row.startsWith("orgId="))
         ?.split("=")[1];
 
-      // Add timestamp to force cache bust
       const timestamp = Date.now();
       const res = await fetch(`/api/reservations?t=${timestamp}`, {
         credentials: "include",
-        // FIXED: Force fresh data after payment updates
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
-          // FIXED: Include organization context
           ...(orgId && { "x-organization-id": orgId })
         }
       });
 
       if (res.ok) {
         const { reservations } = await res.json();
-        console.log(`📊 Loaded ${reservations.length} reservations`);
-
-        // Update local state first
         setEvents(reservations);
-
-        // Fetch blocks
         await loadBlocks();
 
-        // FIXED: Force immediate calendar refresh by removing and re-fetching all events
-        console.log(`🔄 Refreshing calendar events...`);
         const api = calendarRef.current?.getApi();
         if (api) {
-          // Remove all events
           api.removeAllEvents();
-          console.log(`✓ Events removed from calendar`);
-
-          // Wait for removal to complete
           await new Promise((resolve) => setTimeout(resolve, 100));
-
-          // Re-fetch all event sources (reservations + highlights)
           api.refetchEvents();
-          console.log(`✅ Calendar events refetched`);
         }
-      } else {
-        console.error("Reload failed:", res.status, res.statusText);
       }
-    } catch (error) {
-      console.error("Failed to reload reservations:", error);
+    } catch {
       toast.error("Failed to refresh calendar data");
     }
   }, [calendarRef, loadBlocks]);
@@ -1628,8 +1572,7 @@ export default function BookingsRowStylePage() {
 
         toast.success("Room unblocked successfully");
         reload();
-      } catch (error) {
-        console.error("Error unblocking room:", error);
+      } catch {
         toast.error("Failed to unblock room");
       }
     },
@@ -1638,7 +1581,6 @@ export default function BookingsRowStylePage() {
 
   const handleEditBlock = useCallback(
     async (blockId: string, roomId: string, roomName: string) => {
-      // Fetch block details and open BlockRoomSheet in edit mode
       try {
         const response = await fetch(`/api/room-blocks/${blockId}`, {
           credentials: "include"
@@ -1656,22 +1598,145 @@ export default function BookingsRowStylePage() {
           startDate: new Date(block.startDate).toISOString().split("T")[0],
           blockId
         });
-      } catch (error) {
-        console.error("Error loading block:", error);
+      } catch {
         toast.error("Failed to load block details");
       }
     },
     []
   );
 
-  if (loading) {
+  // ✅ PERFORMANCE: Memoize inline callbacks to prevent re-renders in child components
+  const handleNewBookingCreate = useCallback(
+    async (bookingData: {
+      fullName: string;
+      phone: string;
+      email: string;
+      idType: string;
+      idNumber: string;
+      issuingCountry: string;
+      checkIn: string;
+      checkOut: string;
+      adults: number;
+      childrenCount: number;
+      guestImageUrl?: string;
+      idDocumentUrl?: string;
+      idExpiryDate?: string;
+      idDocumentExpired?: boolean;
+      payment?: unknown;
+      addons?: unknown;
+    }) => {
+      if (!selectedSlot) return;
+      await handleCreateBooking(
+        {
+          roomId: selectedSlot.roomId,
+          guestName: bookingData.fullName,
+          phone: bookingData.phone,
+          email: bookingData.email,
+          idType: bookingData.idType,
+          idNumber: bookingData.idNumber,
+          issuingCountry: bookingData.issuingCountry,
+          checkIn: bookingData.checkIn,
+          checkOut: bookingData.checkOut,
+          adults: bookingData.adults,
+          children: bookingData.childrenCount,
+          guestImageUrl: bookingData.guestImageUrl,
+          idDocumentUrl: bookingData.idDocumentUrl,
+          idExpiryDate: bookingData.idExpiryDate,
+          idDocumentExpired: bookingData.idDocumentExpired,
+          payment: bookingData.payment,
+          addons: bookingData.addons
+        },
+        reload
+      );
+      setSelectedSlot(null);
+    },
+    [selectedSlot, reload]
+  );
+
+  const handleFlyoutCheckOut = useCallback(
+    async (id: string) => {
+      await handleCheckOut(id, reload);
+      setFlyout(null);
+    },
+    [reload]
+  );
+
+  const handleFlyoutDelete = useCallback(
+    (id: string) =>
+      handleDeleteBooking(id, async () => {
+        setFlyout(null);
+        await reload();
+      }),
+    [reload]
+  );
+
+  const handleScanComplete = useCallback(
+    (result: {
+      idNumber: string;
+      fullName: string;
+      issuingCountry: string;
+      idType?: string;
+      guestImageUrl?: string;
+      idDocumentUrl?: string;
+      idExpiryDate?: string;
+      idDocumentExpired?: boolean;
+    }) => {
+      if (!ocrEnabled) return;
+      setIdNumber(result.idNumber);
+      setFullName(result.fullName);
+      setIssuingCountry(result.issuingCountry);
+      setIdType(result.idType || "passport");
+      setGuestImageUrl(result.guestImageUrl);
+      setIdDocumentUrl(result.idDocumentUrl);
+      setIdExpiryDate(result.idExpiryDate);
+      setIdDocumentExpired(result.idDocumentExpired);
+      setShowScanner(false);
+      setOcrEnabled(false);
+    },
+    [ocrEnabled]
+  );
+
+  const handleScanError = useCallback((err: Error) => {
+    toast.error("Scan failed: " + err.message);
+  }, []);
+
+  const handleDateChange = useCallback((newDate: string) => {
+    setSelectedDate(newDate);
+  }, []);
+
+  const handleLegendOpen = useCallback(() => {
+    setShowLegend(true);
+  }, []);
+
+  const handleLegendClose = useCallback(() => {
+    setShowLegend(false);
+  }, []);
+
+  const handleAddDropdownClose = useCallback(() => {
+    setAddDropdown(null);
+  }, []);
+
+  // ✅ PERFORMANCE: Memoize organization ID to prevent recalculation
+  const organizationId = useMemo(() => {
+    return (
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("orgId="))
+        ?.split("=")[1] || ""
+    );
+  }, []);
+
+  // Show single loading state while session or data is loading
+  if (sessionStatus === "loading" || loading) {
     return <LoadingSpinner text="Loading Calendar..." fullScreen />;
   }
 
   return (
     <div ref={containerRef} className="relative p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Booking Calendar</h1>
+        <h1 className="text-2xl font-semibold">
+          Booking Calendar (TEST - Refactored)
+        </h1>
         <div className="flex items-center gap-4">
           {/* Refresh Button */}
           <button
@@ -1736,111 +1801,55 @@ export default function BookingsRowStylePage() {
         isToday={isToday}
         setSelectedResource={setSelectedResource}
         events={events}
-        onDateChange={(newDate) => setSelectedDate(newDate)}
+        onDateChange={handleDateChange}
+        onDatesSet={handleDatesSet}
         propertyTimezone={propertyTimezone}
       />
 
-      {/* New Booking Dialog */}
-      <NewBookingModalFixed
-        handleCreate={(bookingData) => {
-          if (!selectedSlot) return;
-          handleCreateBooking({
-            selectedSlot,
-            data: {
-              guestName: bookingData.fullName,
-              phone: bookingData.phone,
-              email: bookingData.email,
-              idType: bookingData.idType,
-              idNumber: bookingData.idNumber,
-              issuingCountry: bookingData.issuingCountry,
-              checkIn: bookingData.checkIn,
-              checkOut: bookingData.checkOut,
-              adults: bookingData.adults,
-              children: bookingData.childrenCount,
-              // Add image URLs from scanner
-              guestImageUrl: bookingData.guestImageUrl,
-              idDocumentUrl: bookingData.idDocumentUrl,
-              idExpiryDate: bookingData.idExpiryDate,
-              idDocumentExpired: bookingData.idDocumentExpired,
-              // Add payment data
-              payment: bookingData.payment,
-              addons: bookingData.addons
-            },
-            reload,
-            onClose: () => setSelectedSlot(null)
-          });
-        }}
-        selectedSlot={selectedSlot}
-        setSelectedSlot={setSelectedSlot}
-        fullName={fullName}
-        setFullName={setFullName}
-        phone={phone}
-        setPhone={setPhone}
-        email={email}
-        setEmail={setEmail}
-        idType={idType}
-        setIdType={setIdType}
-        idNumber={idNumber}
-        setIdNumber={setIdNumber}
-        issuingCountry={issuingCountry}
-        setIssuingCountry={setIssuingCountry}
-        guestImageUrl={guestImageUrl}
-        setGuestImageUrl={setGuestImageUrl}
-        idDocumentUrl={idDocumentUrl}
-        setIdDocumentUrl={setIdDocumentUrl}
-        idExpiryDate={idExpiryDate}
-        setIdExpiryDate={setIdExpiryDate}
-        idDocumentExpired={idDocumentExpired}
-        setIdDocumentExpired={setIdDocumentExpired}
-        adults={adults}
-        setAdults={setAdults}
-        childrenCount={children}
-        setChildrenCount={setChildren}
-        showScanner={showScanner}
-        setShowScanner={setShowScanner}
-        setOcrEnabled={setOcrEnabled}
-        handleScanComplete={(result) => {
-          if (!ocrEnabled) return;
-          setIdNumber(result.idNumber);
-          setFullName(result.fullName);
-          setIssuingCountry(result.issuingCountry);
-          setIdType(result.idType || "passport");
-          setGuestImageUrl(result.guestImageUrl);
-          setIdDocumentUrl(result.idDocumentUrl);
-          setIdExpiryDate(result.idExpiryDate);
-          setIdDocumentExpired(result.idDocumentExpired);
-          setShowScanner(false);
-          setOcrEnabled(false);
-        }}
-        handleScanError={(err) => {
-          toast.error("Scan failed: " + err.message);
-        }}
-        setLastScannedSlot={setLastScannedSlot}
-        onFetchAvailableRooms={fetchAvailableRooms}
-      />
-
-      {/* Scanner Overlay */}
-      {showScanner && (
-        <IDScannerWithOCR
-          onComplete={(result) => {
-            if (!ocrEnabled) return;
-            setIdNumber(result.idNumber);
-            setFullName(result.fullName);
-            setIssuingCountry(result.issuingCountry);
-            setShowScanner(false);
-            setOcrEnabled(false);
-          }}
-          onError={(err) => {
-            toast.error("Scan failed: " + err.message);
-          }}
-          onClose={() => {
-            setShowScanner(false);
-            if (lastScannedSlot) setSelectedSlot(lastScannedSlot);
-          }}
-        />
+      {/* New Booking Dialog - Only render when needed */}
+      {selectedSlot && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <NewBookingModalFixed
+            handleCreate={handleNewBookingCreate}
+            selectedSlot={selectedSlot}
+            setSelectedSlot={setSelectedSlot}
+            fullName={fullName}
+            setFullName={setFullName}
+            phone={phone}
+            setPhone={setPhone}
+            email={email}
+            setEmail={setEmail}
+            idType={idType}
+            setIdType={setIdType}
+            idNumber={idNumber}
+            setIdNumber={setIdNumber}
+            issuingCountry={issuingCountry}
+            setIssuingCountry={setIssuingCountry}
+            guestImageUrl={guestImageUrl}
+            setGuestImageUrl={setGuestImageUrl}
+            idDocumentUrl={idDocumentUrl}
+            setIdDocumentUrl={setIdDocumentUrl}
+            idExpiryDate={idExpiryDate}
+            setIdExpiryDate={setIdExpiryDate}
+            idDocumentExpired={idDocumentExpired}
+            setIdDocumentExpired={setIdDocumentExpired}
+            adults={adults}
+            setAdults={setAdults}
+            childrenCount={children}
+            setChildrenCount={setChildren}
+            showScanner={showScanner}
+            setShowScanner={setShowScanner}
+            setOcrEnabled={setOcrEnabled}
+            handleScanComplete={handleScanComplete}
+            handleScanError={handleScanError}
+            onFetchAvailableRooms={fetchAvailableRooms}
+          />
+        </Suspense>
       )}
 
-      {/* Flyout Menu for Reservations */}
+      {/* Scanner Overlay - REMOVED: Now using IDScannerWithEdgeRefinement inside BookingDetailsTab */}
+
+      {/* Flyout Menu for Reservations - Eager loaded (small, frequently used) */}
       {flyout && (
         <FlyoutMenu
           flyout={flyout}
@@ -1848,21 +1857,13 @@ export default function BookingsRowStylePage() {
           setFlyout={setFlyout}
           setEditingReservation={setEditingReservation}
           setViewReservation={setViewReservation}
-          handleCheckOut={async (id) => {
-            await handleCheckOut(id, reload);
-            setFlyout(null);
-          }}
-          handleDelete={(id) =>
-            handleDeleteBooking(id, async () => {
-              setFlyout(null);
-              await reload();
-            })
-          }
+          handleCheckOut={handleFlyoutCheckOut}
+          handleDelete={handleFlyoutDelete}
           handleStatusUpdate={handleStatusUpdate}
         />
       )}
 
-      {/* Cell Flyout Menu for Empty Cells */}
+      {/* Cell Flyout Menu for Empty Cells - Eager loaded */}
       {cellFlyout && (
         <CalendarCellFlyout
           flyout={cellFlyout}
@@ -1874,7 +1875,7 @@ export default function BookingsRowStylePage() {
         />
       )}
 
-      {/* Block Event Flyout */}
+      {/* Block Event Flyout - Eager loaded */}
       {blockFlyout && (
         <BlockEventFlyout
           flyout={blockFlyout}
@@ -1889,7 +1890,7 @@ export default function BookingsRowStylePage() {
       {addDropdown && (
         <AddButtonDropdown
           position={addDropdown}
-          onClose={() => setAddDropdown(null)}
+          onClose={handleAddDropdownClose}
           onAddReservation={handleAddReservationFromDropdown}
           onBlockDates={handleBlockDatesFromDropdown}
         />
@@ -1897,52 +1898,56 @@ export default function BookingsRowStylePage() {
 
       {/* Block Room Sheet */}
       {blockData && (
-        <BlockRoomSheet
-          blockData={blockData}
-          setBlockData={setBlockData}
-          onBlockCreated={reload}
-          organizationId={
-            document.cookie
-              .split("; ")
-              .find((row) => row.startsWith("orgId="))
-              ?.split("=")[1] || ""
-          }
-          propertyId={session?.user?.availableProperties?.[0]?.id || ""}
-          onFetchAvailableRooms={fetchAvailableRooms}
-        />
+        <Suspense fallback={<LoadingSpinner />}>
+          <BlockRoomSheet
+            blockData={blockData}
+            setBlockData={setBlockData}
+            onBlockCreated={reload}
+            organizationId={organizationId}
+            propertyId={currentPropertyId}
+            onFetchAvailableRooms={fetchAvailableRooms}
+          />
+        </Suspense>
       )}
 
       {/* Edit Booking Sheet - Only render when editing a reservation */}
       {editingReservation && (
-        <EditBookingSheet
-          editingReservation={editingReservation}
-          setEditingReservation={setEditingReservation}
-          availableRooms={availableRooms}
-          onUpdate={handleEditBookingUpdate}
-          onDelete={handleEditBookingDelete}
-        />
+        <Suspense fallback={<LoadingSpinner />}>
+          <EditBookingSheet
+            editingReservation={editingReservation}
+            setEditingReservation={setEditingReservation}
+            availableRooms={availableRooms}
+            onUpdate={handleEditBookingUpdate}
+            onDelete={handleEditBookingDelete}
+          />
+        </Suspense>
       )}
 
-      {/* View Booking Sheet */}
-      <ViewBookingSheet
-        viewReservation={viewReservation}
-        setViewReservation={setViewReservation}
-      />
+      {/* View Booking Sheet - Only render when viewing a reservation */}
+      {viewReservation && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ViewBookingSheet
+            viewReservation={viewReservation}
+            setViewReservation={setViewReservation}
+          />
+        </Suspense>
+      )}
 
       {/* Legend Bar */}
       <div className="mt-4 text-left text-md">
         <button
           type="button"
-          onClick={() => setShowLegend(true)}
+          onClick={handleLegendOpen}
           className="underline text-gray-900 dark:text-white font-bold hover:text-purple-600 cursor-pointer"
         >
           Legend
         </button>
       </div>
 
-      <LegendModal open={showLegend} onClose={() => setShowLegend(false)} />
+      {/* Legend Modal - Eager loaded (tiny component) */}
+      <LegendModal open={showLegend} onClose={handleLegendClose} />
 
-      {/* Day Transition Blocker Modal */}
+      {/* Day Transition Blocker Modal - Eager loaded */}
       <DayTransitionBlockerModal
         isOpen={dayTransitionBlockerOpen}
         issues={dayTransitionIssues}

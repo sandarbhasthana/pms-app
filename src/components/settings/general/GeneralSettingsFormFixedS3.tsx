@@ -6,8 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useCallback } from "react";
-import { Country, State, City } from "country-state-city";
 import Image from "next/image";
+
+// ✅ PERFORMANCE: Lightweight types for API response (no library import)
+interface LocationCountry {
+  isoCode: string;
+  name: string;
+  phonecode: string;
+  flag: string;
+}
+
+interface LocationState {
+  isoCode: string;
+  name: string;
+  countryCode: string;
+}
+
+interface LocationCity {
+  name: string;
+  stateCode: string;
+  countryCode: string;
+}
 import PhoneInput from "react-phone-input-2";
 import LocationPickerMap from "@/components/settings/general/LocationPickerMap";
 import DescriptionTiptap from "@/components/settings/general/DescriptionTiptap";
@@ -123,6 +142,85 @@ export default function GeneralSettingsFormFixed({
     null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ PERFORMANCE: Location data from API (no client-side library)
+  const [countries, setCountries] = useState<LocationCountry[]>([]);
+  const [states, setStates] = useState<LocationState[]>([]);
+  const [cities, setCities] = useState<LocationCity[]>([]);
+  const [locationLibLoaded, setLocationLibLoaded] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("");
+
+  // ✅ PERFORMANCE: Fetch countries from API (server-side library)
+  useEffect(() => {
+    let mounted = true;
+    const fetchCountries = async () => {
+      try {
+        const res = await fetch("/api/location/countries");
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setCountries(data);
+          setLocationLibLoaded(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch countries:", error);
+      }
+    };
+    fetchCountries();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ✅ PERFORMANCE: Fetch states from API when country changes
+  useEffect(() => {
+    if (!selectedCountryCode) {
+      setStates([]);
+      return;
+    }
+    let mounted = true;
+    const fetchStates = async () => {
+      try {
+        const res = await fetch(
+          `/api/location/states?countryCode=${selectedCountryCode}`
+        );
+        if (res.ok && mounted) {
+          setStates(await res.json());
+        }
+      } catch (error) {
+        console.error("Failed to fetch states:", error);
+      }
+    };
+    fetchStates();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedCountryCode]);
+
+  // ✅ PERFORMANCE: Fetch cities from API when state changes
+  useEffect(() => {
+    const stateData = states.find((s) => s.name === selectedState);
+    if (!selectedCountryCode || !stateData) {
+      setCities([]);
+      return;
+    }
+    let mounted = true;
+    const fetchCities = async () => {
+      try {
+        const res = await fetch(
+          `/api/location/cities?countryCode=${selectedCountryCode}&stateCode=${stateData.isoCode}`
+        );
+        if (res.ok && mounted) {
+          setCities(await res.json());
+        }
+      } catch (error) {
+        console.error("Failed to fetch cities:", error);
+      }
+    };
+    fetchCities();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedCountryCode, selectedState, states]);
 
   // Property type options
   const propertyTypeOptions = [
@@ -312,29 +410,27 @@ export default function GeneralSettingsFormFixed({
         setLocationAccuracy("approximate");
       }
 
-      // 6) Country → State initialization
+      // 6) Country → State initialization (now using lazy-loaded countries state)
       if (settings.country) {
         setSelectedCountry(settings.country);
-        const countries = Country.getAllCountries();
-        const countryData = countries.find((c) => c.name === settings.country);
-        if (countryData) {
-          const countryStates = State.getStatesOfCountry(countryData.isoCode);
-          if (settings.state) {
-            const stateExists = countryStates.some(
-              (st) => st.name === settings.state
-            );
-            if (stateExists) {
-              setSelectedState(settings.state);
-            } else {
-              setSelectedState("");
-              setValue("state", "");
-            }
-          }
+        // State validation will happen automatically via useEffect when countries load
+        if (settings.state) {
+          setSelectedState(settings.state);
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, hasUserInteracted]);
+
+  // ✅ PERFORMANCE: Set country code when countries load and there's a selected country
+  useEffect(() => {
+    if (selectedCountry && countries.length > 0 && !selectedCountryCode) {
+      const countryData = countries.find((c) => c.name === selectedCountry);
+      if (countryData) {
+        setSelectedCountryCode(countryData.isoCode);
+      }
+    }
+  }, [selectedCountry, countries, selectedCountryCode]);
 
   // Register propertyType field with validation
   useEffect(() => {
@@ -429,6 +525,10 @@ export default function GeneralSettingsFormFixed({
   const handleCountryChange = (countryName: string) => {
     setSelectedCountry(countryName);
     setValue("country", countryName);
+
+    // Find and set the country code for API calls
+    const countryData = countries.find((c) => c.name === countryName);
+    setSelectedCountryCode(countryData?.isoCode || "");
 
     // Reset state and city when country changes
     setSelectedState("");
@@ -1078,10 +1178,13 @@ export default function GeneralSettingsFormFixed({
                     {...field}
                     value={selectedCountry}
                     onChange={(e) => handleCountryChange(e.target.value)}
+                    disabled={!locationLibLoaded}
                     className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">Select Country</option>
-                    {Country.getAllCountries().map((country) => (
+                    <option value="">
+                      {locationLibLoaded ? "Select Country" : "Loading..."}
+                    </option>
+                    {countries.map((country) => (
                       <option key={country.isoCode} value={country.name}>
                         {country.name}
                       </option>
@@ -1100,20 +1203,15 @@ export default function GeneralSettingsFormFixed({
                     {...field}
                     value={selectedState}
                     onChange={(e) => handleStateChange(e.target.value)}
-                    disabled={!selectedCountry}
+                    disabled={!selectedCountry || states.length === 0}
                     className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">Select State</option>
-                    {selectedCountry &&
-                      State.getStatesOfCountry(
-                        Country.getAllCountries().find(
-                          (c) => c.name === selectedCountry
-                        )?.isoCode || ""
-                      ).map((state) => (
-                        <option key={state.isoCode} value={state.name}>
-                          {state.name}
-                        </option>
-                      ))}
+                    {states.map((state) => (
+                      <option key={state.isoCode} value={state.name}>
+                        {state.name}
+                      </option>
+                    ))}
                   </select>
                 )}
               />
@@ -1126,26 +1224,15 @@ export default function GeneralSettingsFormFixed({
                 render={({ field }) => (
                   <select
                     {...field}
-                    disabled={!selectedState}
+                    disabled={!selectedState || cities.length === 0}
                     className="flex h-9 w-full rounded-md border border-gray-500 dark:border-gray-400 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-purple-400/20 focus-visible:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">Select City</option>
-                    {selectedCountry &&
-                      selectedState &&
-                      City.getCitiesOfState(
-                        Country.getAllCountries().find(
-                          (c) => c.name === selectedCountry
-                        )?.isoCode || "",
-                        State.getStatesOfCountry(
-                          Country.getAllCountries().find(
-                            (c) => c.name === selectedCountry
-                          )?.isoCode || ""
-                        ).find((s) => s.name === selectedState)?.isoCode || ""
-                      ).map((city) => (
-                        <option key={city.name} value={city.name}>
-                          {city.name}
-                        </option>
-                      ))}
+                    {cities.map((city) => (
+                      <option key={city.name} value={city.name}>
+                        {city.name}
+                      </option>
+                    ))}
                   </select>
                 )}
               />

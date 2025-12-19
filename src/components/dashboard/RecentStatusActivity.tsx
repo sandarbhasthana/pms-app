@@ -1,7 +1,7 @@
 // File: src/components/dashboard/RecentStatusActivity.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { ReservationStatus } from "@prisma/client";
 import {
   Clock,
@@ -48,7 +48,8 @@ interface RecentStatusActivityProps {
   preloadedData?: RecentStatusChange[];
 }
 
-export default function RecentStatusActivity({
+// ✅ PERFORMANCE: Memoized component to prevent unnecessary re-renders
+const RecentStatusActivity = memo(function RecentStatusActivity({
   propertyId,
   limit = 20,
   refreshInterval = 30000, // 30 seconds
@@ -132,33 +133,36 @@ export default function RecentStatusActivity({
     };
   }, [fetchActivity, refreshInterval, preloadedData]); // Now includes fetchActivity safely
 
-  // Filter activities
-  const filteredActivities = activities.filter((activity) => {
-    if (filter === "manual") return !activity.isAutomatic;
-    if (filter === "automatic") return activity.isAutomatic;
-    return true;
-  });
+  // ✅ PERFORMANCE: Memoize filtered activities to prevent recalculation on every render
+  const filteredActivities = useMemo(() => {
+    return activities.filter((activity) => {
+      if (filter === "manual") return !activity.isAutomatic;
+      if (filter === "automatic") return activity.isAutomatic;
+      return true;
+    });
+  }, [activities, filter]);
 
-  // Get activity icon
-  const getActivityIcon = (activity: RecentStatusChange) => {
+  // ✅ PERFORMANCE: Memoize helper functions with useCallback
+  const getActivityIcon = useCallback((activity: RecentStatusChange) => {
     if (activity.isAutomatic) {
       return <RefreshCw className="h-4 w-4 text-blue-500" />;
     }
     return <User className="h-4 w-4 text-purple-500" />;
-  };
+  }, []);
 
-  // Get status change description
-  const getStatusChangeDescription = (activity: RecentStatusChange) => {
-    const fromStatus = activity.previousStatus
-      ? getStatusConfig(activity.previousStatus).label
-      : "New";
-    const toStatus = getStatusConfig(activity.newStatus).label;
+  const getStatusChangeDescription = useCallback(
+    (activity: RecentStatusChange) => {
+      const fromStatus = activity.previousStatus
+        ? getStatusConfig(activity.previousStatus).label
+        : "New";
+      const toStatus = getStatusConfig(activity.newStatus).label;
 
-    return `${fromStatus} → ${toStatus}`;
-  };
+      return `${fromStatus} → ${toStatus}`;
+    },
+    []
+  );
 
-  // Get activity priority/severity
-  const getActivitySeverity = (activity: RecentStatusChange) => {
+  const getActivitySeverity = useCallback((activity: RecentStatusChange) => {
     switch (activity.newStatus) {
       case ReservationStatus.NO_SHOW:
       case ReservationStatus.CANCELLED:
@@ -168,7 +172,7 @@ export default function RecentStatusActivity({
       default:
         return "low";
     }
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -280,7 +284,7 @@ export default function RecentStatusActivity({
                     }`}
                   >
                     {/* Activity Icon */}
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="shrink-0 mt-1">
                       {getActivityIcon(activity)}
                     </div>
 
@@ -375,4 +379,8 @@ export default function RecentStatusActivity({
       </CardContent>
     </Card>
   );
-}
+});
+
+RecentStatusActivity.displayName = "RecentStatusActivity";
+
+export default RecentStatusActivity;

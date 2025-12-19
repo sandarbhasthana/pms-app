@@ -1,8 +1,9 @@
 // File: src/components/dashboard/PropertyDashboard.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useDashboardData } from "@/lib/hooks/useDashboardData";
 import {
   Building2,
   Bed,
@@ -27,23 +28,6 @@ import {
 } from "@/components/ui/role-tag";
 import AnalyticsTab from "./AnalyticsTab";
 
-interface DashboardStats {
-  totalRooms: number;
-  availableRooms: number;
-  occupiedRooms: number;
-  maintenanceRooms: number;
-  todayCheckIns: number;
-  todayCheckOuts: number;
-  totalReservations: number;
-  pendingReservations: number;
-  revenue: {
-    today: number;
-    thisMonth: number;
-    lastMonth: number;
-  };
-  occupancyRate: number;
-}
-
 interface ReservationData {
   id: string;
   guestName: string;
@@ -55,19 +39,6 @@ interface ReservationData {
   totalAmount: number;
   email: string;
   phone: string;
-}
-
-interface DashboardReservations {
-  date: string;
-  checkIns: ReservationData[];
-  checkOuts: ReservationData[];
-  stayingGuests: ReservationData[];
-  summary: {
-    totalCheckIns: number;
-    totalCheckOuts: number;
-    totalStaying: number;
-    totalReservations: number;
-  };
 }
 
 interface ActivityData {
@@ -84,50 +55,10 @@ interface ActivityData {
   description: string;
 }
 
-interface DashboardActivities {
-  type: string;
-  date: string;
-  activities: ActivityData[];
-  stats: {
-    count: number;
-    totalAmount: number;
-    averageAmount: number;
-  };
-  summary: {
-    totalActivities: number;
-    hasActivities: boolean;
-  };
-}
-
-interface PropertyInfo {
-  id: string;
-  name: string;
-  suite?: string | null;
-  street?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zipCode?: string | null;
-  country?: string | null;
-  address?: string | null; // Legacy field
-}
-
 export function PropertyDashboard() {
   const { data: session } = useSession();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [propertyInfo, setPropertyInfo] = useState<PropertyInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-
-  // New state for reservations and activities
-  const [reservations, setReservations] =
-    useState<DashboardReservations | null>(null);
-  const [tomorrowReservations, setTomorrowReservations] =
-    useState<DashboardReservations | null>(null);
-  const [activities, setActivities] = useState<DashboardActivities | null>(
-    null
-  );
   const [selectedReservationDay, setSelectedReservationDay] = useState<
     "today" | "tomorrow"
   >("today");
@@ -177,7 +108,7 @@ export function PropertyDashboard() {
             ?.split("=")[1]
         : null;
 
-    return propertyIdFromCookie;
+    return propertyIdFromCookie || null;
   }, [session?.user?.currentPropertyId]);
 
   const currentProperty = useMemo(() => {
@@ -186,173 +117,57 @@ export function PropertyDashboard() {
     );
   }, [session?.user?.availableProperties, currentPropertyId]);
 
-  // OPTIMIZATION: Load only essential data on initial load
-  const loadDashboardData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  // ✅ PERFORMANCE OPTIMIZATION: SWR for automatic caching and revalidation
+  // Replaces manual fetch with SWR for:
+  // - Automatic caching and deduplication
+  // - Background revalidation
+  // - Optimistic updates
+  // - Reduced code complexity
+  const { dashboardData, isLoading, isError, refresh } =
+    useDashboardData(currentPropertyId);
 
-      // Load only essential data: property info and stats
-      // Defer tomorrow reservations and activities to lazy loading
-      const [propertyResponse, statsResponse, reservationsResponse] =
-        await Promise.all([
-          fetch(`/api/properties/${currentPropertyId}`),
-          fetch(`/api/dashboard/stats?propertyId=${currentPropertyId}`),
-          fetch(
-            `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=today`
-          )
-        ]);
+  // Extract data from SWR response
+  const stats = dashboardData?.stats || null;
+  const propertyInfo = dashboardData?.property || null;
+  const reservations = dashboardData?.reservations?.today || null;
+  const tomorrowReservations = dashboardData?.reservations?.tomorrow || null;
 
-      if (!propertyResponse.ok || !statsResponse.ok) {
-        throw new Error("Failed to load dashboard data");
-      }
+  // Get activities based on selected type
+  const activities = useMemo(() => {
+    if (!dashboardData?.activities) return null;
+    if (selectedActivityType === "sales") return dashboardData.activities.sales;
+    if (selectedActivityType === "cancellations")
+      return dashboardData.activities.cancellations;
+    if (selectedActivityType === "overbookings")
+      return dashboardData.activities.overbookings;
+    return null;
+  }, [dashboardData?.activities, selectedActivityType]);
 
-      const [propertyData, statsData] = await Promise.all([
-        propertyResponse.json(),
-        statsResponse.json()
-      ]);
+  const error = isError ? "Failed to load dashboard data" : null;
 
-      setPropertyInfo(propertyData);
-      setStats(statsData);
+  // ✅ PERFORMANCE OPTIMIZATION: SWR handles data fetching automatically
+  // No need for manual loadDashboardData - SWR provides:
+  // - Automatic caching and deduplication
+  // - Background revalidation
+  // - Optimistic updates
 
-      // Load today's reservations (essential data)
-      try {
-        if (reservationsResponse.ok) {
-          const reservationsData = await reservationsResponse.json();
-          setReservations(reservationsData);
-        }
-      } catch (error) {
-        console.warn("Failed to load today's reservations:", error);
-      }
-
-      // OPTIMIZATION: Load tomorrow reservations and activities lazily (on demand)
-      // This defers non-essential data loading to improve initial load time
-      // Schedule these as background tasks after initial load completes
-      setTimeout(() => {
-        // Load tomorrow reservations in background
-        fetch(
-          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=tomorrow`
-        )
-          .then((res) => res.json())
-          .then((data) => setTomorrowReservations(data))
-          .catch((err) =>
-            console.warn("Failed to load tomorrow's reservations:", err)
-          );
-
-        // Load activities in background
-        fetch(
-          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${selectedActivityType}`
-        )
-          .then((res) => res.json())
-          .then((data) => setActivities(data))
-          .catch((err) => console.warn("Failed to load activities:", err));
-      }, 100); // Small delay to prioritize initial render
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPropertyId, selectedActivityType]);
-
-  useEffect(() => {
-    if (currentPropertyId) {
-      loadDashboardData();
-    }
-  }, [currentPropertyId, loadDashboardData]);
-
-  // Helper function to load activities when type changes
-  const loadActivities = useCallback(
-    async (type: "sales" | "cancellations" | "overbookings") => {
-      try {
-        const response = await fetch(
-          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${type}`
-        );
-        if (response.ok) {
-          const activitiesData = await response.json();
-          setActivities(activitiesData);
-        }
-      } catch (error) {
-        console.warn("Failed to load activities:", error);
-      }
-    },
-    [currentPropertyId]
-  );
-
-  // Refresh handler for the refresh button - refreshes data without showing loading skeleton
+  // Refresh handler for the refresh button - uses SWR's refresh function
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      setError(null);
-
-      // Load fresh data without triggering the full loading skeleton
-      const [propertyResponse, statsResponse, reservationsResponse] =
-        await Promise.all([
-          fetch(`/api/properties/${currentPropertyId}`),
-          fetch(`/api/dashboard/stats?propertyId=${currentPropertyId}`),
-          fetch(
-            `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=today`
-          )
-        ]);
-
-      if (!propertyResponse.ok || !statsResponse.ok) {
-        throw new Error("Failed to refresh dashboard data");
-      }
-
-      const [propertyData, statsData] = await Promise.all([
-        propertyResponse.json(),
-        statsResponse.json()
-      ]);
-
-      setPropertyInfo(propertyData);
-      setStats(statsData);
-
-      // Load today's reservations
-      try {
-        if (reservationsResponse.ok) {
-          const reservationsData = await reservationsResponse.json();
-          setReservations(reservationsData);
-        }
-      } catch (error) {
-        console.warn("Failed to load today's reservations:", error);
-      }
-
-      // Refresh tomorrow reservations and activities - wait for these to complete
-      await Promise.all([
-        fetch(
-          `/api/dashboard/reservations?propertyId=${currentPropertyId}&day=tomorrow`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            setTomorrowReservations(data);
-          })
-          .catch((err) => {
-            console.warn("Failed to load tomorrow's reservations:", err);
-          }),
-        fetch(
-          `/api/dashboard/activities?propertyId=${currentPropertyId}&type=${selectedActivityType}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            setActivities(data);
-          })
-          .catch((err) => {
-            console.warn("Failed to load activities:", err);
-          })
-      ]);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      await refresh();
     } finally {
       setIsRefreshing(false);
     }
-  }, [currentPropertyId, selectedActivityType]);
+  }, [refresh]);
 
   // Handle activity type change
+  // SWR automatically updates activities via useMemo when selectedActivityType changes
   const handleActivityTypeChange = useCallback(
     (type: "sales" | "cancellations" | "overbookings") => {
       setSelectedActivityType(type);
-      loadActivities(type);
     },
-    [loadActivities]
+    []
   );
 
   // Handle reservation day change
@@ -420,7 +235,7 @@ export function PropertyDashboard() {
             <p className="text-muted-foreground mb-4">{error}</p>
             <button
               type="button"
-              onClick={loadDashboardData}
+              onClick={handleRefresh}
               className="btn-purple-primary px-4 py-2 rounded"
             >
               Try Again
@@ -681,7 +496,7 @@ export function PropertyDashboard() {
                     <div className="flex space-x-2">
                       <button
                         type="button"
-                        onClick={loadDashboardData}
+                        onClick={handleRefresh}
                         className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                         title="Refresh Reservations"
                       >
@@ -731,7 +546,7 @@ export function PropertyDashboard() {
                             </h4>
                             {currentReservations.checkIns
                               .slice(0, 3)
-                              .map((reservation) => (
+                              .map((reservation: ReservationData) => (
                                 <div
                                   key={reservation.id}
                                   className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-700 rounded-lg mb-2"
@@ -782,7 +597,7 @@ export function PropertyDashboard() {
                             </h4>
                             {currentReservations.checkOuts
                               .slice(0, 2)
-                              .map((reservation) => (
+                              .map((reservation: ReservationData) => (
                                 <div
                                   key={reservation.id}
                                   className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-700 rounded-lg mb-2"
@@ -831,7 +646,7 @@ export function PropertyDashboard() {
                     </h3>
                     <button
                       type="button"
-                      onClick={() => loadActivities(selectedActivityType)}
+                      onClick={handleRefresh}
                       className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                       title="Refresh Activities"
                     >
@@ -942,38 +757,40 @@ export function PropertyDashboard() {
                       <h4 className="text-sm font-medium text-slate-600 dark:text-slate-400">
                         Recent {selectedActivityType}
                       </h4>
-                      {activities.activities.slice(0, 4).map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium text-slate-900 dark:text-white text-sm">
-                              {activity.guestName}
+                      {activities.activities
+                        .slice(0, 4)
+                        .map((activity: ActivityData) => (
+                          <div
+                            key={activity.id}
+                            className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-slate-900 dark:text-white text-sm">
+                                {activity.guestName}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {activity.description}
+                              </div>
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {activity.description}
+                            <div className="text-right">
+                              <div
+                                className={`text-sm font-medium ${
+                                  activity.type === "cancellation"
+                                    ? "text-red-500"
+                                    : "text-slate-900 dark:text-white"
+                                }`}
+                              >
+                                {activity.type === "cancellation" ? "-" : ""}$
+                                {Math.abs(activity.amount).toLocaleString()}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {new Date(
+                                  activity.createdAt
+                                ).toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div
-                              className={`text-sm font-medium ${
-                                activity.type === "cancellation"
-                                  ? "text-red-500"
-                                  : "text-slate-900 dark:text-white"
-                              }`}
-                            >
-                              {activity.type === "cancellation" ? "-" : ""}$
-                              {Math.abs(activity.amount).toLocaleString()}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {new Date(
-                                activity.createdAt
-                              ).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                       {activities.activities.length > 4 && (
                         <div className="text-center">
                           <button

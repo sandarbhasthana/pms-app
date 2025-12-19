@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { BookingTabProps, SelectedSlot } from "./types";
+import { BookingTabProps } from "./types";
 import {
   CameraIcon,
   ArrowUpTrayIcon,
@@ -55,7 +55,6 @@ interface BookingDetailsTabProps extends BookingTabProps {
     idDocumentExpired?: boolean;
   }) => void;
   handleScanError: (err: Error) => void;
-  setLastScannedSlot: (slot: SelectedSlot | null) => void;
 }
 
 export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
@@ -68,7 +67,6 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
   setOcrEnabled,
   handleScanComplete,
   handleScanError,
-  setLastScannedSlot,
   isEmptyMode,
   fetchedRooms,
   isFetchingRooms,
@@ -175,7 +173,6 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
   };
 
   const handleTakePhoto = () => {
-    setLastScannedSlot(selectedSlot);
     setShowScanner(true);
     setOcrEnabled(true);
   };
@@ -405,10 +402,10 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
         {/* Compact Side-by-Side Layout */}
         <div className="flex gap-6">
           {/* Left Side: Image Upload Section */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <div className="flex flex-col items-center">
               {/* Image Preview */}
-              <div className="w-32 h-32 bg-gray-100 dark:!bg-gray-700 rounded-lg flex items-center justify-center mb-3 border-2 border-dashed border-gray-300 dark:border-gray-600">
+              <div className="w-32 h-32 bg-gray-100 dark:bg-gray-700! rounded-lg flex items-center justify-center mb-3 border-2 border-dashed border-gray-300 dark:border-gray-600">
                 {uploadedImage ? (
                   <Image
                     src={uploadedImage}
@@ -549,7 +546,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
                       )}
                   </div>
                 ) : (
-                  <div className="p-2 bg-gray-100 dark:!bg-[#1e2939] rounded border border-gray-600 h-10 flex items-center">
+                  <div className="p-2 bg-gray-100 dark:bg-[#1e2939]! rounded border border-gray-600 h-10 flex items-center">
                     {selectedSlot.roomName}
                   </div>
                 )}
@@ -763,7 +760,7 @@ export const BookingDetailsTab: React.FC<BookingDetailsTabProps> = ({
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="max-w-md z-[9999]">
+        <AlertDialogContent className="max-w-md z-9999">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Extracted Data</AlertDialogTitle>
             <AlertDialogDescription>

@@ -1637,3 +1637,11 @@ select:focus-visible {
     touch-action: pan-y;
   }
 }
+
+/* Suppress browser auto-scroll warnings for fixed/sticky positioned elements */
+.fixed,
+[class*="fixed"],
+.sticky,
+[class*="sticky"] {
+  overflow-anchor: none;
+}

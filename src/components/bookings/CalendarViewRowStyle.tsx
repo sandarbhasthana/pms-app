@@ -51,6 +51,7 @@ interface CalendarViewRowStyleProps {
   setSelectedResource: (id: string) => void;
   events: Reservation[];
   onDateChange?: (newDate: string) => void;
+  onDatesSet?: (start: Date, end: Date) => void; // Callback when visible date range changes
   propertyTimezone?: string; // IANA timezone string (e.g., "America/New_York")
 }
 
@@ -68,6 +69,7 @@ export default function CalendarViewRowStyle({
   setSelectedResource,
   events,
   onDateChange,
+  onDatesSet,
   propertyTimezone = "UTC" // Default to UTC if not provided
 }: CalendarViewRowStyleProps) {
   // State to track calendar view changes
@@ -108,11 +110,6 @@ export default function CalendarViewRowStyle({
     const checkMobile = () => {
       const isMobileDevice =
         window.innerWidth <= 1024 || "ontouchstart" in window;
-      console.log(
-        `📱 Mobile detection: width=${window.innerWidth}, touch=${
-          "ontouchstart" in window
-        }, isMobile=${isMobileDevice}`
-      );
       setIsMobile(isMobileDevice);
     };
     checkMobile();
@@ -257,15 +254,9 @@ export default function CalendarViewRowStyle({
           // Trigger date change immediately as user swipes past threshold
           hasTriggeredSwipe.current = true;
 
-          let daysToMove = 0;
-
           // Swipe left (negative mx) = move forward 7 days
           // Swipe right (positive mx) = move backward 7 days
-          daysToMove = mx < 0 ? 7 : -7;
-
-          console.log(
-            `🎯 Swipe threshold crossed: mx=${mx}, moving ${daysToMove} days`
-          );
+          const daysToMove = mx < 0 ? 7 : -7;
 
           // Trigger transition animation
           setIsTransitioning(true);
@@ -276,12 +267,6 @@ export default function CalendarViewRowStyle({
             if (api) {
               const currentDate = api.getDate();
               const newDate = addDays(currentDate, daysToMove);
-              console.log(
-                `📅 Moving from ${format(
-                  currentDate,
-                  "yyyy-MM-dd"
-                )} to ${format(newDate, "yyyy-MM-dd")}`
-              );
               api.gotoDate(newDate);
               if (onDateChange) {
                 onDateChange(format(newDate, "yyyy-MM-dd"));
@@ -434,9 +419,13 @@ export default function CalendarViewRowStyle({
         weekends
         slotDuration={{ hours: 12 }}
         slotLabelInterval={{ days: 1 }}
-        // Listen for view changes to update calendar start date
+        // Listen for view changes to update calendar start date and trigger data loading
         datesSet={(dateInfo) => {
           setCalendarStartDate(dateInfo.start);
+          // Notify parent component of visible date range change
+          if (onDatesSet) {
+            onDatesSet(dateInfo.start, dateInfo.end);
+          }
         }}
         // Enhanced styling for parent resources (room type headers)
         resourceGroupLabelClassNames="room-type-header font-bold text-xl text-purple-800 bg-white dark:bg-purple-900 dark:text-white py-4 border-b-2 border-purple-200 uppercase tracking-wide"
