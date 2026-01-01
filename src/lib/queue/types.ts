@@ -80,6 +80,36 @@ export interface ReportGenerationJobData {
   timestamp?: Date;
 }
 
+// Channex ARI sync job data
+export interface ChannexARISyncJobData {
+  jobType: "channex-ari-sync";
+  propertyId: string;
+  roomTypeId?: string; // Optional - if not provided, sync all room types
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+  triggeredBy?: string;
+  timestamp?: Date;
+}
+
+// Channex full sync job data
+export interface ChannexFullSyncJobData {
+  jobType: "channex-full-sync";
+  propertyId: string;
+  daysAhead: number; // Number of days to sync (default: 365)
+  triggeredBy?: string;
+  timestamp?: Date;
+}
+
+// Channex reservation sync job data
+export interface ChannexReservationSyncJobData {
+  jobType: "channex-reservation-sync";
+  reservationId: string;
+  propertyId: string;
+  action: "create" | "update" | "cancel";
+  triggeredBy?: string;
+  timestamp?: Date;
+}
+
 // Union type for all job data
 export type QueueJobData =
   | NoShowDetectionJobData
@@ -88,7 +118,10 @@ export type QueueJobData =
   | AutoCheckinJobData
   | StatusUpdateJobData
   | PaymentStatusJobData
-  | ReportGenerationJobData;
+  | ReportGenerationJobData
+  | ChannexARISyncJobData
+  | ChannexFullSyncJobData
+  | ChannexReservationSyncJobData;
 
 // Job result interface
 export interface JobResult {

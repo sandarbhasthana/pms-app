@@ -44,6 +44,7 @@ model Organization {
   reportTemplates          ReportTemplate[]
   reportSchedules          ReportSchedule[]
   reportHistory            ReportHistory[]
+  channexOrganization      ChannexOrganization? // Channex channel manager integration
 
   @@index([domain])
   @@index([stripeAccountId])
@@ -51,51 +52,52 @@ model Organization {
 
 /// Property entity representing individual properties within an organization
 model Property {
-  id                      String              @id @default(cuid())
-  organizationId          String
-  name                    String
-  shortName               String?             // User-defined short name for compact display (e.g., "Main" instead of "Grand Palace Hotel Main Property")
+  id                   String                     @id @default(cuid())
+  organizationId       String
+  name                 String
+  shortName            String? // User-defined short name for compact display (e.g., "Main" instead of "Grand Palace Hotel Main Property")
   // Address fields - stored separately for proper formatting and querying
-  suite                   String?             // Apt/Suite #, Floor
-  street                  String?             // Street Address
-  city                    String?             // City
-  state                   String?             // State/Province
-  zipCode                 String?             // ZIP/Postal Code
-  country                 String?             // Country
-  address                 String?             // Legacy: full address string (kept for backward compatibility)
-  phone                   String?
-  email                   String?
-  timezone                String              @default("UTC")
-  currency                String              @default("USD")
-  isActive                Boolean             @default(true)
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
-  isDefault               Boolean             @default(false)
-  businessRulesEnabled    Boolean             @default(false)
-  businessRulesConfig     Json?               @default("{}")
-  businessRules           BusinessRule[]
-  invitations             InvitationToken[]
-  organization            Organization        @relation(fields: [organizationId], references: [id])
-  settings                PropertySettings?
-  reservations            Reservation[]
-  rooms                   Room[]
-  roomBlocks              RoomBlock[]
-  roomTypes               RoomType[]
-  userProperties          UserProperty[]
-  errorAlerts             ErrorAlert[]
-  errorLogs               ErrorLog[]
-  notificationLogs        NotificationLog[]
-  notificationRules       NotificationRule[]
-  performanceMetrics      PerformanceMetric[]
-  queueMetrics            QueueMetric[]
-  statusHistoryLogs       ReservationStatusHistory[]
-  auditLogs               ReservationAuditLog[]
-  approvalRequests        ApprovalRequest[]
-  documents               ReservationDocument[]
-  chatRooms               ChatRoom[]
-  reportTemplates         ReportTemplate[]
-  reportSchedules         ReportSchedule[]
-  reportHistory           ReportHistory[]
+  suite                String? // Apt/Suite #, Floor
+  street               String? // Street Address
+  city                 String? // City
+  state                String? // State/Province
+  zipCode              String? // ZIP/Postal Code
+  country              String? // Country
+  address              String? // Legacy: full address string (kept for backward compatibility)
+  phone                String?
+  email                String?
+  timezone             String                     @default("UTC")
+  currency             String                     @default("USD")
+  isActive             Boolean                    @default(true)
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  isDefault            Boolean                    @default(false)
+  businessRulesEnabled Boolean                    @default(false)
+  businessRulesConfig  Json?                      @default("{}")
+  businessRules        BusinessRule[]
+  invitations          InvitationToken[]
+  organization         Organization               @relation(fields: [organizationId], references: [id])
+  settings             PropertySettings?
+  reservations         Reservation[]
+  rooms                Room[]
+  roomBlocks           RoomBlock[]
+  roomTypes            RoomType[]
+  userProperties       UserProperty[]
+  errorAlerts          ErrorAlert[]
+  errorLogs            ErrorLog[]
+  notificationLogs     NotificationLog[]
+  notificationRules    NotificationRule[]
+  performanceMetrics   PerformanceMetric[]
+  queueMetrics         QueueMetric[]
+  statusHistoryLogs    ReservationStatusHistory[]
+  auditLogs            ReservationAuditLog[]
+  approvalRequests     ApprovalRequest[]
+  documents            ReservationDocument[]
+  chatRooms            ChatRoom[]
+  reportTemplates      ReportTemplate[]
+  reportSchedules      ReportSchedule[]
+  reportHistory        ReportHistory[]
+  channexProperty      ChannexProperty? // Channex channel manager integration
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -208,40 +210,41 @@ model InvitationToken {
 
 /// Room type entity
 model RoomType {
-  id                  String          @id @default(cuid())
-  organizationId      String
-  name                String
-  abbreviation        String?
-  privateOrDorm       String          @default("private")
-  physicalOrVirtual   String          @default("physical")
-  maxOccupancy        Int             @default(1)
-  maxAdults           Int             @default(1)
-  maxChildren         Int             @default(0)
-  adultsIncluded      Int             @default(1)
-  childrenIncluded    Int             @default(0)
-  description         String?
-  amenities           String[]
-  customAmenities     String[]
-  featuredImageUrl    String?
-  additionalImageUrls String[]
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-  availability        Int?
-  basePrice           Float?
-  closedToArrival     Boolean         @default(false)
-  closedToDeparture   Boolean         @default(false)
-  currency            String          @default("INR")
-  maxLOS              Int?
-  minLOS              Int?
-  weekdayPrice        Float?
-  weekendPrice        Float?
-  propertyId          String
-  dailyRates          DailyRate[]
-  rateChangeLogs      RateChangeLog[]
-  rooms               Room[]
-  organization        Organization    @relation(fields: [organizationId], references: [id])
-  property            Property        @relation(fields: [propertyId], references: [id])
-  seasonalRates       SeasonalRate[]
+  id                      String                   @id @default(cuid())
+  organizationId          String
+  name                    String
+  abbreviation            String?
+  privateOrDorm           String                   @default("private")
+  physicalOrVirtual       String                   @default("physical")
+  maxOccupancy            Int                      @default(1)
+  maxAdults               Int                      @default(1)
+  maxChildren             Int                      @default(0)
+  adultsIncluded          Int                      @default(1)
+  childrenIncluded        Int                      @default(0)
+  description             String?
+  amenities               String[]
+  customAmenities         String[]
+  featuredImageUrl        String?
+  additionalImageUrls     String[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  availability            Int?
+  basePrice               Float?
+  closedToArrival         Boolean                  @default(false)
+  closedToDeparture       Boolean                  @default(false)
+  currency                String                   @default("INR")
+  maxLOS                  Int?
+  minLOS                  Int?
+  weekdayPrice            Float?
+  weekendPrice            Float?
+  propertyId              String
+  dailyRates              DailyRate[]
+  rateChangeLogs          RateChangeLog[]
+  rooms                   Room[]
+  organization            Organization             @relation(fields: [organizationId], references: [id])
+  property                Property                 @relation(fields: [propertyId], references: [id])
+  seasonalRates           SeasonalRate[]
+  channexRoomTypeMappings ChannexRoomTypeMapping[] // Channex channel manager integration
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -344,10 +347,10 @@ model Reservation {
   idType                String?
   issuingCountry        String?
   phone                 String?
-  guestImageUrl         String?                    // Cropped face photo for guest profile
-  idDocumentUrl         String?                    // Full ID document for Documents tab
-  idExpiryDate          DateTime?                  // Expiry date from ID document
-  idDocumentExpired     Boolean?                   // Flag indicating if document is expired
+  guestImageUrl         String? // Cropped face photo for guest profile
+  idDocumentUrl         String? // Full ID document for Documents tab
+  idExpiryDate          DateTime? // Expiry date from ID document
+  idDocumentExpired     Boolean? // Flag indicating if document is expired
   propertyId            String
   amountCaptured        Int?
   amountHeld            Int?
@@ -365,7 +368,7 @@ model Reservation {
   statusUpdatedBy       String?
   statusUpdatedAt       DateTime                   @default(now()) @updatedAt
   statusChangeReason    String?
-  deletedAt             DateTime?                  // Soft-delete timestamp for CANCELLED and NO_SHOW reservations
+  deletedAt             DateTime? // Soft-delete timestamp for CANCELLED and NO_SHOW reservations
   payments              Payment[]
   paymentTransactions   PaymentTransaction[]
   Refund                Refund[]
@@ -392,21 +395,21 @@ model Reservation {
 
 /// Documents attached to a reservation (ID scans, invoices, contracts, etc.)
 model ReservationDocument {
-  id            String              @id @default(cuid())
+  id            String      @id @default(cuid())
   reservationId String
   propertyId    String
-  key           String              // S3 key/path
-  url           String              // Public URL to access the document
-  name          String              // Original filename
-  size          Int                 // File size in bytes
-  mimeType      String              // MIME type (image/jpeg, application/pdf, etc.)
-  tag           DocumentTag         @default(OTHER) // Document category
-  uploadedBy    String              // User ID who uploaded
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  reservation   Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  property      Property            @relation(fields: [propertyId], references: [id])
-  uploader      User                @relation(fields: [uploadedBy], references: [id])
+  key           String // S3 key/path
+  url           String // Public URL to access the document
+  name          String // Original filename
+  size          Int // File size in bytes
+  mimeType      String // MIME type (image/jpeg, application/pdf, etc.)
+  tag           DocumentTag @default(OTHER) // Document category
+  uploadedBy    String // User ID who uploaded
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  property      Property    @relation(fields: [propertyId], references: [id])
+  uploader      User        @relation(fields: [uploadedBy], references: [id])
 
   @@index([reservationId])
   @@index([propertyId])
@@ -417,18 +420,18 @@ model ReservationDocument {
 
 /// Add-ons for a reservation (extra bed, breakfast, etc.)
 model ReservationAddon {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   reservationId String
-  type          String      // 'extra_bed', 'breakfast', 'custom', etc.
-  name          String      // Display name (e.g., "Extra Bed", "Breakfast")
-  description   String?     // Optional description
-  price         Float       // Price per unit
-  quantity      Int         @default(1) // Quantity of this add-on
-  totalAmount   Float       // price * quantity
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  type          String // 'extra_bed', 'breakfast', 'custom', etc.
+  name          String // Display name (e.g., "Extra Bed", "Breakfast")
+  description   String? // Optional description
+  price         Float // Price per unit
+  quantity      Int      @default(1) // Quantity of this add-on
+  totalAmount   Float // price * quantity
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   @@index([reservationId])
   @@index([type])
@@ -459,21 +462,21 @@ model ReservationStatusHistory {
 
 /// Comprehensive audit trail for all reservation changes
 model ReservationAuditLog {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   reservationId String
   propertyId    String
-  action        String    // CREATED, FIELD_UPDATED, NOTE_ADDED, PAYMENT_MADE, ADDON_ADDED, ADDON_REMOVED
-  fieldName     String?   // Which field was changed (e.g., "guestName", "checkIn", "notes")
-  oldValue      String?   // Previous value
-  newValue      String?   // New value
-  description   String?   // Human-readable description of the change
-  changedBy     String?   // User ID who made the change
-  changedAt     DateTime  @default(now())
-  metadata      String?   // JSON metadata for additional context
+  action        String // CREATED, FIELD_UPDATED, NOTE_ADDED, PAYMENT_MADE, ADDON_ADDED, ADDON_REMOVED
+  fieldName     String? // Which field was changed (e.g., "guestName", "checkIn", "notes")
+  oldValue      String? // Previous value
+  newValue      String? // New value
+  description   String? // Human-readable description of the change
+  changedBy     String? // User ID who made the change
+  changedAt     DateTime @default(now())
+  metadata      String? // JSON metadata for additional context
 
-  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  user          User?       @relation("AuditLogUser", fields: [changedBy], references: [id], onDelete: SetNull)
-  property      Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user        User?       @relation("AuditLogUser", fields: [changedBy], references: [id], onDelete: SetNull)
+  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([reservationId])
   @@index([propertyId])
@@ -484,18 +487,18 @@ model ReservationAuditLog {
 
 /// Approval requests for actions requiring manager approval (e.g., early check-in)
 model ApprovalRequest {
-  id              String    @id @default(cuid())
-  reservationId   String
-  propertyId      String
-  requestType     String    // EARLY_CHECKIN, LATE_CHECKOUT, CANCELLATION, etc.
-  requestReason   String    // Human-readable reason for the request
-  requestedBy     String    // User ID who requested the approval
-  requestedAt     DateTime  @default(now())
-  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  approvedBy      String?   // User ID who approved/rejected
-  approvedAt      DateTime?
-  approvalNotes   String?   // Notes from the approver
-  metadata        String?   // JSON metadata with additional context (e.g., old/new values)
+  id            String    @id @default(cuid())
+  reservationId String
+  propertyId    String
+  requestType   String // EARLY_CHECKIN, LATE_CHECKOUT, CANCELLATION, etc.
+  requestReason String // Human-readable reason for the request
+  requestedBy   String // User ID who requested the approval
+  requestedAt   DateTime  @default(now())
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedBy    String? // User ID who approved/rejected
+  approvedAt    DateTime?
+  approvalNotes String? // Notes from the approver
+  metadata      String? // JSON metadata with additional context (e.g., old/new values)
 
   reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   property        Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
@@ -512,52 +515,52 @@ model ApprovalRequest {
 
 /// Property settings scoped to a tenant or specific property
 model PropertySettings {
-  id                          String    @id @default(cuid())
-  orgId                       String?   @unique
-  propertyType                String
-  propertyName                String
-  propertyPhone               String
-  propertyEmail               String
-  propertyWebsite             String?
-  firstName                   String
-  lastName                    String
-  country                     String
-  street                      String
-  suite                       String?
-  city                        String
-  state                       String
-  zip                         String
-  latitude                    Float
-  longitude                   Float
-  isManuallyPositioned        Boolean   @default(false)
-  photos                      Json?
-  printHeader                 String?
-  printHeaderImage            String?
-  description                 Json
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @updatedAt
-  propertyId                  String?   @unique
-  autoConfirmThreshold        Int                   @default(50)
-  checkInTime                 String                @default("15:00")
-  checkOutTime                String                @default("11:00")
-  enableAutoCheckin           Boolean               @default(true)
-  enableAutoConfirmation      Boolean               @default(true)
-  enableLateCheckoutDetection Boolean               @default(true)
-  enableNoShowDetection       Boolean               @default(true)
-  lateCheckoutGraceHours      Int                   @default(1)
-  noShowGraceHours            Int                   @default(6)
-  notifyOnAutomationFailure   Boolean               @default(true)
-  notifyOnLateCheckout        Boolean               @default(true)
-  notifyOnNoShow              Boolean               @default(true)
-  sameDayPaymentRequired      Int                   @default(100)
+  id                              String              @id @default(cuid())
+  orgId                           String?             @unique
+  propertyType                    String
+  propertyName                    String
+  propertyPhone                   String
+  propertyEmail                   String
+  propertyWebsite                 String?
+  firstName                       String
+  lastName                        String
+  country                         String
+  street                          String
+  suite                           String?
+  city                            String
+  state                           String
+  zip                             String
+  latitude                        Float
+  longitude                       Float
+  isManuallyPositioned            Boolean             @default(false)
+  photos                          Json?
+  printHeader                     String?
+  printHeaderImage                String?
+  description                     Json
+  createdAt                       DateTime            @default(now())
+  updatedAt                       DateTime            @updatedAt
+  propertyId                      String?             @unique
+  autoConfirmThreshold            Int                 @default(50)
+  checkInTime                     String              @default("15:00")
+  checkOutTime                    String              @default("11:00")
+  enableAutoCheckin               Boolean             @default(true)
+  enableAutoConfirmation          Boolean             @default(true)
+  enableLateCheckoutDetection     Boolean             @default(true)
+  enableNoShowDetection           Boolean             @default(true)
+  lateCheckoutGraceHours          Int                 @default(1)
+  noShowGraceHours                Int                 @default(6)
+  notifyOnAutomationFailure       Boolean             @default(true)
+  notifyOnLateCheckout            Boolean             @default(true)
+  notifyOnNoShow                  Boolean             @default(true)
+  sameDayPaymentRequired          Int                 @default(100)
   // New automation settings
-  noShowLookbackDays          Int                   @default(3)
-  lateCheckoutLookbackDays    Int                   @default(2)
-  lateCheckoutFee             Decimal               @default(0) @db.Decimal(10, 2)
-  lateCheckoutFeeType         LateCheckoutFeeType   @default(FLAT_RATE)
-  confirmationPendingTimeoutHours Int               @default(6)
-  auditLogRetentionDays       Int                   @default(90)
-  property                    Property?             @relation(fields: [propertyId], references: [id])
+  noShowLookbackDays              Int                 @default(3)
+  lateCheckoutLookbackDays        Int                 @default(2)
+  lateCheckoutFee                 Decimal             @default(0) @db.Decimal(10, 2)
+  lateCheckoutFeeType             LateCheckoutFeeType @default(FLAT_RATE)
+  confirmationPendingTimeoutHours Int                 @default(6)
+  auditLogRetentionDays           Int                 @default(90)
+  property                        Property?           @relation(fields: [propertyId], references: [id])
 
   @@index([orgId])
   @@index([propertyId])
@@ -1393,29 +1396,29 @@ enum DocumentTag {
 
 /// Chat room types for different conversation contexts
 enum ChatRoomType {
-  DIRECT       // 1-on-1 chat between two users
-  GROUP        // Group chat (property-specific only for now)
-  PROPERTY     // Property-wide channel (e.g., #sunrise-hotel-general)
+  DIRECT // 1-on-1 chat between two users
+  GROUP // Group chat (property-specific only for now)
+  PROPERTY // Property-wide channel (e.g., #sunrise-hotel-general)
   ORGANIZATION // Organization-wide channel (e.g., #company-wide)
 }
 
 /// Message types for different content
 enum MessageType {
-  TEXT     // Regular text message
-  IMAGE    // Image attachment
+  TEXT // Regular text message
+  IMAGE // Image attachment
   DOCUMENT // Document attachment (PDF, Word)
-  SYSTEM   // System message (e.g., "User joined", "User left")
+  SYSTEM // System message (e.g., "User joined", "User left")
 }
 
 /// Chat room model - represents a conversation space
 model ChatRoom {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   type           ChatRoomType
   name           String? // For group chats and channels
   organizationId String
   propertyId     String? // Null for org-wide rooms
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   lastMessageAt  DateTime? // Last message timestamp for sorting
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1448,18 +1451,18 @@ model ChatParticipant {
 
 /// Chat message model - stores message metadata (content stored in Ably)
 model ChatMessage {
-  id             String        @id @default(cuid())
+  id             String      @id @default(cuid())
   roomId         String
   senderId       String
-  type           MessageType   @default(TEXT)
-  content        String?       @db.Text // Message content
+  type           MessageType @default(TEXT)
+  content        String?     @db.Text // Message content
   attachmentUrl  String? // S3 URL for attachments
   attachmentName String? // Original filename
   attachmentSize Int? // File size in bytes
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  isEdited       Boolean       @default(false)
-  isDeleted      Boolean       @default(false) // Soft delete
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  isEdited       Boolean     @default(false)
+  isDeleted      Boolean     @default(false) // Soft delete
 
   room         ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
   sender       User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -1526,7 +1529,7 @@ model ReportTemplate {
 
 /// Report Schedule - Automated report generation
 model ReportSchedule {
-  id             String            @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   propertyId     String?
   templateId     String
@@ -1569,7 +1572,7 @@ model ReportSchedule {
 
 /// Report History - Track all generated reports
 model ReportHistory {
-  id             String        @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   propertyId     String?
   templateId     String?
@@ -1600,7 +1603,7 @@ model ReportHistory {
 
   // Metadata
   generatedBy String? // Null for scheduled reports
-  generatedAt DateTime @default(now())
+  generatedAt DateTime  @default(now())
   expiresAt   DateTime? // Auto-delete after 7 days
 
   // Relations
@@ -1706,4 +1709,193 @@ enum ReportStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ============================================================================
+// CHANNEX CHANNEL MANAGER INTEGRATION MODELS
+// Option A: Single Master Account (PMS-owned)
+// All API calls use a single master API key stored in environment variables
+// ============================================================================
+
+/// Organization-level Channex Group mapping
+/// Each PMS organization maps to one Channex Group
+model ChannexOrganization {
+  id               String   @id @default(cuid())
+  organizationId   String   @unique
+  channexGroupId   String?  @unique // Created via Channex API (optional until created)
+  channexGroupName String? // Display name in Channex
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  properties   ChannexProperty[] // Properties under this group
+
+  @@index([organizationId])
+  @@index([channexGroupId])
+}
+
+/// Property-level Channex Property mapping
+/// Each PMS property maps to one Channex Property under the org's group
+model ChannexProperty {
+  id                  String            @id @default(cuid())
+  channexOrgId        String // Links to organization's Channex config
+  propertyId          String            @unique
+  channexPropertyId   String            @unique // Created via Channex API
+  channexPropertyName String? // Display name in Channex
+  isActive            Boolean           @default(true)
+  syncEnabled         Boolean           @default(true)
+  lastSyncAt          DateTime?
+  syncStatus          ChannexSyncStatus @default(PENDING)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  channexOrg         ChannexOrganization        @relation(fields: [channexOrgId], references: [id], onDelete: Cascade)
+  property           Property                   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeMappings   ChannexRoomTypeMapping[]
+  syncLogs           ChannexSyncLog[]
+  webhookLogs        ChannexWebhookLog[]
+  channelConnections ChannexChannelConnection[]
+
+  @@index([channexOrgId])
+  @@index([propertyId])
+  @@index([channexPropertyId])
+}
+
+/// Room type mapping between PMS and Channex
+model ChannexRoomTypeMapping {
+  id                  String   @id @default(cuid())
+  channexPropertyId   String
+  roomTypeId          String
+  channexRoomTypeId   String? // Set when user maps to Channex room type
+  channexRoomTypeName String?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  channexProperty  ChannexProperty          @relation(fields: [channexPropertyId], references: [id], onDelete: Cascade)
+  roomType         RoomType                 @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  ratePlanMappings ChannexRatePlanMapping[]
+
+  @@unique([channexPropertyId, roomTypeId])
+  @@unique([channexPropertyId, channexRoomTypeId])
+  @@index([roomTypeId])
+}
+
+/// Rate plan mapping between PMS and Channex
+model ChannexRatePlanMapping {
+  id                   String   @id @default(cuid())
+  roomTypeMappingId    String // Links to the room type mapping
+  channexRatePlanId    String // Created via Channex API
+  channexRatePlanName  String?
+  pmsRatePlanReference String? // Optional reference to PMS rate plan concept
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  roomTypeMapping ChannexRoomTypeMapping @relation(fields: [roomTypeMappingId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeMappingId, channexRatePlanId])
+  @@index([roomTypeMappingId])
+}
+
+/// OTA Channel connection status per property
+model ChannexChannelConnection {
+  id                String                  @id @default(cuid())
+  channexPropertyId String
+  channelCode       String // "booking_com", "expedia", "airbnb"
+  channelName       String // "Booking.com", "Expedia"
+  connectionStatus  ChannexConnectionStatus @default(PENDING)
+  mappingStatus     String? // "completed", "pending", "error"
+  connectedAt       DateTime?
+  disconnectedAt    DateTime?
+  lastSyncAt        DateTime?
+  errorMessage      String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  channexProperty ChannexProperty @relation(fields: [channexPropertyId], references: [id], onDelete: Cascade)
+
+  @@unique([channexPropertyId, channelCode])
+  @@index([channelCode])
+  @@index([connectionStatus])
+}
+
+/// Sync log for tracking ARI and other sync operations
+model ChannexSyncLog {
+  id                String            @id @default(cuid())
+  channexPropertyId String
+  syncType          ChannexSyncType
+  status            ChannexSyncStatus
+  recordsProcessed  Int               @default(0)
+  recordsFailed     Int               @default(0)
+  errorMessage      String?
+  errorDetails      Json?
+  startedAt         DateTime          @default(now())
+  completedAt       DateTime?
+  metadata          Json? // Additional sync metadata
+
+  channexProperty ChannexProperty @relation(fields: [channexPropertyId], references: [id], onDelete: Cascade)
+
+  @@index([channexPropertyId])
+  @@index([syncType])
+  @@index([status])
+  @@index([startedAt])
+}
+
+/// Webhook log for tracking incoming webhook events from Channex
+model ChannexWebhookLog {
+  id                String               @id @default(cuid())
+  channexPropertyId String?
+  eventType         String // "booking.created", "booking.updated", etc.
+  eventId           String? // Unique event ID from Channex
+  payload           Json // Raw webhook payload
+  status            ChannexWebhookStatus @default(RECEIVED)
+  processingError   String?
+  receivedAt        DateTime             @default(now())
+  processedAt       DateTime?
+  retryCount        Int                  @default(0)
+
+  channexProperty ChannexProperty? @relation(fields: [channexPropertyId], references: [id], onDelete: SetNull)
+
+  @@index([channexPropertyId])
+  @@index([eventType])
+  @@index([status])
+  @@index([receivedAt])
+}
+
+// ============================================================================
+// CHANNEX ENUMS
+// ============================================================================
+
+enum ChannexSyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PARTIAL // Some records succeeded, some failed
+}
+
+enum ChannexSyncType {
+  ARI_PUSH // Availability, Rates, Inventory push to Channex
+  ARI_FULL_SYNC // Full ARI sync for all dates
+  BOOKING_PULL // Pull bookings from Channex
+  PROPERTY_SYNC // Sync property details
+  ROOM_TYPE_SYNC // Sync room types
+  RATE_PLAN_SYNC // Sync rate plans
+}
+
+enum ChannexConnectionStatus {
+  PENDING // Customer needs to approve in OTA extranet
+  CONNECTED // Active and syncing
+  DISCONNECTED // Manually disconnected
+  ERROR // Connection error
+}
+
+enum ChannexWebhookStatus {
+  RECEIVED // Webhook received but not yet processed
+  PROCESSING // Currently being processed
+  PROCESSED // Successfully processed
+  FAILED // Processing failed
+  IGNORED // Event type not relevant or duplicate
 }

@@ -30,14 +30,14 @@ export default function SettingsTabs() {
   const getVisibleTabs = () => {
     const userRole = session?.user?.role;
 
-    // Staff Management is only visible to SUPER_ADMIN, ORG_ADMIN, and PROPERTY_MGR
-    const hasStaffAccess =
+    // Staff Management and Channel Managers are only visible to SUPER_ADMIN, ORG_ADMIN, and PROPERTY_MGR
+    const hasManagerAccess =
       userRole &&
       ["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(userRole);
 
     return tabs.filter((tab) => {
-      if (tab.href === "/settings/staff") {
-        return hasStaffAccess;
+      if (tab.href === "/settings/staff" || tab.href === "/settings/channels") {
+        return hasManagerAccess;
       }
       return true; // Show all other tabs
     });

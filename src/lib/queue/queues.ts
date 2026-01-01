@@ -58,6 +58,19 @@ const queueConfigs: Record<string, QueueConfig> = {
       },
       timeout: 180000 // 3 minutes timeout for report generation jobs
     }
+  },
+  "channex-sync": {
+    name: "channex-sync",
+    defaultJobOptions: {
+      removeOnComplete: 200,
+      removeOnFail: 100,
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 5000 // 5 second initial delay for API rate limiting
+      },
+      timeout: 300000 // 5 minutes timeout for large sync operations
+    }
   }
 };
 
@@ -92,6 +105,12 @@ export const cronSchedules: Record<string, CronSchedule> = {
     testing: "0 */2 * * *", // Every 2 hours
     staging: "0 2 * * *", // Daily at 2:00 AM
     production: "0 2 * * *" // Daily at 2:00 AM
+  },
+  "channex-full-sync": {
+    development: "0 */1 * * *", // Every hour
+    testing: "0 */4 * * *", // Every 4 hours
+    staging: "0 3 * * *", // Daily at 3:00 AM
+    production: "0 3 * * *" // Daily at 3:00 AM
   }
 };
 
@@ -112,13 +131,15 @@ export const reservationAutomationQueue = createQueue(
 export const statusUpdatesQueue = createQueue(queueConfigs["status-updates"]);
 export const notificationsQueue = createQueue(queueConfigs["notifications"]);
 export const reportsQueue = createQueue(queueConfigs["reports"]);
+export const channexSyncQueue = createQueue(queueConfigs["channex-sync"]);
 
 // Queue registry for easy access
 export const queues = {
   "reservation-automation": reservationAutomationQueue,
   "status-updates": statusUpdatesQueue,
   notifications: notificationsQueue,
-  reports: reportsQueue
+  reports: reportsQueue,
+  "channex-sync": channexSyncQueue
 } as const;
 
 // Helper function to get current environment cron schedule
