@@ -22,6 +22,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2,
   Mail,
@@ -29,7 +30,11 @@ import {
   User,
   Building,
   MapPin,
-  UserPlus
+  UserPlus,
+  Lock,
+  Eye,
+  EyeOff,
+  RefreshCw
 } from "lucide-react";
 
 interface Property {
@@ -58,11 +63,16 @@ export function CreateUserModal({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
     organizationRole: "",
+    sendWelcomeEmail: true,
     propertyAssignments: [] as PropertyAssignment[]
   });
 
@@ -95,11 +105,51 @@ export function CreateUserModal({
         name: "",
         email: "",
         phone: "",
+        password: "",
+        confirmPassword: "",
         organizationRole: "",
+        sendWelcomeEmail: true,
         propertyAssignments: []
       });
+      setShowPassword(false);
+      setShowConfirmPassword(false);
     }
   }, [isOpen]);
+
+  // Generate random password
+  const generateRandomPassword = () => {
+    const length = 12;
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const special = "!@#$%^&*";
+    const allChars = uppercase + lowercase + numbers + special;
+
+    let password = "";
+    // Ensure at least one of each type
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    // Fill the rest randomly
+    for (let i = password.length; i < length; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+
+    // Shuffle the password
+    password = password
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
+
+    setFormData((prev) => ({
+      ...prev,
+      password,
+      confirmPassword: password
+    }));
+    setShowPassword(true);
+  };
 
   // Role hierarchy validation
   const getAvailableOrganizationRoles = () => {
@@ -161,11 +211,33 @@ export function CreateUserModal({
       !formData.name ||
       !formData.email ||
       !formData.phone ||
+      !formData.password ||
       !formData.organizationRole
     ) {
       toast({
         title: "Validation Error",
-        description: "Name, email, phone, and organization role are required.",
+        description:
+          "Name, email, phone, password, and organization role are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate password
+    if (formData.password.length < 8) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Validation Error",
+        description: "Passwords do not match.",
         variant: "destructive"
       });
       return;
@@ -200,6 +272,8 @@ export function CreateUserModal({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
+        password: formData.password,
+        sendWelcomeEmail: formData.sendWelcomeEmail,
         organizationRole: formData.organizationRole,
         propertyAssignments: formData.propertyAssignments.filter(
           (assignment) => assignment.propertyId && assignment.role
@@ -221,13 +295,18 @@ export function CreateUserModal({
       } catch (parseError) {
         // If JSON parsing fails, try to get text
         const text = await response.text();
-        data = { error: text || `Failed to parse server response: ${parseError}` };
+        data = {
+          error: text || `Failed to parse server response: ${parseError}`
+        };
       }
 
       if (response.ok) {
+        const emailMsg = data.emailSent
+          ? " Welcome email sent."
+          : " (Email not sent - share credentials manually)";
         toast({
           title: "User Created",
-          description: `User ${formData.name} created successfully and added to the organization.`
+          description: `User ${formData.name} created successfully.${emailMsg}`
         });
 
         // Reset form
@@ -235,7 +314,10 @@ export function CreateUserModal({
           name: "",
           email: "",
           phone: "",
+          password: "",
+          confirmPassword: "",
           organizationRole: "",
+          sendWelcomeEmail: true,
           propertyAssignments: []
         });
 
@@ -368,6 +450,90 @@ export function CreateUserModal({
                   required
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Password Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                Password
+              </h4>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={generateRandomPassword}
+                className="text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Generate Random
+              </Button>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Min 8 characters"
+                  value={formData.password}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
+                  className="pl-10 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter password"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    handleInputChange("confirmPassword", e.target.value)
+                  }
+                  className="pl-10 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {formData.password &&
+                formData.confirmPassword &&
+                formData.password !== formData.confirmPassword && (
+                  <p className="text-xs text-red-500">Passwords do not match</p>
+                )}
             </div>
           </div>
 
@@ -512,6 +678,26 @@ export function CreateUserModal({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Email Notification Option */}
+          <div className="flex items-center space-x-2 pt-2 border-t">
+            <Checkbox
+              id="sendWelcomeEmail"
+              checked={formData.sendWelcomeEmail}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  sendWelcomeEmail: checked === true
+                }))
+              }
+            />
+            <Label
+              htmlFor="sendWelcomeEmail"
+              className="text-sm font-normal cursor-pointer"
+            >
+              Send welcome email with login credentials
+            </Label>
           </div>
 
           <DialogFooter className="flex flex-row justify-end space-x-2">

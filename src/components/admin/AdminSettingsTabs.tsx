@@ -2,23 +2,52 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
+// All admin tabs with role restrictions
 const adminTabs = [
-  { label: "Profile Settings", href: "/admin/settings/profile" },
-  { label: "Select Organization", href: "/admin/settings/organization" },
-  { label: "Properties", href: "/admin/settings/properties" },
-  { label: "User Assignments", href: "/admin/settings/user-properties" },
-  { label: "Property Settings", href: "/settings/general" }
+  {
+    label: "Profile Settings",
+    href: "/admin/settings/profile",
+    allowedRoles: ["SUPER_ADMIN", "ORG_ADMIN"] // All admins
+  },
+  {
+    label: "Select Organization",
+    href: "/admin/settings/organization",
+    allowedRoles: ["SUPER_ADMIN", "ORG_ADMIN"] // All admins
+  },
+  {
+    label: "Properties",
+    href: "/admin/settings/properties",
+    allowedRoles: ["ORG_ADMIN"] // ORG_ADMIN only (org-specific)
+  },
+  {
+    label: "User Assignments",
+    href: "/admin/settings/user-properties",
+    allowedRoles: ["ORG_ADMIN"] // ORG_ADMIN only (org-specific)
+  },
+  {
+    label: "Property Settings",
+    href: "/settings/general",
+    allowedRoles: ["ORG_ADMIN"] // ORG_ADMIN only (property-specific)
+  }
 ];
 
 export default function AdminSettingsTabs() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+
+  // Filter tabs based on user role
+  const visibleTabs = adminTabs.filter(
+    (tab) => userRole && tab.allowedRoles.includes(userRole)
+  );
 
   return (
     <div className="border-b border-purple-600 dark:border-purple-600 mb-6">
       <nav className="flex flex-wrap gap-4 text-lg font-medium text-gray-600 dark:text-gray-300">
-        {adminTabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = pathname === tab.href;
           return (
             <Link

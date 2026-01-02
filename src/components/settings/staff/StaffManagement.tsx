@@ -11,13 +11,9 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserPlus, Clock } from "lucide-react";
+import { Users, UserPlus, UserCheck, Clock } from "lucide-react";
 import { StaffList } from "./StaffList";
-import { InviteUserModal } from "./InviteUserModal";
 import { CreateUserModal } from "./CreateUserModal";
-import { InvitationsList } from "./InvitationsList";
-import { EmailTestModal } from "./EmailTestModal";
 
 interface StaffMember {
   id: string;
@@ -35,22 +31,12 @@ interface StaffMember {
   }>;
   createdAt: string;
   updatedAt: string;
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  phone: string;
-  organizationRole: string;
-  propertyRole?: string;
-  shift?: string;
-  status: "pending" | "used" | "expired";
-  organizationName: string;
-  propertyName?: string;
-  createdBy: string;
-  createdAt: string;
-  expiresAt: string;
-  usedAt?: string;
+  lastLoginAt: string | null;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
 }
 
 // Helper function to get organization ID from cookies
@@ -64,15 +50,14 @@ function getOrgIdFromCookie(): string | null {
   return orgIdCookie ? orgIdCookie.split("=")[1] : null;
 }
 
+type FilterType = "all" | "active" | "pending";
+
 export function StaffManagement() {
   const { data: session } = useSession();
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [showEmailTestModal, setShowEmailTestModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("staff");
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
 
   // Get orgId from cookie or session as fallback
   const getOrgId = () => {
@@ -81,12 +66,11 @@ export function StaffManagement() {
     return cookieOrgId || sessionOrgId || null;
   };
 
-  // ✅ PERFORMANCE: Combined fetch for staff members and invitations
-  // Reduces API calls from 2 to 1
-  const fetchStaffOverview = async () => {
+  // Fetch staff members
+  const fetchStaffMembers = async () => {
     try {
       const orgId = getOrgId();
-      console.log("🔍 Fetching staff overview for orgId:", orgId);
+      console.log("🔍 Fetching staff members for orgId:", orgId);
 
       if (!orgId) {
         console.error("❌ No orgId available from cookie or session");
@@ -108,22 +92,18 @@ export function StaffManagement() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Staff overview received:", {
-          staffCount: data.users?.length || 0,
-          invitationsCount: data.invitations?.length || 0
-        });
+        console.log("✅ Staff members received:", data.users?.length || 0);
         setStaffMembers(data.users || []);
-        setInvitations(data.invitations || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error("❌ Failed to fetch staff overview:", {
+        console.error("❌ Failed to fetch staff members:", {
           status: response.status,
           statusText: response.statusText,
           error: errorData.error || "Unknown error"
         });
       }
     } catch (error) {
-      console.error("💥 Error fetching staff overview:", error);
+      console.error("💥 Error fetching staff members:", error);
     }
   };
 
@@ -134,7 +114,7 @@ export function StaffManagement() {
 
     const loadData = async () => {
       setLoading(true);
-      await fetchStaffOverview();
+      await fetchStaffMembers();
       setLoading(false);
     };
 
@@ -142,27 +122,16 @@ export function StaffManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // Handle successful invitation
-  const handleInvitationSent = () => {
-    setShowInviteModal(false);
-    fetchStaffOverview(); // Refresh both lists
-  };
-
   // Handle successful user creation
   const handleUserCreated = () => {
     console.log("🎉 User created successfully, refreshing staff list...");
     setShowCreateUserModal(false);
-    fetchStaffOverview(); // Refresh both lists
+    fetchStaffMembers(); // Refresh staff list
   };
 
   // Handle staff member update
   const handleStaffUpdate = () => {
-    fetchStaffOverview(); // Refresh both lists
-  };
-
-  // Handle invitation action (resend, cancel)
-  const handleInvitationAction = () => {
-    fetchStaffOverview(); // Refresh both lists
+    fetchStaffMembers(); // Refresh staff list
   };
 
   if (loading) {
@@ -174,8 +143,28 @@ export function StaffManagement() {
   }
 
   const userRole = session?.user?.role;
-  const canInviteUsers =
-    userRole && ["SUPER_ADMIN", "ORG_ADMIN", "PROPERTY_MGR"].includes(userRole);
+  const canCreateUsers =
+    userRole && ["ORG_ADMIN", "PROPERTY_MGR"].includes(userRole);
+
+  // Calculate login status counts
+  const pendingLoginCount = staffMembers.filter(
+    (m) => m.lastLoginAt === null
+  ).length;
+  const activeLoginCount = staffMembers.filter(
+    (m) => m.lastLoginAt !== null
+  ).length;
+
+  // Filter staff members based on active filter
+  const filteredStaffMembers = staffMembers.filter((member) => {
+    if (activeFilter === "pending") return member.lastLoginAt === null;
+    if (activeFilter === "active") return member.lastLoginAt !== null;
+    return true; // "all"
+  });
+
+  // Handle card click for filtering
+  const handleCardClick = (filter: FilterType) => {
+    setActiveFilter((current) => (current === filter ? "all" : filter));
+  };
 
   return (
     <div className="space-y-6">
@@ -189,39 +178,29 @@ export function StaffManagement() {
         </div>
 
         <div className="flex space-x-2">
-          {canInviteUsers && (
-            <>
-              {/* <Button
-                onClick={() => setShowEmailTestModal(true)}
-                variant="outline"
-                size="sm"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Test Email
-              </Button> */}
-              <Button
-                onClick={() => setShowCreateUserModal(true)}
-                variant="outline"
-                className="text-[#7210a2] hover:bg-[#7210a2]! hover:text-white cursor-pointer"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Create User
-              </Button>
-              <Button
-                onClick={() => setShowInviteModal(true)}
-                className="bg-[#7210a2] hover:bg-[#7210a2]/90 text-[#f0f8ff] dark:hover:bg-[#7210a2]/50 cursor-pointer"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Send Invitation
-              </Button>
-            </>
+          {canCreateUsers && (
+            <Button
+              onClick={() => setShowCreateUserModal(true)}
+              className="bg-[#7210a2] hover:bg-[#7210a2]/90 text-[#f0f8ff] dark:hover:bg-[#7210a2]/50 cursor-pointer"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create User
+            </Button>
           )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Staff */}
+        <Card
+          className={`card-hover transition-all duration-200 hover:shadow-lg cursor-pointer ${
+            activeFilter === "all"
+              ? "ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900"
+              : ""
+          }`}
+          onClick={() => handleCardClick("all")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Total Staff
@@ -235,119 +214,96 @@ export function StaffManagement() {
               {staffMembers.length}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Active team members
+              Registered team members
             </p>
           </CardContent>
         </Card>
 
-        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
+        {/* Active Users (have logged in) */}
+        <Card
+          className={`card-hover transition-all duration-200 hover:shadow-lg cursor-pointer ${
+            activeFilter === "active"
+              ? "ring-2 ring-green-500 ring-offset-2 dark:ring-offset-gray-900"
+              : ""
+          }`}
+          onClick={() => handleCardClick("active")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Pending Invitations
+              Active Users
             </CardTitle>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {invitations.filter((inv) => inv.status === "pending").length}
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+              {activeLoginCount}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Awaiting acceptance
+              Have logged in
             </p>
           </CardContent>
         </Card>
 
-        <Card className="card-hover transition-all duration-200 hover:shadow-lg">
+        {/* Pending Login */}
+        <Card
+          className={`card-hover transition-all duration-200 hover:shadow-lg cursor-pointer ${
+            activeFilter === "pending"
+              ? "ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-gray-900"
+              : ""
+          }`}
+          onClick={() => handleCardClick("pending")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Recent Activity
+              Pending Login
             </CardTitle>
-            <div className="p-2 bg-green-100 dark:bg-green-900/30! rounded-lg">
-              <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {
-                invitations.filter((inv) => {
-                  const createdAt = new Date(inv.createdAt);
-                  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                  return createdAt > dayAgo;
-                }).length
-              }
+            <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+              {pendingLoginCount}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Invitations sent today
+              Awaiting first login
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
-        <TabsList className="bg-gray-100 dark:bg-transparent! border border-purple-600 dark:border-purple-500 rounded-lg">
-          <TabsTrigger
-            value="staff"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white! dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white! text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
-          >
-            Staff Members
-          </TabsTrigger>
-          <TabsTrigger
-            value="invitations"
-            className="data-[state=active]:bg-[#7210a2] data-[state=active]:text-white! dark:data-[state=active]:bg-[#ab2aea] dark:data-[state=active]:text-white! text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
-          >
-            Invitations (
-            {invitations.filter((inv) => inv.status === "pending").length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="staff" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Members</CardTitle>
-              <CardDescription>
-                Manage your team members, their roles, and property assignments.
-              </CardDescription>
-            </CardHeader>
-            <StaffList
-              staffMembers={staffMembers}
-              onStaffUpdate={handleStaffUpdate}
-            />
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="invitations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Invitations</CardTitle>
-              <CardDescription>
-                Manage sent invitations and track their status.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InvitationsList
-                invitations={invitations}
-                onInvitationAction={handleInvitationAction}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Invite User Modal */}
-      {showInviteModal && (
-        <InviteUserModal
-          isOpen={showInviteModal}
-          onClose={() => setShowInviteModal(false)}
-          onInvitationSent={handleInvitationSent}
+      {/* Staff List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Team Members
+            {activeFilter !== "all" && (
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                (Showing {activeFilter === "pending" ? "pending" : "active"}{" "}
+                users)
+              </span>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Manage your team members, their roles, and property assignments.
+            {activeFilter !== "all" && (
+              <Button
+                variant="link"
+                className="p-0 h-auto text-purple-600 dark:text-purple-400 ml-2"
+                onClick={() => setActiveFilter("all")}
+              >
+                Clear filter
+              </Button>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <StaffList
+          staffMembers={filteredStaffMembers}
+          onStaffUpdate={handleStaffUpdate}
         />
-      )}
+      </Card>
 
       {/* Create User Modal */}
       {showCreateUserModal && (
@@ -355,14 +311,6 @@ export function StaffManagement() {
           isOpen={showCreateUserModal}
           onClose={() => setShowCreateUserModal(false)}
           onUserCreated={handleUserCreated}
-        />
-      )}
-
-      {/* Email Test Modal */}
-      {showEmailTestModal && (
-        <EmailTestModal
-          isOpen={showEmailTestModal}
-          onClose={() => setShowEmailTestModal(false)}
         />
       )}
     </div>

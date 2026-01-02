@@ -102,6 +102,12 @@ async function buildUserSession(user: {
   name: string | null;
   image: string | null;
 }) {
+  // Update lastLoginAt timestamp for tracking
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  });
+
   // Check if user has any organization memberships
   const membership = await prisma.userOrg.findFirst({
     where: { userId: user.id }

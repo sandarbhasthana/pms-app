@@ -6,6 +6,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserRole, PropertyRole } from "@prisma/client";
+import { hash } from "bcryptjs";
+import { sendStaffWelcomeEmail } from "@/lib/email/templates/staff-welcome";
 
 /**
  * GET /api/admin/users
@@ -51,9 +53,12 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build where clause for filtering
+    // Exclude SUPER_ADMIN users from organization staff list (they are system-level, not org staff)
     const whereClause = {
       organizationId: orgId,
-      ...(roleFilter && { role: roleFilter as UserRole })
+      role: roleFilter
+        ? (roleFilter as UserRole)
+        : { not: UserRole.SUPER_ADMIN }
     };
 
     console.log("🔍 GET /api/admin/users - whereClause:", whereClause);
@@ -269,14 +274,27 @@ export async function POST(req: NextRequest) {
       email,
       name,
       phone,
+      password,
+      sendWelcomeEmail = true,
       organizationRole,
       propertyAssignments = []
     } = await req.json();
 
     // Validate required fields
-    if (!email || !name || !phone || !organizationRole) {
+    if (!email || !name || !phone || !password || !organizationRole) {
       return NextResponse.json(
-        { error: "Email, name, phone, and organization role are required" },
+        {
+          error:
+            "Email, name, phone, password, and organization role are required"
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate password length
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters long" },
         { status: 400 }
       );
     }
@@ -294,9 +312,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user already exists
+    // Check if user already exists (include password to check if they need one)
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: { id: true, password: true }
     });
 
     if (existingUser) {
@@ -318,17 +337,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create or update user
+    // Hash the admin-provided password
+    const hashedPassword = await hash(password, 12);
+    console.log("🔐 Using admin-provided password for new user");
+
+    // Get the current user's ID to track who created this user
+    const createdByUserId = session.user.id;
+
+    // Create or update user (with password for new users)
     const user = await prisma.user.upsert({
       where: { email },
       create: {
         email,
         name,
-        phone
+        phone,
+        password: hashedPassword,
+        createdByUserId: createdByUserId // Track who created this user
       },
       update: {
         name,
-        phone
+        phone,
+        // Update password if user exists but doesn't have one
+        ...(existingUser && !existingUser.password
+          ? { password: hashedPassword }
+          : {})
       }
     });
 
@@ -355,13 +387,19 @@ export async function POST(req: NextRequest) {
     });
 
     // Create property assignments if provided
-    if (propertyAssignments.length > 0) {
-      interface PropertyAssignmentInput {
-        propertyId: string;
-        role: PropertyRole;
-        shift?: string | null;
-      }
+    interface PropertyAssignmentInput {
+      propertyId: string;
+      role: PropertyRole;
+      shift?: string | null;
+    }
 
+    let propertyAssignmentDetails: Array<{
+      propertyName: string;
+      role: string;
+      shift?: string;
+    }> = [];
+
+    if (propertyAssignments.length > 0) {
       const propertyAssignmentData = propertyAssignments.map(
         (assignment: PropertyAssignmentInput) => ({
           userId: user.id,
@@ -375,11 +413,72 @@ export async function POST(req: NextRequest) {
         data: propertyAssignmentData,
         skipDuplicates: true
       });
+
+      // Get property names for email
+      const propertyIds = propertyAssignments.map(
+        (a: PropertyAssignmentInput) => a.propertyId
+      );
+      const properties = await prisma.property.findMany({
+        where: { id: { in: propertyIds } },
+        select: { id: true, name: true }
+      });
+
+      const propertyMap = new Map(properties.map((p) => [p.id, p.name]));
+      propertyAssignmentDetails = propertyAssignments.map(
+        (a: PropertyAssignmentInput) => ({
+          propertyName: propertyMap.get(a.propertyId) || "Unknown Property",
+          role: a.role,
+          shift: a.shift || undefined
+        })
+      );
+    }
+
+    // Send welcome email with credentials (if requested)
+    let emailSent = false;
+
+    if (sendWelcomeEmail) {
+      // Get the inviter's name
+      const inviter = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { name: true }
+      });
+
+      const loginUrl = `${
+        process.env.NEXTAUTH_URL || "http://localhost:3000"
+      }/auth/signin`;
+
+      const emailResult = await sendStaffWelcomeEmail({
+        staffName: name,
+        staffEmail: email,
+        temporaryPassword: password, // Use admin-provided password
+        organizationName: organization.name,
+        organizationRole,
+        propertyAssignments:
+          propertyAssignmentDetails.length > 0
+            ? propertyAssignmentDetails
+            : undefined,
+        loginUrl,
+        inviterName: inviter?.name || undefined
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `⚠️ Failed to send welcome email to ${email}:`,
+          emailResult.error
+        );
+        // Note: We don't fail the API call if email fails - user is still created
+      } else {
+        console.log(`✅ Welcome email sent to ${email}`);
+        emailSent = true;
+      }
+    } else {
+      console.log(`📧 Welcome email skipped for ${email} (admin opted out)`);
     }
 
     return NextResponse.json(
       {
         message: "User created successfully",
+        emailSent,
         user: {
           id: user.id,
           name: user.name,

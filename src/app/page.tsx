@@ -2,24 +2,35 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SignInForm from "@/app/auth/signin/SignInForm";
 import { LoadingSpinner } from "@/components/ui/spinner";
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      // Redirect authenticated users to dashboard
+      // Show loader and redirect authenticated users to dashboard
+      setIsRedirecting(true);
       router.replace("/dashboard");
     }
   }, [session, status, router]);
 
-  // Show loading state while checking authentication
-  if (status === "loading") {
-    return <LoadingSpinner text="Checking authentication..." fullScreen />;
+  // Show loading state while checking authentication or redirecting
+  if (status === "loading" || isRedirecting) {
+    return (
+      <LoadingSpinner
+        text={
+          isRedirecting
+            ? "Redirecting to dashboard..."
+            : "Checking authentication..."
+        }
+        fullScreen
+      />
+    );
   }
 
   // Show sign-in page for unauthenticated users

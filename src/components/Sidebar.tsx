@@ -21,13 +21,10 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const PM_OR_ABOVE = new Set(["PROPERTY_MGR", "ORG_ADMIN", "SUPER_ADMIN"]);
-const ALL_STAFF_ROLES = new Set([
-  "FRONT_DESK",
-  "PROPERTY_MGR",
-  "ORG_ADMIN",
-  "SUPER_ADMIN"
-]);
+// Org/Property-level staff (excludes system-level SUPER_ADMIN)
+const ORG_STAFF_ROLES = new Set(["FRONT_DESK", "PROPERTY_MGR", "ORG_ADMIN"]);
+// Property managers and org admins only
+const PM_OR_ORG_ADMIN = new Set(["PROPERTY_MGR", "ORG_ADMIN"]);
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -58,33 +55,33 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       label: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
-      allowedRoles: ALL_STAFF_ROLES // All staff can access
+      allowedRoles: ORG_STAFF_ROLES // Org staff can access
     },
     {
       label: "Reservations",
       href: "/reservations",
       icon: CalendarDays,
-      allowedRoles: ALL_STAFF_ROLES // All staff can access
+      allowedRoles: ORG_STAFF_ROLES // Org staff only (not SUPER_ADMIN - org specific)
     },
     // Calendar maps to Dashboard/bookings
     {
       label: "Calendar",
       href: "/dashboard/bookings",
       icon: Calendar,
-      allowedRoles: ALL_STAFF_ROLES // All staff can access
+      allowedRoles: ORG_STAFF_ROLES // Org staff only (not SUPER_ADMIN - property specific)
     },
     {
       label: "Teams",
       href: "/dashboard/chat",
       icon: MessageSquare,
       badge: totalUnreadCount,
-      allowedRoles: ALL_STAFF_ROLES // All staff can access
+      allowedRoles: ORG_STAFF_ROLES // Org staff only (not SUPER_ADMIN - org specific)
     },
     {
       label: "Settings",
       href: "/settings/general",
       icon: SettingsIcon,
-      allowedRoles: PM_OR_ABOVE // Only managers and above
+      allowedRoles: PM_OR_ORG_ADMIN // Property managers and org admins only (not SUPER_ADMIN)
     }
     // Development test page - remove in production
     // ...(process.env.NODE_ENV === "development"

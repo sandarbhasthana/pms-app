@@ -62,6 +62,12 @@ interface StaffMember {
   }>;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt: string | null;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
 }
 
 interface StaffListProps {
@@ -322,40 +328,40 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
   return (
     <>
       <div className="w-full rounded-sm overflow-hidden">
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader>
             <TableRow className="bg-linear-to-b from-white to-gray-50 dark:from-[#1e2939] dark:to-[#1a2332] text-gray-700 dark:text-[#f0f8ff] h-14 uppercase border-b border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium tracking-wider">
-              <SortableHeader field="name" className="w-[200px] px-3 py-4">
+              <SortableHeader field="name" className="w-[15%] pl-4 pr-2 py-4">
                 STAFF MEMBER
               </SortableHeader>
               <SortableHeader
                 field="organizationRole"
-                className="w-[140px] px-3 py-4"
+                className="w-[10%] px-2 py-4"
               >
                 ORG ROLE
               </SortableHeader>
-              <TableHead className="w-[140px] px-3 py-4 text-center">
+              <TableHead className="w-[10%] px-2 py-4 text-center">
                 <div className="flex items-center justify-center relative">
                   <span>PROP ROLES</span>
                   <div className="absolute right-0 top-0.5 bottom-0.5 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
                 </div>
               </TableHead>
-              <TableHead className="w-[280px] px-3 py-4 text-center">
+              <TableHead className="w-[22%] px-2 py-4 text-center">
                 <div className="flex items-center justify-center relative">
                   <span>PROP ASSIGNMENTS</span>
                   <div className="absolute right-0 top-0.5 bottom-0.5 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
                 </div>
               </TableHead>
-              <SortableHeader field="shift" className="w-[140px] px-3 py-4">
+              <SortableHeader field="shift" className="w-[10%] px-2 py-4">
                 SHIFTS
               </SortableHeader>
-              <SortableHeader field="email" className="w-[220px] px-3 py-4">
+              <SortableHeader field="email" className="w-[18%] px-2 py-4">
                 CONTACT
               </SortableHeader>
-              <SortableHeader field="createdAt" className="w-[120px] px-3 py-4">
+              <SortableHeader field="createdAt" className="w-[10%] px-2 py-4">
                 JOINED
               </SortableHeader>
-              <TableHead className="w-[50px] px-3 py-4 text-center">
+              <TableHead className="w-[5%] pl-2 pr-4 py-4 text-center">
                 <div className="flex items-center justify-center">
                   <span>ACTIONS</span>
                 </div>
@@ -365,24 +371,41 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
           <TableBody>
             {sortedStaffMembers.map((staff) => (
               <TableRow key={staff.id}>
-                <TableCell className="w-[200px]">
-                  <div className="flex items-center space-x-3">
+                <TableCell className="w-[15%] pl-4 pr-2">
+                  <div className="flex items-center space-x-2">
                     <Avatar
                       email={staff.email}
                       name={staff.name}
                       src={staff.image}
                       size="md"
-                      className="h-9 w-9 shrink-0"
+                      className="h-8 w-8 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium truncate text-sm">
                         {staff.name || "Unnamed User"}
                       </div>
+                      {staff.createdBy && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate cursor-default">
+                                Added by{" "}
+                                {staff.createdBy.name || staff.createdBy.email}
+                              </p>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              <p className="text-xs">
+                                Created by: {staff.createdBy.email}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[140px]">
+                <TableCell className="w-[10%] px-2 text-center">
                   <Badge
                     data-badge="true"
                     style={
@@ -398,8 +421,8 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                   </Badge>
                 </TableCell>
 
-                <TableCell className="w-[140px]">
-                  <div className="flex flex-wrap gap-1">
+                <TableCell className="w-[10%] px-2 text-center">
+                  <div className="flex flex-wrap gap-1 justify-center">
                     {staff.propertyAssignments.length === 0 ? (
                       <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                         No roles
@@ -428,9 +451,9 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[280px]">
+                <TableCell className="w-[22%] px-2 text-center">
                   <TooltipProvider>
-                    <div className="space-y-2">
+                    <div className="space-y-1 inline-block text-left">
                       {staff.propertyAssignments.length === 0 ? (
                         <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                           No assignments
@@ -447,11 +470,11 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                           return (
                             <Tooltip key={index}>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center space-x-2 cursor-default">
-                                  <span className="text-base shrink-0">
+                                <div className="flex items-center space-x-1.5 cursor-default min-w-0">
+                                  <span className="text-sm shrink-0">
                                     {icon}
                                   </span>
-                                  <span className="text-sm font-medium dark:text-gray-200 leading-tight truncate max-w-[200px]">
+                                  <span className="text-sm font-medium dark:text-gray-200 leading-tight truncate">
                                     {displayName}
                                   </span>
                                 </div>
@@ -469,10 +492,10 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                   </TooltipProvider>
                 </TableCell>
 
-                <TableCell className="w-[140px]">
-                  <div className="space-y-2">
+                <TableCell className="w-[10%] px-2 text-center">
+                  <div className="space-y-1 flex flex-col items-center">
                     {staff.propertyAssignments.length === 0 ? (
-                      <div className="flex items-center space-x-1.5">
+                      <div className="flex items-center space-x-1">
                         <Clock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                         <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                           No shift
@@ -503,7 +526,7 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                               </span>
                             </Badge>
                           ) : (
-                            <div className="flex items-center space-x-1.5">
+                            <div className="flex items-center space-x-1">
                               <Clock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                               <span className="text-xs text-gray-600! dark:text-gray-400 italic">
                                 No shift
@@ -516,18 +539,18 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[220px]">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center space-x-2">
+                <TableCell className="w-[18%] px-2 text-center">
+                  <div className="space-y-1 inline-block text-left">
+                    <div className="flex items-center space-x-1.5 min-w-0">
                       <Mail className="h-3 w-3 text-purple-300 shrink-0" />
                       <span className="text-xs dark:text-gray-300 truncate">
                         {staff.email}
                       </span>
                     </div>
                     {staff.phone && (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1.5">
                         <Phone className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                        <span className="text-xs dark:text-gray-300">
+                        <span className="text-xs dark:text-gray-300 truncate">
                           {staff.phone}
                         </span>
                       </div>
@@ -535,13 +558,13 @@ export function StaffList({ staffMembers, onStaffUpdate }: StaffListProps) {
                   </div>
                 </TableCell>
 
-                <TableCell className="w-[120px]">
+                <TableCell className="w-[10%] px-2 text-center">
                   <span className="text-xs dark:text-gray-300 whitespace-nowrap">
                     {formatDate(staff.createdAt)}
                   </span>
                 </TableCell>
 
-                <TableCell className="w-[50px]">
+                <TableCell className="w-[5%] pl-2 pr-4 text-center">
                   {(canEditThisStaff(staff) || canDeleteThisStaff(staff)) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

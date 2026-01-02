@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -40,20 +40,25 @@ interface DeleteStaffModalProps {
   onStaffDeleted: () => void;
 }
 
-export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: DeleteStaffModalProps) {
+export function DeleteStaffModal({
+  staff,
+  isOpen,
+  onClose,
+  onStaffDeleted
+}: DeleteStaffModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const roleLabels = {
-    "SUPER_ADMIN": "Super Admin",
-    "ORG_ADMIN": "Organization Admin",
-    "PROPERTY_MGR": "Property Manager",
-    "FRONT_DESK": "Front Desk",
-    "HOUSEKEEPING": "Housekeeping",
-    "MAINTENANCE": "Maintenance",
-    "ACCOUNTANT": "Accountant",
-    "OWNER": "Owner",
-    "IT_SUPPORT": "IT Support"
+    SUPER_ADMIN: "Super Admin",
+    ORG_ADMIN: "Organization Admin",
+    PROPERTY_MGR: "Property Manager",
+    FRONT_DESK: "Front Desk",
+    HOUSEKEEPING: "Housekeeping",
+    MAINTENANCE: "Maintenance",
+    ACCOUNTANT: "Accountant",
+    OWNER: "Owner",
+    IT_SUPPORT: "IT Support"
   };
 
   const handleDelete = async () => {
@@ -61,7 +66,7 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
 
     try {
       const response = await fetch(`/api/admin/users/${staff.id}`, {
-        method: "DELETE",
+        method: "DELETE"
       });
 
       const data = await response.json();
@@ -69,14 +74,16 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
       if (response.ok) {
         toast({
           title: "Staff Member Removed",
-          description: `${staff.name || staff.email} has been removed from the organization`,
+          description: `${
+            staff.name || staff.email
+          } has been removed from the organization`
         });
         onStaffDeleted();
       } else {
         toast({
           title: "Error",
           description: data.error || "Failed to remove staff member",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } catch (error) {
@@ -84,7 +91,7 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
       toast({
         title: "Error",
         description: "An unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -100,32 +107,37 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
             <span>Remove Staff Member</span>
           </DialogTitle>
           <DialogDescription>
-            This action will remove the staff member from your organization. This cannot be undone.
+            This action will remove the staff member from your organization.
+            This cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Staff Member Info */}
-          <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800! dark:border-gray-600!">
             <div className="flex items-start space-x-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-gray-600" />
+              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600! rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-gray-600 dark:text-gray-200!" />
               </div>
               <div className="flex-1 space-y-2">
                 <div>
-                  <h4 className="font-medium">{staff.name || "Unnamed User"}</h4>
-                  <p className="text-sm text-gray-600">
-                    {roleLabels[staff.organizationRole as keyof typeof roleLabels] || staff.organizationRole}
+                  <h4 className="font-medium text-gray-900 dark:text-white!">
+                    {staff.name || "Unnamed User"}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300!">
+                    {roleLabels[
+                      staff.organizationRole as keyof typeof roleLabels
+                    ] || staff.organizationRole}
                   </p>
                 </div>
-                
+
                 <div className="space-y-1">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300!">
                     <Mail className="h-3 w-3" />
                     <span>{staff.email}</span>
                   </div>
                   {staff.phone && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300!">
                       <Phone className="h-3 w-3" />
                       <span>{staff.phone}</span>
                     </div>
@@ -134,10 +146,15 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
 
                 {staff.propertyAssignments.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-sm font-medium text-gray-700 mb-1">Property Assignments:</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200! mb-1">
+                      Property Assignments:
+                    </p>
                     <div className="space-y-1">
                       {staff.propertyAssignments.map((assignment, index) => (
-                        <div key={index} className="text-sm text-gray-600">
+                        <div
+                          key={index}
+                          className="text-sm text-gray-600 dark:text-gray-300!"
+                        >
                           • {assignment.propertyName} ({assignment.role}
                           {assignment.shift && `, ${assignment.shift}`})
                         </div>
@@ -150,9 +167,9 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
           </div>
 
           {/* Warning Alert */}
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
+          <Alert className="border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20">
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <AlertDescription className="text-red-800 dark:text-red-300">
               <strong>Warning:</strong> This action will:
               <ul className="mt-2 space-y-1 list-disc list-inside">
                 <li>Remove the staff member from your organization</li>
@@ -162,23 +179,15 @@ export function DeleteStaffModal({ staff, isOpen, onClose, onStaffDeleted }: Del
               </ul>
             </AlertDescription>
           </Alert>
-
-          {/* Additional Info */}
-          <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p>
-              <strong>Note:</strong> The user account will not be deleted entirely. 
-              If you need to re-add this person later, you can send them a new invitation.
-            </p>
-          </div>
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            variant="destructive" 
+          <Button
+            type="button"
+            variant="destructive"
             onClick={handleDelete}
             disabled={loading}
           >

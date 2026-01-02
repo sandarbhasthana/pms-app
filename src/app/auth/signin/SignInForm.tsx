@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
+import { useGlobalLoader } from "@/contexts/LoadingContext";
 
 import {
   devLoginSchema,
@@ -38,6 +39,7 @@ export default function SignInForm() {
   const [isDevLoading, setIsDevLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { showLoader } = useGlobalLoader();
 
   // Determine default tab based on environment
   const defaultTab =
@@ -71,15 +73,17 @@ export default function SignInForm() {
 
       if (result?.error) {
         toast.error("Login failed. Please check your email and try again.");
+        setIsDevLoading(false);
       } else {
         toast.success("Login successful!");
+        // Show full-page loader during redirect
+        showLoader("Redirecting to dashboard...");
         // Redirect based on user role will be handled by middleware
         window.location.href = "/dashboard";
       }
     } catch (error) {
       console.error("Dev login error:", error);
       toast.error("An unexpected error occurred. Please try again.");
-    } finally {
       setIsDevLoading(false);
     }
   };
@@ -96,15 +100,17 @@ export default function SignInForm() {
 
       if (result?.error) {
         toast.error("Invalid email or password. Please try again.");
+        setIsPasswordLoading(false);
       } else {
         toast.success("Login successful!");
+        // Show full-page loader during redirect
+        showLoader("Redirecting to dashboard...");
         // Redirect based on user role will be handled by middleware
         window.location.href = "/dashboard";
       }
     } catch (error) {
       console.error("Password login error:", error);
       toast.error("An unexpected error occurred. Please try again.");
-    } finally {
       setIsPasswordLoading(false);
     }
   };
@@ -151,7 +157,7 @@ export default function SignInForm() {
 
                 <Button
                   type="submit"
-                  className="w-full cursor-pointer"
+                  className="w-full cursor-pointer bg-purple-700 hover:bg-purple-800 text-white border-none shadow-lg shadow-purple-700/25"
                   disabled={isDevLoading}
                 >
                   {isDevLoading ? (
@@ -237,7 +243,7 @@ export default function SignInForm() {
 
                 <Button
                   type="submit"
-                  className="w-full cursor-pointer"
+                  className="w-full cursor-pointer bg-purple-700 hover:bg-purple-800 text-white border-none shadow-lg shadow-purple-700/25"
                   disabled={isPasswordLoading}
                 >
                   {isPasswordLoading ? (

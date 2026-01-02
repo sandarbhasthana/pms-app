@@ -331,6 +331,11 @@
     color: #f0f8ff !important; /* Alice Blue text */
   }
 
+  /* Paragraph text in dark mode - muted gray for sub-headings/descriptions */
+  .dark p {
+    color: #9ca3af !important; /* gray-400 - softer than headings */
+  }
+
   /* Preserve avatar text colors - prevent global override with higher specificity */
   [data-avatar="true"],
   [data-avatar="true"] *,

@@ -47,18 +47,30 @@ export async function GET(req: NextRequest) {
       fetchInvitations(orgId)
     ]);
 
+    // Calculate login status counts
+    const pendingLoginCount = usersResult.users.filter(
+      (u) => u.lastLoginAt === null
+    ).length;
+    const activeLoginCount = usersResult.users.filter(
+      (u) => u.lastLoginAt !== null
+    ).length;
+
     return NextResponse.json({
       users: usersResult.users,
       invitations: invitationsResult.invitations,
       counts: {
         totalStaff: usersResult.users.length,
+        pendingLogin: pendingLoginCount,
+        activeLogin: activeLoginCount,
         pendingInvitations: invitationsResult.invitations.length
       }
     });
   } catch (error) {
     console.error("Error fetching staff overview:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error"
+      },
       { status: 500 }
     );
   }
@@ -67,7 +79,11 @@ export async function GET(req: NextRequest) {
 // Helper: Fetch staff members
 async function fetchStaffMembers(orgId: string) {
   const users = await prisma.userOrg.findMany({
-    where: { organizationId: orgId },
+    where: {
+      organizationId: orgId,
+      // Exclude SUPER_ADMIN users - they are system-level, not org staff
+      role: { not: UserRole.SUPER_ADMIN }
+    },
     include: {
       user: {
         select: {
@@ -77,7 +93,15 @@ async function fetchStaffMembers(orgId: string) {
           phone: true,
           image: true,
           createdAt: true,
-          updatedAt: true
+          updatedAt: true,
+          lastLoginAt: true,
+          createdByUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
         }
       }
     },
@@ -96,17 +120,29 @@ async function fetchStaffMembers(orgId: string) {
   });
 
   // Group by user
-  const assignmentsByUser = propertyAssignments.reduce((acc, a) => {
-    if (!acc[a.userId]) acc[a.userId] = [];
-    acc[a.userId].push({
-      propertyId: a.propertyId,
-      propertyName: a.property.name,
-      role: a.role,
-      shift: a.shift,
-      createdAt: a.createdAt
-    });
-    return acc;
-  }, {} as Record<string, Array<{ propertyId: string; propertyName: string; role: PropertyRole; shift: string | null; createdAt: Date }>>);
+  const assignmentsByUser = propertyAssignments.reduce(
+    (acc, a) => {
+      if (!acc[a.userId]) acc[a.userId] = [];
+      acc[a.userId].push({
+        propertyId: a.propertyId,
+        propertyName: a.property.name,
+        role: a.role,
+        shift: a.shift,
+        createdAt: a.createdAt
+      });
+      return acc;
+    },
+    {} as Record<
+      string,
+      Array<{
+        propertyId: string;
+        propertyName: string;
+        role: PropertyRole;
+        shift: string | null;
+        createdAt: Date;
+      }>
+    >
+  );
 
   const formattedUsers = users.map((userOrg) => ({
     id: userOrg.user.id,
@@ -117,7 +153,15 @@ async function fetchStaffMembers(orgId: string) {
     organizationRole: userOrg.role,
     propertyAssignments: assignmentsByUser[userOrg.user.id] || [],
     createdAt: userOrg.createdAt,
-    updatedAt: userOrg.user.updatedAt
+    updatedAt: userOrg.user.updatedAt,
+    lastLoginAt: userOrg.user.lastLoginAt,
+    createdBy: userOrg.user.createdByUser
+      ? {
+          id: userOrg.user.createdByUser.id,
+          name: userOrg.user.createdByUser.name,
+          email: userOrg.user.createdByUser.email
+        }
+      : null
   }));
 
   return { users: formattedUsers };
@@ -158,4 +202,3 @@ async function fetchInvitations(orgId: string) {
 
   return { invitations: formattedInvitations };
 }
-

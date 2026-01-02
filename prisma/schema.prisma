@@ -115,6 +115,10 @@ model User {
   phone                    String?
   isActive                 Boolean                      @default(true)
   password                 String?
+  lastLoginAt              DateTime?                    // Track when user last logged in (null = never logged in)
+  createdByUserId          String?                      // Track who created this user (null for self-registered or system)
+  createdByUser            User?                        @relation("UserCreator", fields: [createdByUserId], references: [id])
+  createdUsers             User[]                       @relation("UserCreator")
   createdRules             BusinessRule[]               @relation("BusinessRuleCreator")
   updatedRules             BusinessRule[]               @relation("BusinessRuleUpdater")
   favorites                Favorite[]

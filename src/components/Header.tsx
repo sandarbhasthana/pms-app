@@ -18,31 +18,15 @@ interface HeaderProps {
   sidebarOpen?: boolean;
 }
 
-const PM_OR_ABOVE = new Set([
-  "PROPERTY_MGR",
-  "ORG_ADMIN",
-  "SUPER_ADMIN",
-  "FRONT_DESK",
-  "HOUSEKEEPING",
-  "MAINTENANCE",
-  "SECURITY",
-  "GUEST_SERVICES",
-  "ACCOUNTANT",
-  "IT_SUPPORT"
-]);
-const ALL_STAFF_ROLES = new Set([
-  "FRONT_DESK",
-  "PROPERTY_MGR",
-  "ORG_ADMIN",
-  "SUPER_ADMIN"
-]);
+// Org-level staff roles that can access sidebar navigation
+const ORG_STAFF_ROLES = new Set(["FRONT_DESK", "PROPERTY_MGR", "ORG_ADMIN"]);
 
 export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const role = session?.user?.role as string | undefined;
-  // Allow all staff roles to see sidebar toggle (for Teams access)
-  const canSeeSidebarToggle = !!role && ALL_STAFF_ROLES.has(role);
+  // Allow org staff roles to see sidebar toggle (for Teams access)
+  const canSeeSidebarToggle = !!role && ORG_STAFF_ROLES.has(role);
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-white dark:bg-gray-900 shadow-sm">
@@ -100,8 +84,8 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
         {role !== "SUPER_ADMIN" && (
           <PropertySwitcher className="cursor-pointer" />
         )}
-        {/* Reports icon - for PROPERTY_MGR and above */}
-        {role && PM_OR_ABOVE.has(role) && (
+        {/* Reports icon - for org staff (not SUPER_ADMIN - org-specific) */}
+        {role && ORG_STAFF_ROLES.has(role) && (
           <Button
             variant="ghost"
             size="icon"
@@ -112,8 +96,8 @@ export function Header({ onToggleSidebar, sidebarOpen = false }: HeaderProps) {
             <BarChart3 className="h-6 w-6 text-gray-800! dark:text-[#f0f8f9]! cursor-pointer" />
           </Button>
         )}
-        {/* Unified notification bell - for PROPERTY_MGR and above */}
-        {role && PM_OR_ABOVE.has(role) && (
+        {/* Unified notification bell - for org staff */}
+        {role && ORG_STAFF_ROLES.has(role) && (
           <UnifiedNotificationBell className="cursor-pointer dark:hover:bg-[#8b5cf6]" />
         )}
         {/* User menu with avatar and account options */}
